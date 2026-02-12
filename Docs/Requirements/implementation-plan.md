@@ -139,9 +139,9 @@ echo "3.11" > .python-version
 ```
 
 **Tasks:**
-- [ ] Create GitHub repository
-- [ ] Initialize with `uv init`
-- [ ] Create directory structure (business-aligned):
+- [x] Create GitHub repository
+- [x] Initialize with `uv init`
+- [x] Create directory structure (business-aligned):
 
 ```
 codecustodian/
@@ -353,11 +353,11 @@ uv add --dev pytest pytest-cov pytest-asyncio ruff mypy vcrpy
 **Requirements covered:** FR-TEST-001, FR-OPS-001, BR-QA-001
 
 **Tasks:**
-- [ ] Create `.github/workflows/ci.yml` with lint, test, security scan, coverage gate (80%)
-- [ ] Create `.github/workflows/security-scan.yml` with Bandit + Trivy + TruffleHog
-- [ ] Create `.github/workflows/deploy-azure.yml` for Azure Container Apps
-- [ ] Create `.github/workflows/codecustodian.yml` for scheduled daily runs
-- [ ] Configure `ruff.toml` and `mypy.ini`
+- [x] Create `.github/workflows/ci.yml` with lint, test, security scan, coverage gate (80%)
+- [x] Create `.github/workflows/security-scan.yml` with Bandit + Trivy + TruffleHog
+- [x] Create `.github/workflows/deploy-azure.yml` for Azure Container Apps
+- [x] Create `.github/workflows/codecustodian.yml` for scheduled daily runs
+- [x] Configure `ruff.toml` and `mypy.ini`
 
 ---
 
@@ -727,7 +727,7 @@ uv add --dev pytest pytest-cov pytest-asyncio ruff mypy vcrpy
 **Files:** `src/codecustodian/planner/copilot_client.py`, `src/codecustodian/planner/models.py`
 
 **Tasks:**
-- [ ] **5.1.1** Implement `CopilotClientWrapper` using the real SDK:
+- [x] **5.1.1** Implement `CopilotClientWrapper` using the real SDK:
   ```python
   import asyncio
   from copilot import CopilotClient
@@ -779,17 +779,17 @@ uv add --dev pytest pytest-cov pytest-asyncio ruff mypy vcrpy
           await self.client.stop()
   ```
 
-- [ ] **5.1.2** Implement model selection strategy (FR-PLAN-002):
+- [x] **5.1.2** Implement model selection strategy (FR-PLAN-002):
   - `"auto"`: simple → `gpt-4o-mini`, moderate → `gpt-4o`, complex → `gpt-5`
   - `"fast"`: always `gpt-4o-mini`
   - `"balanced"`: always `gpt-4o`
   - `"reasoning"`: `gpt-5` with `reasoning_effort: "high"`
 
-- [ ] **5.1.3** Implement cost tracking via event monitoring:
+- [x] **5.1.3** Implement cost tracking via event monitoring:
   - Track tokens per session, accumulate cost per run
   - Abort if `max_cost_per_run` exceeded → raise `BudgetExceededError`
 
-- [ ] **5.1.4** Implement streaming response handling:
+- [x] **5.1.4** Implement streaming response handling:
   ```python
   done = asyncio.Event()
   full_response = []
@@ -812,7 +812,7 @@ uv add --dev pytest pytest-cov pytest-asyncio ruff mypy vcrpy
 **File:** `src/codecustodian/planner/tools.py`
 
 **Tasks:**
-- [ ] **5.2.1** Implement `get_function_definition` tool:
+- [x] **5.2.1** Implement `get_function_definition` tool:
   ```python
   from pydantic import BaseModel, Field
   from copilot import define_tool
@@ -833,13 +833,13 @@ uv add --dev pytest pytest-cov pytest-asyncio ruff mypy vcrpy
               return "\n".join(f"{i+1:4d} | {lines[i]}" for i in range(start, end))
       return f"Function '{params.function_name}' not found in {params.file_path}"
   ```
-- [ ] **5.2.2** Implement `find_test_coverage` tool
-- [ ] **5.2.3** Implement `search_references` tool
-- [ ] **5.2.4** Implement `get_imports` tool
-- [ ] **5.2.5** Implement `get_call_sites` tool
-- [ ] **5.2.6** Implement `check_type_hints` tool
-- [ ] **5.2.7** Implement `get_git_history` tool (NEW — for context gathering in Turn 2)
-- [ ] **5.2.8** Register all tools with the Copilot session
+- [x] **5.2.2** Implement `find_test_coverage` tool
+- [x] **5.2.3** Implement `search_references` tool
+- [x] **5.2.4** Implement `get_imports` tool
+- [x] **5.2.5** Implement `get_call_sites` tool
+- [x] **5.2.6** Implement `check_type_hints` tool
+- [x] **5.2.7** Implement `get_git_history` tool (NEW — for context gathering in Turn 2)
+- [x] **5.2.8** Register all tools with the Copilot session
 
 ### Step 5.3 — Prompt Engineering
 
@@ -848,14 +848,14 @@ uv add --dev pytest pytest-cov pytest-asyncio ruff mypy vcrpy
 **File:** `src/codecustodian/planner/prompts.py`
 
 **Tasks:**
-- [ ] **5.3.1** Implement system prompt template:
+- [x] **5.3.1** Implement system prompt template:
   - Core principles: preserve behavior, minimal changes, type safety, readability
   - Output JSON schema specification for `RefactoringPlan`
   - When confidence < threshold, output `ProposalResult` instead
   - When `enable_alternatives=True`, include 2-3 alternative approaches (FR-PLAN-102)
-- [ ] **5.3.2** Implement user prompt template — finding details, code context, function signature, imports
-- [ ] **5.3.3** Implement prompt variants per finding type
-- [ ] **5.3.4** Token budget management (truncate context if exceeding window)
+- [x] **5.3.2** Implement user prompt template — finding details, code context, function signature, imports
+- [x] **5.3.3** Implement prompt variants per finding type
+- [x] **5.3.4** Token budget management (truncate context if exceeding window)
 
 ### Step 5.4 — Alternative Solution Generation
 
@@ -864,7 +864,7 @@ uv add --dev pytest pytest-cov pytest-asyncio ruff mypy vcrpy
 **File:** `src/codecustodian/planner/alternatives.py`
 
 **Tasks:**
-- [ ] **5.4.1** Implement `AlternativeGenerator`:
+- [x] **5.4.1** Implement `AlternativeGenerator`:
   ```python
   class AlternativeGenerator:
       """Generate 2-3 alternative refactoring approaches for complex findings."""
@@ -884,8 +884,8 @@ uv add --dev pytest pytest-cov pytest-asyncio ruff mypy vcrpy
           """Mark the highest-confidence alternative as recommended."""
           ...
   ```
-- [ ] **5.4.2** Enable alternative generation only for complex findings (cyclomatic > 10 or multi-file)
-- [ ] **5.4.3** Include alternatives in PR description for engineer selection (FR-PLAN-102)
+- [x] **5.4.2** Enable alternative generation only for complex findings (cyclomatic > 10 or multi-file)
+- [x] **5.4.3** Include alternatives in PR description for engineer selection (FR-PLAN-102)
 
 ### Step 5.5 — Session Hooks, Confidence & Planner Orchestrator
 
@@ -894,7 +894,7 @@ uv add --dev pytest pytest-cov pytest-asyncio ruff mypy vcrpy
 **Files:** `src/codecustodian/planner/confidence.py`, `src/codecustodian/planner/planner.py`
 
 **Tasks:**
-- [ ] **5.5.1** Implement session hooks for audit trail:
+- [x] **5.5.1** Implement session hooks for audit trail:
   ```python
   async def on_pre_tool_use(input, invocation):
       logger.info(f"Copilot calling tool: {input['toolName']}")
@@ -905,19 +905,19 @@ uv add --dev pytest pytest-cov pytest-asyncio ruff mypy vcrpy
       return {"errorHandling": "retry"}
   ```
 
-- [ ] **5.5.2** Implement confidence scoring algorithm (FR-PLAN-101):
+- [x] **5.5.2** Implement confidence scoring algorithm (FR-PLAN-101):
   - Score 1-10 with named factors: test_coverage, complexity, call_sites, logic_changes, multi_file
   - Automatic actions based on confidence:
     - **≥ 8**: Normal PR, auto-assign to team
     - **5–7**: Draft PR, request senior engineer review
     - **< 5**: Proposal-only mode (BR-PR-003) — create advisory issue, no code changes
 
-- [ ] **5.5.3** Implement reviewer effort estimation (NEW — BR-PR-002):
+- [x] **5.5.3** Implement reviewer effort estimation (NEW — BR-PR-002):
   - **Low**: single-file, direct replacement, confidence ≥ 8
   - **Medium**: multi-file or signature changes, confidence 5–7
   - **High**: complex logic, many call sites, confidence < 5
 
-- [ ] **5.5.4** Implement `Planner` orchestrator with multi-turn support (FR-PLAN-100):
+- [x] **5.5.4** Implement `Planner` orchestrator with multi-turn support (FR-PLAN-100):
   ```python
   class Planner:
       async def plan_refactoring(self, finding: Finding) -> RefactoringPlan | ProposalResult:
@@ -950,9 +950,9 @@ uv add --dev pytest pytest-cov pytest-asyncio ruff mypy vcrpy
   ```
 
 **Tests to write for Phase 3:**
-- [ ] `tests/unit/test_planner.py` — Mock CopilotClient, parsing, confidence, proposal mode
-- [ ] `tests/unit/test_tools.py` — Each tool with fixture repos
-- [ ] `tests/unit/test_alternatives.py` — Alternative generation and selection
+- [x] `tests/unit/test_planner.py` — Mock CopilotClient, parsing, confidence, proposal mode
+- [x] `tests/unit/test_tools.py` — Each tool with fixture repos
+- [x] `tests/unit/test_alternatives.py` — Alternative generation and selection
 
 ---
 
@@ -967,7 +967,7 @@ uv add --dev pytest pytest-cov pytest-asyncio ruff mypy vcrpy
 > **5-Point Safety System (from business-requirements.md FR-EXEC-101):** Every refactoring must pass ALL checks before execution begins. Failure on any check aborts or downgrades to proposal mode.
 
 **Tasks:**
-- [ ] **6.1.1** Implement `SafetyCheckRunner`:
+- [x] **6.1.1** Implement `SafetyCheckRunner`:
   ```python
   class SafetyCheckRunner:
       """5-point pre-execution safety system (FR-EXEC-101)."""
@@ -985,11 +985,11 @@ uv add --dev pytest pytest-cov pytest-asyncio ruff mypy vcrpy
           return SafetyResult(passed=True, failures=[], action="proceed")
   ```
 
-- [ ] **6.1.2** **Check 1 — Syntax Validation**: Parse new code with `ast.parse()`, reject if syntax errors
-- [ ] **6.1.3** **Check 2 — Import Availability**: Verify all imports in new code are available, check for typos
-- [ ] **6.1.4** **Check 3 — Critical Path Protection**: Identify critical files (`main.py`, `__init__.py`, API endpoints); require confidence ≥ 9 for critical files; escalate to senior review
-- [ ] **6.1.5** **Check 4 — Concurrent Change Detection**: Check if file modified since scan (git SHA mismatch); abort and re-scan if stale
-- [ ] **6.1.6** **Check 5 — Secrets Detection**: Scan new code for hardcoded secrets (API keys, passwords, tokens); block if found; alert security team
+- [x] **6.1.2** **Check 1 — Syntax Validation**: Parse new code with `ast.parse()`, reject if syntax errors
+- [x] **6.1.3** **Check 2 — Import Availability**: Verify all imports in new code are available, check for typos
+- [x] **6.1.4** **Check 3 — Critical Path Protection**: Identify critical files (`main.py`, `__init__.py`, API endpoints); require confidence ≥ 9 for critical files; escalate to senior review
+- [x] **6.1.5** **Check 4 — Concurrent Change Detection**: Check if file modified since scan (git SHA mismatch); abort and re-scan if stale
+- [x] **6.1.6** **Check 5 — Secrets Detection**: Scan new code for hardcoded secrets (API keys, passwords, tokens); block if found; alert security team
 
 ### Step 6.2 — Safe File Editor
 
@@ -998,7 +998,7 @@ uv add --dev pytest pytest-cov pytest-asyncio ruff mypy vcrpy
 **Files:** `src/codecustodian/executor/file_editor.py`, `src/codecustodian/executor/backup.py`
 
 **Tasks:**
-- [ ] **6.2.1** Implement `SafeFileEditor.apply_changes()`:
+- [x] **6.2.1** Implement `SafeFileEditor.apply_changes()`:
   1. Run 5-point safety checks (6.1)
   2. Create timestamped backup in `.codecustodian-backups/`
   3. Validate `old_code` appears exactly once
@@ -1006,11 +1006,11 @@ uv add --dev pytest pytest-cov pytest-asyncio ruff mypy vcrpy
   5. Validate syntax using `ast.parse()`
   6. Atomic write via temp file + rename
   7. On error: restore from backup
-- [ ] **6.2.2** Implement backup retention policy (7 days default)
-- [ ] **6.2.3** Implement multi-file change support with **atomic rollback** (FR-EXEC-100):
+- [x] **6.2.2** Implement backup retention policy (7 days default)
+- [x] **6.2.3** Implement multi-file change support with **atomic rollback** (FR-EXEC-100):
   - All files succeed or all revert
   - Transaction log for forensic analysis
-- [ ] **6.2.4** Handle edge cases (read-only, binary, encoding, >10MB)
+- [x] **6.2.4** Handle edge cases (read-only, binary, encoding, >10MB)
 
 ### Step 6.3 — Git Workflow Manager
 
@@ -1019,10 +1019,10 @@ uv add --dev pytest pytest-cov pytest-asyncio ruff mypy vcrpy
 **File:** `src/codecustodian/executor/git_manager.py`
 
 **Tasks:**
-- [ ] **6.3.1** Implement `create_refactoring_branch()`: `tech-debt/{category}-{file}-{timestamp}`
-- [ ] **6.3.2** Implement `commit_changes()`: conventional commit with `Co-authored-by: CodeCustodian`
-- [ ] **6.3.3** Implement `push_branch()` with auth error handling
-- [ ] **6.3.4** Implement cleanup (switch back, delete local branch)
+- [x] **6.3.1** Implement `create_refactoring_branch()`: `tech-debt/{category}-{file}-{timestamp}`
+- [x] **6.3.2** Implement `commit_changes()`: conventional commit with `Co-authored-by: CodeCustodian`
+- [x] **6.3.3** Implement `push_branch()` with auth error handling
+- [x] **6.3.4** Implement cleanup (switch back, delete local branch)
 
 ### Step 6.4 — Test Runner (Verifier)
 
@@ -1031,11 +1031,11 @@ uv add --dev pytest pytest-cov pytest-asyncio ruff mypy vcrpy
 **File:** `src/codecustodian/verifier/test_runner.py`
 
 **Tasks:**
-- [ ] **6.4.1** Test discovery: convention (`test_<filename>.py`), pattern (`test_*.py`), full suite for critical files
-- [ ] **6.4.2** `pytest.main()` execution with coverage, JUnit XML, 5-minute timeout, 4 workers
-- [ ] **6.4.3** Parse JUnit XML results
-- [ ] **6.4.4** Coverage delta calculation — reject if coverage decreases
-- [ ] **6.4.5** Distinguish pre-existing failures from new failures (FR-VERIFY-100)
+- [x] **6.4.1** Test discovery: convention (`test_<filename>.py`), pattern (`test_*.py`), full suite for critical files
+- [x] **6.4.2** `pytest.main()` execution with coverage, JUnit XML, 5-minute timeout, 4 workers
+- [x] **6.4.3** Parse JUnit XML results
+- [x] **6.4.4** Coverage delta calculation — reject if coverage decreases
+- [x] **6.4.5** Distinguish pre-existing failures from new failures (FR-VERIFY-100)
 
 ### Step 6.5 — Linting & Security Verification Pipeline
 
@@ -1044,11 +1044,11 @@ uv add --dev pytest pytest-cov pytest-asyncio ruff mypy vcrpy
 **Files:** `src/codecustodian/verifier/linter.py`, `src/codecustodian/verifier/security_scanner.py`
 
 **Tasks:**
-- [ ] **6.5.1** `_run_ruff()` — subprocess + JSON parse (FR-VERIFY-101)
-- [ ] **6.5.2** `_run_mypy()` — subprocess + JSON parse (FR-VERIFY-101)
-- [ ] **6.5.3** `_run_bandit()` — subprocess + JSON parse (FR-VERIFY-101)
-- [ ] **6.5.4** Baseline comparison (only fail on NEW violations)
-- [ ] **6.5.5** Implement enhanced security scanning (NEW — FR-VERIFY-102):
+- [x] **6.5.1** `_run_ruff()` — subprocess + JSON parse (FR-VERIFY-101)
+- [x] **6.5.2** `_run_mypy()` — subprocess + JSON parse (FR-VERIFY-101)
+- [x] **6.5.3** `_run_bandit()` — subprocess + JSON parse (FR-VERIFY-101)
+- [x] **6.5.4** Baseline comparison (only fail on NEW violations)
+- [x] **6.5.5** Implement enhanced security scanning (NEW — FR-VERIFY-102):
   ```python
   class SecurityScanner:
       async def scan_containers(self, dockerfile_path: str) -> list:

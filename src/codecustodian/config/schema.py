@@ -159,16 +159,78 @@ class GitHubConfig(BaseModel):
 # ── Copilot Config ─────────────────────────────────────────────────────────
 
 
-class CopilotConfig(BaseModel):
-    """GitHub Copilot SDK configuration."""
+class AzureOpenAIProviderConfig(BaseModel):
+    """Azure OpenAI BYOK provider configuration for the Copilot SDK."""
 
-    model_selection: str = "auto"  # auto | fast | balanced | reasoning
-    temperature: float = 0.1
-    max_tokens: int = 4096
-    timeout: int = 30
-    max_cost_per_run: float = 5.00
-    requests_per_minute: int = 20
-    concurrent_sessions: int = 3
+    base_url: str = Field(
+        description="Azure OpenAI endpoint, e.g. https://my-resource.openai.azure.com"
+    )
+    api_key: str = Field(description="Azure OpenAI API key")
+    api_version: str = Field(
+        default="2024-10-21",
+        description="Azure OpenAI API version",
+    )
+
+
+class CopilotConfig(BaseModel):
+    """GitHub Copilot SDK configuration.
+
+    Fields align with the real ``github-copilot-sdk`` v0.1.23 API surface:
+    ``CopilotClient`` options, ``SessionConfig``, and ``ProviderConfig``.
+    """
+
+    model_config = ConfigDict(validate_assignment=True)
+
+    model_selection: str = Field(
+        default="auto",
+        description="Model routing strategy: auto | fast | balanced | reasoning",
+    )
+    max_tokens: int = Field(default=4096, ge=256)
+    timeout: int = Field(default=30, ge=5, description="Timeout in seconds for send_and_wait")
+    max_cost_per_run: float = Field(default=5.00, ge=0.0)
+    # ── NEW — SDK-required fields ─────────────────────────────────────
+    github_token: str = Field(
+        default="",
+        description="GitHub PAT. Falls back to GITHUB_TOKEN env var, then gh CLI auth.",
+    )
+    streaming: bool = Field(
+        default=True,
+        description="Enable assistant.message_delta streaming events",
+    )
+    reasoning_effort: str = Field(
+        default="",
+        description="Reasoning effort: '' | 'low' | 'medium' | 'high' | 'xhigh'",
+    )
+    enable_alternatives: bool = Field(
+        default=True,
+        description="Generate alternative refactoring approaches (FR-PLAN-102)",
+    )
+    proposal_mode_threshold: int = Field(
+        default=5,
+        ge=1,
+        le=10,
+        description="Confidence below this → ProposalResult instead of RefactoringPlan",
+    )
+    azure_openai_provider: AzureOpenAIProviderConfig | None = Field(
+        default=None,
+        description="Azure OpenAI BYOK provider. When set, routes through Azure.",
+    )
+
+    @field_validator("model_selection")
+    @classmethod
+    def _validate_model_selection(cls, v: str) -> str:
+        allowed = {"auto", "fast", "balanced", "reasoning"}
+        if v not in allowed:
+            raise ValueError(f"model_selection must be one of {allowed}")
+        return v
+
+    @field_validator("reasoning_effort")
+    @classmethod
+    def _validate_reasoning_effort(cls, v: str) -> str:
+        allowed = {"", "low", "medium", "high", "xhigh"}
+        if v not in allowed:
+            raise ValueError(f"reasoning_effort must be one of {allowed}")
+        return v
 
 
 # ── Git Config ─────────────────────────────────────────────────────────────

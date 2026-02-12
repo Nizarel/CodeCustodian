@@ -114,10 +114,12 @@ notifications:
 advanced:
   copilot:
     model_selection: auto
-    temperature: 0.1
     max_tokens: 4096
     timeout: 30
     max_cost_per_run: 5.00
+    streaming: true
+    enable_alternatives: true
+    proposal_mode_threshold: 5
 
   git:
     author_name: CodeCustodian

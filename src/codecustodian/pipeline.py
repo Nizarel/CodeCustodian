@@ -421,7 +421,14 @@ class Pipeline:
             return None
 
     async def _execute(self, plan: RefactoringPlan) -> ExecutionResult:
-        """Apply code changes from the plan."""
+        """Apply code changes from the plan.
+
+        Workflow:
+        1. Run 5-point safety checks
+        2. Create a feature branch
+        3. Apply all changes atomically
+        4. Commit
+        """
         with tracer.start_as_current_span(
             "pipeline.execute",
             attributes={
@@ -429,27 +436,160 @@ class Pipeline:
                 "plan.confidence": plan.confidence_score,
             },
         ):
-            # TODO: Wire up SafeFileEditor + GitManager (Phase 4)
+            import time as _time
+
+            from codecustodian.executor.backup import BackupManager
+            from codecustodian.executor.file_editor import SafeFileEditor
+            from codecustodian.executor.git_manager import GitManager
+            from codecustodian.executor.safety_checks import SafetyCheckRunner
+
             logger.info(
                 "Executing plan %s",
                 plan.id,
                 extra={"stage": PipelineStage.EXECUTE.value},
             )
-            return ExecutionResult(plan_id=plan.id, success=False)
+            start = _time.monotonic()
+
+            try:
+                # 1. Safety checks
+                safety_runner = SafetyCheckRunner(self.repo_path)
+                safety_result = await safety_runner.run_all_checks(plan)
+
+                if not safety_result.passed:
+                    return ExecutionResult(
+                        plan_id=plan.id,
+                        success=False,
+                        errors=[f"Safety check failed: {safety_result.action}"]
+                        + [c.message for c in safety_result.failures],
+                        safety_result=safety_result,
+                        duration_seconds=_time.monotonic() - start,
+                    )
+
+                # 2. Setup backup + editor
+                backup_mgr = BackupManager(
+                    backup_dir=f"{self.repo_path}/.codecustodian-backups",
+                    retention_days=self.config.advanced.backup_retention_days,
+                )
+                editor = SafeFileEditor(
+                    validate_syntax=self.config.advanced.validate_syntax,
+                    backup_manager=backup_mgr,
+                )
+
+                # 3. Apply changes atomically
+                backup_paths = editor.apply_changes(plan.changes)
+
+                # 4. Git operations
+                git_mgr = GitManager(self.repo_path)
+                # Find the finding for branch naming
+                finding = next(
+                    (f for f in self._result.findings if f.id == plan.finding_id),
+                    None,
+                )
+                branch_name = ""
+                commit_sha = ""
+                if finding:
+                    branch_name = git_mgr.create_branch(finding)
+                    commit_sha = git_mgr.commit(
+                        finding,
+                        plan,
+                        author_name=self.config.advanced.git.author_name,
+                        author_email=self.config.advanced.git.author_email,
+                    )
+
+                return ExecutionResult(
+                    plan_id=plan.id,
+                    success=True,
+                    changes_applied=plan.changes,
+                    backup_paths=[str(bp) for bp in backup_paths],
+                    branch_name=branch_name,
+                    commit_sha=commit_sha,
+                    safety_result=safety_result,
+                    transaction_log=backup_mgr.transaction_log,
+                    duration_seconds=_time.monotonic() - start,
+                )
+
+            except Exception as exc:
+                logger.exception("Execution failed for plan %s", plan.id)
+                return ExecutionResult(
+                    plan_id=plan.id,
+                    success=False,
+                    errors=[str(exc)],
+                    duration_seconds=_time.monotonic() - start,
+                )
 
     async def _verify(self, execution: ExecutionResult) -> VerificationResult:
-        """Verify applied changes with tests + linting."""
+        """Verify applied changes with tests + linting + security."""
         with tracer.start_as_current_span(
             "pipeline.verify",
             attributes={"execution.plan_id": execution.plan_id},
         ):
-            # TODO: Wire up Verifier (Phase 4)
+            import time as _time
+
+            from codecustodian.verifier.linter import LinterRunner
+            from codecustodian.verifier.security_scanner import SecurityVerifier
+            from codecustodian.verifier.test_runner import TestRunner
+
             logger.info(
                 "Verifying execution %s",
                 execution.plan_id,
                 extra={"stage": PipelineStage.VERIFY.value},
             )
-            return VerificationResult(passed=False)
+            start = _time.monotonic()
+
+            changed_paths = [
+                Path(c.file_path) for c in execution.changes_applied
+            ]
+
+            # Tests
+            test_runner = TestRunner(
+                framework=self.config.advanced.testing.framework,
+                timeout=self.config.advanced.testing.timeout,
+                coverage_threshold=self.config.advanced.testing.coverage_threshold,
+            )
+            test_result = test_runner.run_tests(changed_paths, self.repo_path)
+
+            # Linting
+            linter = LinterRunner()
+            lint_violations = linter.run_all(changed_paths)
+
+            # Security
+            sec_verifier = SecurityVerifier()
+            sec_result = sec_verifier.verify(changed_paths)
+
+            # Combine
+            lint_passed = len(lint_violations) == 0
+            sec_passed = sec_result.get("passed", True)
+
+            all_passed = test_result.passed and lint_passed and sec_passed
+
+            failures = list(test_result.failures)
+            if not lint_passed:
+                failures.append(
+                    f"{len(lint_violations)} lint violation(s) found"
+                )
+            if not sec_passed:
+                failures.append(
+                    f"{sec_result.get('total_issues', 0)} security issue(s) found"
+                )
+
+            return VerificationResult(
+                passed=all_passed,
+                tests_run=test_result.tests_run,
+                tests_passed=test_result.tests_passed,
+                tests_failed=test_result.tests_failed,
+                tests_skipped=test_result.tests_skipped,
+                coverage_overall=test_result.coverage_overall,
+                coverage_delta=test_result.coverage_delta,
+                lint_passed=lint_passed,
+                lint_violations=lint_violations,
+                security_passed=sec_passed,
+                security_issues=[
+                    __import__("codecustodian.models", fromlist=["SecurityIssue"]).SecurityIssue(**i)
+                    for i in sec_result.get("issues", [])
+                ],
+                failures=failures,
+                duration_seconds=_time.monotonic() - start,
+            )
 
     async def _create_pr(
         self,
@@ -480,5 +620,29 @@ class Pipeline:
             "pipeline.rollback",
             attributes={"execution.plan_id": execution.plan_id},
         ):
-            # TODO: Wire up BackupManager.restore (Phase 4)
+            from codecustodian.executor.backup import BackupManager
+            from codecustodian.executor.git_manager import GitManager
+
             logger.info("Rolling back execution %s", execution.plan_id)
+
+            # Restore files from backups
+            if execution.backup_paths:
+                backup_mgr = BackupManager(
+                    backup_dir=f"{self.repo_path}/.codecustodian-backups"
+                )
+                restored = backup_mgr.restore_all(
+                    execution.backup_paths, self.repo_path
+                )
+                logger.info("Restored %d files from backup", restored)
+
+            # Clean up git branch
+            if execution.branch_name:
+                try:
+                    git_mgr = GitManager(self.repo_path)
+                    git_mgr.cleanup(execution.branch_name)
+                except Exception as exc:
+                    logger.warning(
+                        "Git cleanup failed for %s: %s",
+                        execution.branch_name,
+                        exc,
+                    )

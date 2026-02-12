@@ -1,6 +1,7 @@
 """Git workflow manager.
 
-Handles branching, commits, and push operations for refactoring PRs.
+Handles branching, commits, push, and cleanup for refactoring PRs.
+Implements convention for branch naming: ``tech-debt/{category}-{file}-{timestamp}``.
 """
 
 from __future__ import annotations
@@ -9,8 +10,9 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from git import Repo
+from git import GitCommandError, InvalidGitRepositoryError, Repo
 
+from codecustodian.exceptions import ExecutorError
 from codecustodian.logging import get_logger
 from codecustodian.models import Finding, RefactoringPlan
 
@@ -21,32 +23,86 @@ logger = get_logger("executor.git_manager")
 
 
 class GitManager:
-    """Manage git operations for the refactoring workflow."""
+    """Manage git operations for the refactoring workflow.
+
+    Usage::
+
+        gm = GitManager("/path/to/repo")
+        branch = gm.create_branch(finding)
+        # ... apply changes ...
+        sha = gm.commit(finding, plan)
+        gm.push(branch)
+        gm.cleanup(branch)
+    """
 
     def __init__(self, repo_path: str | Path) -> None:
-        self.repo = Repo(str(repo_path))
+        try:
+            self.repo = Repo(str(repo_path))
+        except InvalidGitRepositoryError as exc:
+            raise ExecutorError(
+                f"Not a git repository: {repo_path}",
+                details={"repo_path": str(repo_path)},
+            ) from exc
         self.repo_path = Path(repo_path)
+        self._original_branch: str | None = None
 
     @property
     def current_branch(self) -> str:
+        """Return the name of the currently checked-out branch."""
         return str(self.repo.active_branch)
 
     @property
     def is_clean(self) -> bool:
+        """Return True if the working tree has no uncommitted changes."""
         return not self.repo.is_dirty(untracked_files=True)
+
+    def pull_latest(self, remote: str = "origin", branch: str | None = None) -> None:
+        """Pull latest changes from remote.
+
+        Args:
+            remote: Remote name (default: ``origin``).
+            branch: Branch to pull. Defaults to current branch.
+        """
+        target = branch or self.current_branch
+        try:
+            self.repo.git.pull(remote, target, "--rebase")
+            logger.info("Pulled latest from %s/%s", remote, target)
+        except GitCommandError as exc:
+            logger.warning("Pull failed (may not have remote): %s", exc)
+
+    def get_file_sha(self, file_path: str) -> str | None:
+        """Get the git blob SHA for a tracked file.
+
+        Returns None if the file is untracked or the command fails.
+        """
+        try:
+            sha = self.repo.git.hash_object(str(self.repo_path / file_path))
+            return sha.strip()
+        except GitCommandError:
+            return None
 
     def create_branch(self, finding: Finding, prefix: str = "tech-debt") -> str:
         """Create and checkout a new branch for a refactoring.
 
+        Saves the original branch name so ``cleanup()`` can return to it.
         Returns the branch name.
         """
+        self._original_branch = self.current_branch
+
         category = finding.type.value.replace("_", "-")
         file_short = Path(finding.file).stem[:20]
         timestamp = datetime.now(UTC).strftime("%Y%m%d-%H%M")
         branch_name = f"{prefix}/{category}-{file_short}-{timestamp}"
 
-        self.repo.git.checkout("-b", branch_name)
-        logger.info("Created branch: %s", branch_name)
+        try:
+            self.repo.git.checkout("-b", branch_name)
+            logger.info("Created branch: %s", branch_name)
+        except GitCommandError as exc:
+            raise ExecutorError(
+                f"Failed to create branch {branch_name}: {exc}",
+                details={"branch": branch_name},
+            ) from exc
+
         return branch_name
 
     def commit(
@@ -62,6 +118,11 @@ class GitManager:
         """
         self.repo.git.add("-A")
 
+        # Check if there's anything to commit
+        if not self.repo.is_dirty(index=True):
+            logger.warning("Nothing to commit — working tree is clean")
+            return self.repo.head.commit.hexsha
+
         summary = plan.summary[:50]
         body = (
             f"Finding: {finding.id}\n"
@@ -76,20 +137,71 @@ class GitManager:
         )
 
         commit_msg = f"refactor: {summary}\n\n{body}"
-        self.repo.git.commit("-m", commit_msg, author=f"{author_name} <{author_email}>")
+
+        try:
+            self.repo.git.commit(
+                "-m", commit_msg,
+                author=f"{author_name} <{author_email}>",
+            )
+        except GitCommandError as exc:
+            raise ExecutorError(
+                f"Commit failed: {exc}",
+                details={"summary": summary},
+            ) from exc
 
         sha = self.repo.head.commit.hexsha
         logger.info("Committed %s: %s", sha[:8], summary)
         return sha
 
     def push(self, branch: str, remote: str = "origin") -> None:
-        """Push branch to remote."""
-        self.repo.git.push(remote, branch)
-        logger.info("Pushed %s to %s", branch, remote)
+        """Push branch to remote with auth error handling."""
+        try:
+            self.repo.git.push(remote, branch)
+            logger.info("Pushed %s to %s", branch, remote)
+        except GitCommandError as exc:
+            error_str = str(exc).lower()
+            if "authentication" in error_str or "permission" in error_str:
+                raise ExecutorError(
+                    f"Authentication failed when pushing to {remote}/{branch}. "
+                    "Check your credentials or SSH key.",
+                    details={"branch": branch, "remote": remote},
+                ) from exc
+            raise ExecutorError(
+                f"Push failed for {branch}: {exc}",
+                details={"branch": branch, "remote": remote},
+            ) from exc
 
     def checkout(self, branch: str) -> None:
         """Checkout an existing branch."""
-        self.repo.git.checkout(branch)
+        try:
+            self.repo.git.checkout(branch)
+        except GitCommandError as exc:
+            raise ExecutorError(
+                f"Checkout failed for {branch}: {exc}",
+                details={"branch": branch},
+            ) from exc
+
+    def cleanup(self, branch: str | None = None) -> None:
+        """Switch back to original branch and optionally delete the feature branch.
+
+        Args:
+            branch: The feature branch to delete. If None, just switches back.
+        """
+        if self._original_branch:
+            try:
+                self.repo.git.checkout(self._original_branch)
+                logger.info("Returned to branch: %s", self._original_branch)
+            except GitCommandError as exc:
+                logger.error("Failed to return to %s: %s", self._original_branch, exc)
+
+        if branch:
+            try:
+                self.repo.git.branch("-D", branch)
+                logger.info("Deleted local branch: %s", branch)
+            except GitCommandError as exc:
+                logger.warning("Failed to delete branch %s: %s", branch, exc)
+
+        self._original_branch = None
 
     def stash(self) -> None:
         """Stash current changes."""

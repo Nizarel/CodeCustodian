@@ -174,6 +174,10 @@ class FileChange(BaseModel):
     start_line: int | None = None
     end_line: int | None = None
     description: str = ""
+    metadata: dict[str, Any] = Field(
+        default_factory=dict,
+        description="Extra metadata, e.g. git_sha for concurrent change detection",
+    )
 
 
 class AlternativeSolution(BaseModel):
@@ -263,6 +267,79 @@ class ProposalResult(BaseModel):
         return v
 
 
+class SafetyCheckResult(BaseModel):
+    """Result of a single pre-execution safety check (FR-EXEC-101)."""
+
+    model_config = ConfigDict(extra="ignore", validate_assignment=True)
+
+    name: str = Field(description="Check name, e.g. 'syntax', 'imports'")
+    passed: bool = True
+    message: str = ""
+    severity: str = Field(default="error", description="error | warning | info")
+
+    @property
+    def failed(self) -> bool:
+        return not self.passed
+
+
+class SafetyResult(BaseModel):
+    """Aggregate result of all 5 safety checks (FR-EXEC-101)."""
+
+    model_config = ConfigDict(extra="ignore", validate_assignment=True)
+
+    passed: bool = True
+    checks: list[SafetyCheckResult] = Field(default_factory=list)
+    action: str = Field(
+        default="proceed",
+        description="proceed | abort_or_propose",
+    )
+
+    @property
+    def failures(self) -> list[SafetyCheckResult]:
+        return [c for c in self.checks if c.failed]
+
+
+class LintViolation(BaseModel):
+    """A single lint violation (FR-VERIFY-101)."""
+
+    model_config = ConfigDict(extra="ignore", validate_assignment=True)
+
+    file: str
+    line: int = 0
+    code: str = ""
+    message: str = ""
+    tool: str = ""
+    severity: str = Field(default="warning", description="error | warning | info")
+
+
+class SecurityIssue(BaseModel):
+    """A single security issue found during verification (FR-VERIFY-102)."""
+
+    model_config = ConfigDict(extra="ignore", validate_assignment=True)
+
+    file: str = ""
+    line: int = 0
+    severity: str = "LOW"
+    confidence: str = "LOW"
+    description: str = ""
+    test_id: str = ""
+    tool: str = ""
+    cwe: str = ""
+
+
+class TransactionLogEntry(BaseModel):
+    """Entry in the atomic transaction log for forensic analysis (FR-EXEC-100)."""
+
+    model_config = ConfigDict(extra="ignore", validate_assignment=True)
+
+    timestamp: datetime = Field(default_factory=lambda: datetime.now(UTC))
+    action: str = Field(description="backup | apply | rollback | commit")
+    file_path: str = ""
+    backup_path: str = ""
+    success: bool = True
+    error: str = ""
+
+
 class ExecutionResult(BaseModel):
     """Result of executing a refactoring plan."""
 
@@ -276,6 +353,8 @@ class ExecutionResult(BaseModel):
     branch_name: str = ""
     commit_sha: str = ""
     duration_seconds: float = 0.0
+    transaction_log: list[TransactionLogEntry] = Field(default_factory=list)
+    safety_result: SafetyResult | None = None
 
 
 class VerificationResult(BaseModel):
@@ -291,11 +370,14 @@ class VerificationResult(BaseModel):
     coverage_overall: float = 0.0
     coverage_delta: float = 0.0
     lint_passed: bool = True
-    lint_violations: list[dict[str, Any]] = Field(default_factory=list)
+    lint_violations: list[LintViolation] = Field(default_factory=list)
     security_passed: bool = True
-    security_issues: list[dict[str, Any]] = Field(default_factory=list)
+    security_issues: list[SecurityIssue] = Field(default_factory=list)
     failures: list[str] = Field(default_factory=list)
     duration_seconds: float = 0.0
+    pre_existing_failures: int = Field(
+        default=0, description="Count of pre-existing test failures (FR-VERIFY-100)"
+    )
 
 
 class PullRequestInfo(BaseModel):

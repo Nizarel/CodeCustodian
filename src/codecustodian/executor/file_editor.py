@@ -4,34 +4,47 @@ All file modifications go through this module to ensure:
 - Atomic writes (temp file → rename)
 - Automatic backups before changes
 - Syntax validation before commit
-- Rollback on any failure
+- Multi-file atomic rollback (FR-EXEC-100): all succeed or all revert
+- Edge case handling: read-only, binary, encoding, >10MB
 """
 
 from __future__ import annotations
 
 import ast
+import os
 import shutil
+import stat
 import tempfile
-from datetime import UTC, datetime
 from pathlib import Path
 
+from codecustodian.executor.backup import BackupManager
 from codecustodian.logging import get_logger
-from codecustodian.models import FileChange, ChangeType
+from codecustodian.models import ChangeType, FileChange, TransactionLogEntry
 
 logger = get_logger("executor.file_editor")
 
+# Maximum file size we'll attempt to edit (10 MB)
+MAX_FILE_SIZE = 10 * 1024 * 1024
+
 
 class SafeFileEditor:
-    """Apply code changes atomically with backup/rollback."""
+    """Apply code changes atomically with backup/rollback.
+
+    Supports multi-file transactions (FR-EXEC-100): all files in a batch
+    succeed, or all are reverted from backups.
+    """
 
     def __init__(
         self,
         backup_dir: str | Path = ".codecustodian-backups",
         validate_syntax: bool = True,
+        backup_manager: BackupManager | None = None,
     ) -> None:
-        self.backup_dir = Path(backup_dir)
         self.validate_syntax = validate_syntax
-        self.backup_dir.mkdir(parents=True, exist_ok=True)
+        if backup_manager is not None:
+            self.backup_manager = backup_manager
+        else:
+            self.backup_manager = BackupManager(backup_dir=backup_dir)
 
     def apply_change(self, change: FileChange) -> Path | None:
         """Apply a single file change atomically.
@@ -39,6 +52,9 @@ class SafeFileEditor:
         Returns the backup path on success, or raises on failure.
         """
         file_path = Path(change.file_path)
+
+        # Edge case checks
+        self._validate_file(file_path, change)
 
         if change.change_type == ChangeType.REPLACE:
             return self._apply_replace(file_path, change.old_content, change.new_content)
@@ -49,11 +65,97 @@ class SafeFileEditor:
         else:
             raise ValueError(f"Unsupported change type: {change.change_type}")
 
+    def apply_changes(self, changes: list[FileChange]) -> list[Path]:
+        """Apply multiple file changes atomically (FR-EXEC-100).
+
+        All changes succeed or all are reverted. Returns list of backup paths.
+
+        Raises:
+            Exception: If any change fails. All successful changes are rolled back.
+        """
+        backup_paths: list[Path] = []
+        applied: list[int] = []
+
+        try:
+            for i, change in enumerate(changes):
+                backup = self.apply_change(change)
+                if backup:
+                    backup_paths.append(backup)
+                applied.append(i)
+
+                self.backup_manager._transaction_log.append(
+                    TransactionLogEntry(
+                        action="apply",
+                        file_path=change.file_path,
+                        backup_path=str(backup) if backup else "",
+                        success=True,
+                    )
+                )
+
+            logger.info("Applied %d changes atomically", len(changes))
+            return backup_paths
+
+        except Exception as exc:
+            logger.error(
+                "Change %d/%d failed: %s — rolling back all %d applied changes",
+                len(applied) + 1,
+                len(changes),
+                exc,
+                len(applied),
+            )
+            # Rollback all applied changes
+            self.backup_manager.restore_all()
+
+            self.backup_manager._transaction_log.append(
+                TransactionLogEntry(
+                    action="rollback",
+                    file_path=f"batch ({len(applied)} files)",
+                    success=True,
+                    error=str(exc),
+                )
+            )
+            raise
+
+    # ── Validation helpers ─────────────────────────────────────────────
+
+    @staticmethod
+    def _validate_file(file_path: Path, change: FileChange) -> None:
+        """Validate file before editing — edge case handling."""
+        if change.change_type == ChangeType.INSERT and not file_path.exists():
+            # Creating a new file — OK
+            return
+
+        if not file_path.exists():
+            raise FileNotFoundError(f"File not found: {file_path}")
+
+        # Read-only check
+        if not os.access(file_path, os.W_OK):
+            raise PermissionError(f"File is read-only: {file_path}")
+
+        # Size check (>10MB)
+        file_size = file_path.stat().st_size
+        if file_size > MAX_FILE_SIZE:
+            raise ValueError(
+                f"File too large ({file_size / 1024 / 1024:.1f} MB > "
+                f"{MAX_FILE_SIZE / 1024 / 1024:.0f} MB limit): {file_path}"
+            )
+
+        # Binary file check
+        try:
+            with open(file_path, "rb") as f:
+                chunk = f.read(8192)
+                if b"\x00" in chunk:
+                    raise ValueError(f"Binary file detected: {file_path}")
+        except OSError as e:
+            raise ValueError(f"Cannot read file: {file_path}: {e}") from e
+
+    # ── Change type handlers ───────────────────────────────────────────
+
     def _apply_replace(
         self, file_path: Path, old_content: str, new_content: str
     ) -> Path:
         """Replace old_content with new_content in file."""
-        backup = self._create_backup(file_path)
+        backup = self.backup_manager.create_backup(file_path)
 
         try:
             original = file_path.read_text(encoding="utf-8")
@@ -83,7 +185,13 @@ class SafeFileEditor:
         self, file_path: Path, content: str, line: int | None
     ) -> Path:
         """Insert content at a specific line."""
-        backup = self._create_backup(file_path)
+        if not file_path.exists():
+            # Create new file
+            file_path.parent.mkdir(parents=True, exist_ok=True)
+            self._atomic_write(file_path, content)
+            return file_path  # No backup for new files
+
+        backup = self.backup_manager.create_backup(file_path)
 
         try:
             lines = file_path.read_text(encoding="utf-8").splitlines(keepends=True)
@@ -105,7 +213,7 @@ class SafeFileEditor:
         self, file_path: Path, start_line: int | None, end_line: int | None
     ) -> Path:
         """Delete lines from start_line to end_line (inclusive)."""
-        backup = self._create_backup(file_path)
+        backup = self.backup_manager.create_backup(file_path)
 
         try:
             lines = file_path.read_text(encoding="utf-8").splitlines(keepends=True)
@@ -124,23 +232,17 @@ class SafeFileEditor:
             self._restore_backup(backup, file_path)
             raise
 
-    def _create_backup(self, file_path: Path) -> Path:
-        """Create a timestamped backup."""
-        timestamp = datetime.now(UTC).strftime("%Y%m%d-%H%M%S")
-        backup_path = self.backup_dir / f"{file_path.name}-{timestamp}.bak"
-        shutil.copy2(file_path, backup_path)
-        logger.debug("Backup created: %s", backup_path)
-        return backup_path
+    # ── Internal helpers ───────────────────────────────────────────────
 
     def _restore_backup(self, backup: Path, target: Path) -> None:
         """Restore file from backup."""
         if backup.exists():
-            shutil.copy2(backup, target)
-            logger.info("Restored %s from backup", target)
+            self.backup_manager.restore(backup, target)
 
     @staticmethod
     def _atomic_write(file_path: Path, content: str) -> None:
         """Write content atomically via temp file + rename."""
+        file_path.parent.mkdir(parents=True, exist_ok=True)
         fd, tmp = tempfile.mkstemp(
             dir=file_path.parent, suffix=".tmp", prefix=file_path.stem
         )

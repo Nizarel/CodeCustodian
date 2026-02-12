@@ -90,8 +90,13 @@ class TestCopilotConfig:
     def test_defaults(self):
         config = CopilotConfig()
         assert config.model_selection == "auto"
-        assert config.temperature == 0.1
         assert config.max_tokens == 4096
+        assert config.streaming is True
+        assert config.github_token == ""
+        assert config.enable_alternatives is True
+        assert config.proposal_mode_threshold == 5
+        assert config.azure_openai_provider is None
+        assert config.reasoning_effort == ""
 
 
 class TestBehaviorConfig:

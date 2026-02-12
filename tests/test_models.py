@@ -171,7 +171,7 @@ class TestVerificationResult:
         vr = VerificationResult(
             passed=False,
             lint_passed=False,
-            lint_violations=[{"code": "E501", "msg": "line too long"}],
+            lint_violations=[{"file": "app.py", "code": "E501", "message": "line too long", "tool": "ruff"}],
         )
         assert not vr.lint_passed
         assert len(vr.lint_violations) == 1

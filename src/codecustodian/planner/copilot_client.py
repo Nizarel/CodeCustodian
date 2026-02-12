@@ -1,122 +1,417 @@
 """GitHub Copilot SDK client wrapper.
 
-Wraps ``github-copilot-sdk`` for multi-turn AI planning sessions
-with tool calling, model routing, and structured output.
+Wraps ``github-copilot-sdk`` (``copilot`` package, v0.1.23+) for
+multi-turn AI planning sessions with tool calling, model routing,
+streaming responses, cost tracking, and session hooks.
+
+Auth order: ``github_token`` from config → ``GITHUB_TOKEN`` env var →
+``gh`` CLI auth (``use_logged_in_user``).
+
+Send API: hybrid — ``send_and_wait()`` for plan-generation turns,
+``send()`` + event loop for tool-call turns.
 """
 
 from __future__ import annotations
 
-from typing import Any
+import asyncio
+import os
+from dataclasses import dataclass, field
+from typing import TYPE_CHECKING, Any
 
+from codecustodian.exceptions import BudgetExceededError, PlannerError
 from codecustodian.logging import get_logger
-from codecustodian.models import (
-    CodeContext,
-    Finding,
-    RefactoringPlan,
-    RiskLevel,
-)
+
+if TYPE_CHECKING:
+    from codecustodian.config.schema import CopilotConfig
 
 logger = get_logger("planner.copilot_client")
+
+
+# ── Cost tracking ──────────────────────────────────────────────────────────
+
+
+@dataclass
+class UsageAccumulator:
+    """Tracks token usage and cost across a pipeline run."""
+
+    input_tokens: int = 0
+    output_tokens: int = 0
+    total_cost: float = 0.0
+    requests: int = 0
+
+    def record(self, input_toks: int, output_toks: int, cost: float) -> None:
+        self.input_tokens += input_toks
+        self.output_tokens += output_toks
+        self.total_cost += cost
+        self.requests += 1
+
+
+@dataclass
+class ToolAuditEntry:
+    """A single tool-call audit record."""
+
+    tool_name: str
+    arguments: dict[str, Any] = field(default_factory=dict)
+    result_summary: str = ""
+    session_id: str = ""
+
+
+# ── Client wrapper ─────────────────────────────────────────────────────────
 
 
 class CopilotPlannerClient:
     """Wrapper around the GitHub Copilot SDK for refactoring planning.
 
-    This client will be fully wired once the Copilot SDK is installed
-    and available. Currently provides the interface and routing logic.
+    Lifecycle::
+
+        client = CopilotPlannerClient(config)
+        await client.start()
+        models = await client.list_available_models()
+        session = await client.create_session(model=..., tools=...)
+        ...
+        await client.stop()
     """
 
-    def __init__(
-        self,
-        *,
-        token: str | None = None,
-        model_selection: str = "auto",
-        temperature: float = 0.1,
-        max_tokens: int = 4096,
-        timeout: int = 30,
-    ) -> None:
-        self.token = token
-        self.model_selection = model_selection
-        self.temperature = temperature
-        self.max_tokens = max_tokens
-        self.timeout = timeout
+    def __init__(self, config: CopilotConfig) -> None:
+        self.config = config
         self._client: Any = None
+        self._available_models: list[Any] | None = None
+        self.usage = UsageAccumulator()
+        self.tool_audit_log: list[ToolAuditEntry] = []
 
-    def _ensure_client(self) -> None:
-        """Lazily initialize the Copilot SDK client."""
-        if self._client is not None:
-            return
+    # ── Lifecycle ──────────────────────────────────────────────────────
 
+    def _resolve_token(self) -> str:
+        """Resolve GitHub token: config → env → empty (gh CLI fallback)."""
+        return self.config.github_token or os.environ.get("GITHUB_TOKEN", "")
+
+    async def start(self) -> None:
+        """Initialize and start the Copilot SDK client."""
         try:
-            from github_copilot_sdk import CopilotClient
+            from copilot import CopilotClient  # type: ignore[import-untyped]
+        except ImportError as exc:
+            raise PlannerError(
+                "github-copilot-sdk is not installed. "
+                "Install with: pip install github-copilot-sdk"
+            ) from exc
 
-            self._client = CopilotClient(token=self.token)
-            logger.info("Copilot SDK client initialized")
-        except ImportError:
-            logger.warning(
-                "github-copilot-sdk not installed — using fallback planning"
+        token = self._resolve_token()
+        client_opts: dict[str, Any] = {
+            "auto_start": True,
+            "auto_restart": True,
+            "log_level": "warning",
+        }
+        if token:
+            client_opts["github_token"] = token
+        else:
+            # Fall back to gh CLI authentication
+            client_opts["use_logged_in_user"] = True
+            logger.info("No github_token — falling back to gh CLI auth")
+
+        self._client = CopilotClient(client_opts)
+        await self._client.start()
+        logger.info("Copilot SDK client started")
+
+    async def stop(self) -> None:
+        """Stop the Copilot SDK client gracefully."""
+        if self._client is not None:
+            await self._client.stop()
+            self._client = None
+            logger.info(
+                "Copilot SDK client stopped — total cost=$%.4f, tokens=%d/%d",
+                self.usage.total_cost,
+                self.usage.input_tokens,
+                self.usage.output_tokens,
             )
 
-    async def plan(
-        self,
-        finding: Finding,
-        context: CodeContext,
-    ) -> RefactoringPlan:
-        """Generate a refactoring plan for a finding.
+    # ── Model discovery ────────────────────────────────────────────────
 
-        Uses multi-turn conversation with the Copilot SDK to:
-        1. Analyze the finding and context
-        2. Request additional information via tool calls
-        3. Generate a structured refactoring plan
-        4. Score confidence based on context quality
+    async def list_available_models(self) -> list[Any]:
+        """Query available models from the SDK and cache the result."""
+        self._ensure_client()
+        if self._available_models is None:
+            self._available_models = await self._client.list_models()
+            logger.info(
+                "Discovered %d available models", len(self._available_models)
+            )
+        return self._available_models
+
+    def select_model(self, finding: Any) -> str:
+        """Route to the appropriate model based on strategy + finding.
+
+        Strategies:
+        - ``auto``:  severity critical/high → best available, else mini
+        - ``fast``:  fastest available model
+        - ``balanced``:  mid-tier model
+        - ``reasoning``: reasoning-capable model with high effort
+
+        When ``list_available_models()`` has been called, validates
+        the chosen model exists. Otherwise uses sensible defaults.
+        """
+        strategy = self.config.model_selection
+
+        # Fixed strategies
+        preferred: dict[str, list[str]] = {
+            "fast": ["gpt-4o-mini", "gpt-4.1-mini", "gpt-4o"],
+            "balanced": ["gpt-4o", "gpt-4.1", "gpt-4o-mini"],
+            "reasoning": ["o4-mini", "o3", "o1", "gpt-4o"],
+        }
+
+        if strategy != "auto":
+            candidates = preferred.get(strategy, ["gpt-4o"])
+            return self._pick_available(candidates)
+
+        # Auto-route by severity
+        severity = getattr(finding, "severity", None)
+        sev_value = severity.value if severity else "medium"
+        if sev_value in ("critical", "high"):
+            return self._pick_available(["gpt-4o", "gpt-4.1", "o4-mini"])
+        return self._pick_available(["gpt-4o-mini", "gpt-4.1-mini", "gpt-4o"])
+
+    def _pick_available(self, candidates: list[str]) -> str:
+        """Return the first candidate in the available models list.
+
+        If models were not fetched yet, return the first candidate.
+        """
+        if not self._available_models:
+            return candidates[0]
+
+        model_ids = {
+            getattr(m, "id", str(m)) for m in self._available_models
+        }
+        for c in candidates:
+            if c in model_ids:
+                return c
+        # Fallback: first available or first candidate
+        return candidates[0]
+
+    # ── Session creation ───────────────────────────────────────────────
+
+    async def create_session(
+        self,
+        *,
+        model: str,
+        tools: list[Any] | None = None,
+        system_prompt: str = "",
+    ) -> Any:
+        """Create a multi-turn Copilot session for refactoring planning.
+
+        Args:
+            model: Model identifier (e.g. ``"gpt-4o"``).
+            tools: List of ``@define_tool``-decorated tool objects.
+            system_prompt: System prompt text (appended to SDK defaults).
+
+        Returns:
+            A ``CopilotSession`` object.
         """
         self._ensure_client()
 
-        model = self._select_model(finding)
-        logger.info(
-            "Planning for finding %s using model=%s",
-            finding.id,
-            model,
+        session_config: dict[str, Any] = {
+            "model": model,
+            "streaming": self.config.streaming,
+            "tools": tools or [],
+            "system_message": {
+                "mode": "append",
+                "content": system_prompt,
+            },
+            "infinite_sessions": {"enabled": False},
+            "hooks": {
+                "on_pre_tool_use": self._on_pre_tool_use,
+                "on_post_tool_use": self._on_post_tool_use,
+                "on_error_occurred": self._on_error_occurred,
+            },
+        }
+
+        # Azure OpenAI BYOK provider
+        if self.config.azure_openai_provider is not None:
+            prov = self.config.azure_openai_provider
+            session_config["provider"] = {
+                "type": "azure",
+                "base_url": prov.base_url,
+                "api_key": prov.api_key,
+                "azure": {"api_version": prov.api_version},
+            }
+
+        # Reasoning effort for capable models
+        if self.config.reasoning_effort and model in {
+            "o1", "o1-preview", "o3", "o4-mini", "gpt-5",
+        }:
+            session_config["reasoning_effort"] = self.config.reasoning_effort
+
+        session = await self._client.create_session(session_config)
+        logger.info("Created planning session model=%s", model)
+        return session
+
+    # ── Send helpers (hybrid approach) ─────────────────────────────────
+
+    async def send_and_wait(
+        self,
+        session: Any,
+        prompt: str,
+        *,
+        timeout: int | None = None,
+    ) -> str:
+        """Send a prompt and wait for the full response (Turn 2 pattern).
+
+        Uses ``session.send_and_wait()`` for synchronous plan generation.
+        Tracks cost via ``assistant.usage`` events.
+        """
+        effective_timeout = timeout or self.config.timeout
+        response = await session.send_and_wait(
+            {"prompt": prompt}, timeout=effective_timeout
         )
 
-        if self._client is None:
-            # Fallback: return a stub plan when SDK not available
-            return RefactoringPlan(
-                finding_id=finding.id,
-                summary=f"Refactor: {finding.description}",
-                description=finding.suggestion,
-                confidence_score=3,
-                risk_level=RiskLevel.MEDIUM,
-                ai_reasoning="Copilot SDK not available — manual review required",
-                model_used="none",
+        # Extract content from response
+        content = self._extract_content(response)
+
+        # Track usage if available
+        self._track_usage_from_response(response)
+
+        return content
+
+    async def send_streaming(
+        self,
+        session: Any,
+        prompt: str,
+    ) -> str:
+        """Send a prompt and accumulate streamed response (Turn 1 pattern).
+
+        Uses ``session.send()`` + ``session.on()`` event loop.
+        Waits for ``session.idle`` event indicating the turn is complete
+        (all tool calls resolved).
+        """
+        done = asyncio.Event()
+        chunks: list[str] = []
+        final_content: list[str] = []
+
+        def on_event(event: Any) -> None:
+            event_type = getattr(event.type, "value", str(event.type))
+            if event_type == "assistant.message_delta":
+                delta = getattr(event.data, "delta_content", None) or ""
+                chunks.append(delta)
+            elif event_type == "assistant.message":
+                content = getattr(event.data, "content", None) or ""
+                final_content.append(content)
+            elif event_type == "assistant.usage":
+                self._track_usage_from_event(event)
+            elif event_type == "session.idle":
+                done.set()
+
+        session.on(on_event)
+        await session.send({"prompt": prompt})
+
+        try:
+            await asyncio.wait_for(done.wait(), timeout=self.config.timeout)
+        except asyncio.TimeoutError:
+            logger.warning("Streaming turn timed out after %ds", self.config.timeout)
+
+        # Prefer final assembled content, fallback to joined deltas
+        return final_content[0] if final_content else "".join(chunks)
+
+    # ── Session hooks ──────────────────────────────────────────────────
+
+    async def _on_pre_tool_use(
+        self, input_data: dict[str, Any], invocation: dict[str, Any]
+    ) -> dict[str, str]:
+        """Log tool calls and always allow (our tools are safe)."""
+        tool_name = input_data.get("toolName", "unknown")
+        args = input_data.get("toolArgs", {})
+        session_id = invocation.get("session_id", "")
+
+        logger.info("Copilot calling tool: %s args=%s", tool_name, args)
+        self.tool_audit_log.append(
+            ToolAuditEntry(
+                tool_name=tool_name,
+                arguments=args,
+                session_id=session_id,
+            )
+        )
+        return {"permissionDecision": "allow"}
+
+    async def _on_post_tool_use(
+        self, input_data: dict[str, Any], invocation: dict[str, Any]
+    ) -> None:
+        """Log tool result summary after execution."""
+        tool_name = input_data.get("toolName", "unknown")
+        result = input_data.get("result", "")
+        result_summary = str(result)[:200] if result else ""
+
+        logger.debug("Tool %s completed: %s", tool_name, result_summary)
+
+        # Update last audit entry with result
+        if self.tool_audit_log:
+            self.tool_audit_log[-1].result_summary = result_summary
+
+    async def _on_error_occurred(
+        self, input_data: dict[str, Any], invocation: dict[str, Any]
+    ) -> dict[str, Any]:
+        """Handle errors — retry recoverable, abort otherwise."""
+        error_ctx = input_data.get("errorContext", "unknown")
+        error = input_data.get("error", "unknown error")
+        recoverable = input_data.get("recoverable", False)
+
+        logger.error(
+            "Error in %s: %s (recoverable=%s)", error_ctx, error, recoverable
+        )
+
+        if recoverable:
+            return {"errorHandling": "retry", "retryCount": 2}
+        return {"errorHandling": "abort"}
+
+    # ── Cost tracking internals ────────────────────────────────────────
+
+    def _track_usage_from_response(self, response: Any) -> None:
+        """Extract and track usage from a send_and_wait response."""
+        data = getattr(response, "data", response)
+        input_toks = getattr(data, "input_tokens", 0) or 0
+        output_toks = getattr(data, "output_tokens", 0) or 0
+        cost = getattr(data, "cost", 0.0) or 0.0
+        if input_toks or output_toks:
+            self.usage.record(input_toks, output_toks, cost)
+            self._check_budget()
+
+    def _track_usage_from_event(self, event: Any) -> None:
+        """Extract and track usage from an assistant.usage event."""
+        data = getattr(event, "data", None)
+        if data is None:
+            return
+        input_toks = getattr(data, "input_tokens", 0) or 0
+        output_toks = getattr(data, "output_tokens", 0) or 0
+        cost = getattr(data, "cost", 0.0) or 0.0
+        if input_toks or output_toks:
+            self.usage.record(input_toks, output_toks, cost)
+            self._check_budget()
+
+    def _check_budget(self) -> None:
+        """Raise BudgetExceededError if cost exceeds max_cost_per_run."""
+        limit = self.config.max_cost_per_run
+        if limit > 0 and self.usage.total_cost > limit:
+            raise BudgetExceededError(
+                f"AI cost ${self.usage.total_cost:.4f} exceeds "
+                f"max_cost_per_run ${limit:.2f}",
+                current_cost=self.usage.total_cost,
+                budget_limit=limit,
             )
 
-        # TODO: Full Copilot SDK integration (Phase 3)
-        # Will implement:
-        # 1. Build system + user prompts
-        # 2. Register tools (@define_tool)
-        # 3. Multi-turn conversation loop
-        # 4. Parse structured output
-        # 5. Calculate confidence score
-        return RefactoringPlan(
-            finding_id=finding.id,
-            summary=f"Refactor: {finding.description}",
-            confidence_score=5,
-            risk_level=RiskLevel.LOW,
-            model_used=model,
-        )
+    # ── Helpers ────────────────────────────────────────────────────────
 
-    def _select_model(self, finding: Finding) -> str:
-        """Route to the appropriate model based on complexity."""
-        if self.model_selection != "auto":
-            model_map = {
-                "fast": "gpt-4o-mini",
-                "balanced": "gpt-4o",
-                "reasoning": "o1-preview",
-            }
-            return model_map.get(self.model_selection, "gpt-4o")
+    def _ensure_client(self) -> None:
+        """Assert the client has been started."""
+        if self._client is None:
+            raise PlannerError(
+                "CopilotPlannerClient not started. "
+                "Call await client.start() first."
+            )
 
-        # Auto-route based on finding characteristics
-        if finding.severity.value in ("critical", "high"):
-            return "gpt-4o"
-        return "gpt-4o-mini"
+    @staticmethod
+    def _extract_content(response: Any) -> str:
+        """Extract text content from a send_and_wait response."""
+        if isinstance(response, str):
+            return response
+        data = getattr(response, "data", response)
+        content = getattr(data, "content", None)
+        if content:
+            return str(content)
+        if isinstance(data, dict):
+            return data.get("content", str(data))
+        return str(response)
