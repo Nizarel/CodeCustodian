@@ -1203,14 +1203,14 @@ uv add --dev pytest pytest-cov pytest-asyncio ruff mypy vcrpy
 **File:** `src/codecustodian/mcp/server.py`
 
 **Tasks:**
-- [ ] **8.1.1** Initialize FastMCP server:
+- [x] **8.1.1** Initialize FastMCP server:
   ```python
   from fastmcp import FastMCP, Context
   
   mcp = FastMCP(name="CodeCustodian")
   ```
-- [ ] **8.1.2** Add health check custom route for Azure Container Apps
-- [ ] **8.1.3** Add stdio and HTTP entry points
+- [x] **8.1.2** Add health check custom route for Azure Container Apps
+- [x] **8.1.3** Add stdio and HTTP entry points
 
 ### Step 8.2 — Expose Scanners as MCP Tools
 
@@ -1219,14 +1219,14 @@ uv add --dev pytest pytest-cov pytest-asyncio ruff mypy vcrpy
 **File:** `src/codecustodian/mcp/tools.py`
 
 **Tasks:**
-- [ ] **8.2.1** Implement `scan_repository` tool (readOnlyHint)
-- [ ] **8.2.2** Implement `plan_refactoring` tool with alternatives support
-- [ ] **8.2.3** Implement `apply_refactoring` tool (destructiveHint)
-- [ ] **8.2.4** Implement `verify_changes` tool (readOnlyHint)
-- [ ] **8.2.5** Implement `create_pull_request` tool (destructiveHint)
-- [ ] **8.2.6** Implement `calculate_roi` tool (readOnlyHint)
-- [ ] **8.2.7** Implement `get_business_impact` tool (NEW — FR-PRIORITY-100)
-- [ ] **8.2.8** Implement `list_scanners` tool (NEW — BR-SCN-003 marketplace catalog)
+- [x] **8.2.1** Implement `scan_repository` tool (readOnlyHint)
+- [x] **8.2.2** Implement `plan_refactoring` tool with alternatives support
+- [x] **8.2.3** Implement `apply_refactoring` tool (destructiveHint)
+- [x] **8.2.4** Implement `verify_changes` tool (readOnlyHint)
+- [x] **8.2.5** Implement `create_pull_request` tool (destructiveHint)
+- [x] **8.2.6** Implement `calculate_roi` tool (readOnlyHint)
+- [x] **8.2.7** Implement `get_business_impact` tool (NEW — FR-PRIORITY-100)
+- [x] **8.2.8** Implement `list_scanners` tool (NEW — BR-SCN-003 marketplace catalog)
 
 ### Step 8.3 — Expose Findings as MCP Resources
 
@@ -1234,11 +1234,11 @@ uv add --dev pytest pytest-cov pytest-asyncio ruff mypy vcrpy
 **File:** `src/codecustodian/mcp/resources.py`
 
 **Tasks:**
-- [ ] **8.3.1** Implement `findings://{repo_name}/all` resource
-- [ ] **8.3.2** Implement `findings://{repo_name}/{finding_type}` resource
-- [ ] **8.3.3** Implement `config://settings` resource
-- [ ] **8.3.4** Implement `dashboard://{team_name}/summary` resource (NEW — FR-UX-200)
-- [ ] **8.3.5** Implement scan history resource
+- [x] **8.3.1** Implement `findings://{repo_name}/all` resource
+- [x] **8.3.2** Implement `findings://{repo_name}/{finding_type}` resource
+- [x] **8.3.3** Implement `config://settings` resource
+- [x] **8.3.4** Implement `dashboard://{team_name}/summary` resource (NEW — FR-UX-200)
+- [x] **8.3.5** Implement scan history resource
 
 ### Step 8.4 — MCP Prompts
 
@@ -1246,18 +1246,18 @@ uv add --dev pytest pytest-cov pytest-asyncio ruff mypy vcrpy
 **File:** `src/codecustodian/mcp/prompts.py`
 
 **Tasks:**
-- [ ] **8.4.1** Implement `refactor_finding` prompt
-- [ ] **8.4.2** Implement `scan_summary` prompt
-- [ ] **8.4.3** Implement `roi_report` prompt (NEW)
-- [ ] **8.4.4** Implement `onboard_repo` prompt (NEW — BR-ONB-001)
+- [x] **8.4.1** Implement `refactor_finding` prompt
+- [x] **8.4.2** Implement `scan_summary` prompt
+- [x] **8.4.3** Implement `roi_report` prompt (NEW)
+- [x] **8.4.4** Implement `onboard_repo` prompt (NEW — BR-ONB-001)
 
 ### Step 8.5 — MCP Server Deployment & Testing
 
 **Duration:** 0.5 day
 
 **Tasks:**
-- [ ] **8.5.1** Test with FastMCP CLI: `fastmcp run src/codecustodian/mcp/server.py`
-- [ ] **8.5.2** Test with in-memory `Client(mcp)` pattern
+- [x] **8.5.1** Test with FastMCP CLI: `fastmcp run src/codecustodian/mcp/server.py`
+- [x] **8.5.2** Test with in-memory `Client(mcp)` pattern
 - [ ] **8.5.3** Test with Claude Desktop (stdio)
 - [ ] **8.5.4** Test HTTP transport for remote deployment
 
