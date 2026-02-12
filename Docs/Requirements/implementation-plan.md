@@ -1272,13 +1272,13 @@ uv add --dev pytest pytest-cov pytest-asyncio ruff mypy vcrpy
 **File:** `src/codecustodian/integrations/work_iq.py`
 
 **Tasks:**
-- [ ] **9.1.1** Implement `WorkIQContextProvider`:
+- [x] **9.1.1** Implement `WorkIQContextProvider`:
   - `get_expert_for_finding()` — Expert identification with capacity check (FR-WORKIQ-100)
   - `get_sprint_context()` — Sprint status, velocity, incidents (FR-WORKIQ-101)
   - `should_create_pr_now()` — Sprint-aware PR timing (defer during crunch)
   - `get_organizational_context()` — Dependency check, roadmap alignment, team expertise (FR-WORKIQ-102)
-- [ ] **9.1.2** Create `mcp.json` configuration file
-- [ ] **9.1.3** Integrate Work IQ into pipeline: auto-assign PRs, defer PRs, skip during incidents, align with roadmap
+- [x] **9.1.2** Create `mcp.json` configuration file
+- [x] **9.1.3** Integrate Work IQ into pipeline: auto-assign PRs, defer PRs, skip during incidents, align with roadmap
 
 ### Step 9.2 — Budget Manager
 
@@ -1287,7 +1287,7 @@ uv add --dev pytest pytest-cov pytest-asyncio ruff mypy vcrpy
 **File:** `src/codecustodian/enterprise/budget_manager.py`
 
 **Tasks:**
-- [ ] **9.2.1** Implement `BudgetManager`:
+- [x] **9.2.1** Implement `BudgetManager`:
   ```python
   class BudgetManager:
       """Per-team budget tracking with alerts and enforcement (FR-COST-100)."""
@@ -1325,12 +1325,12 @@ uv add --dev pytest pytest-cov pytest-asyncio ruff mypy vcrpy
 **File:** `src/codecustodian/enterprise/roi_calculator.py`
 
 **Tasks:**
-- [ ] **9.3.1** Implement `ROICalculator` with configurable labor cost assumptions (BR-RPT-003):
+- [x] **9.3.1** Implement `ROICalculator` with configurable labor cost assumptions (BR-RPT-003):
   - Costs: API + infrastructure + setup
   - Savings: hours saved × cost/hour × automation rate
   - Outputs: net savings, payback period, annual ROI %, productivity gain %
-- [ ] **9.3.2** Implement monthly ROI report generation (exportable PDF/CSV)
-- [ ] **9.3.3** Implement before/after comparison summaries (BR-RPT-003)
+- [x] **9.3.2** Implement monthly ROI report generation (exportable PDF/CSV)
+- [x] **9.3.3** Implement before/after comparison summaries (BR-RPT-003)
 
 ### Step 9.4 — Multi-Tenant, RBAC & Approval Workflows
 
@@ -1339,14 +1339,14 @@ uv add --dev pytest pytest-cov pytest-asyncio ruff mypy vcrpy
 **Files:** `src/codecustodian/enterprise/multi_tenant.py`, `src/codecustodian/enterprise/rbac.py`, `src/codecustodian/enterprise/approval_workflows.py`
 
 **Tasks:**
-- [ ] **9.4.1** Implement `MultiTenantManager` (BR-ENT-001):
+- [x] **9.4.1** Implement `MultiTenantManager` (BR-ENT-001):
   - Team registration with isolated configs, budgets, Azure DevOps project mapping
   - Cross-tenant data access prevention
-- [ ] **9.4.2** Implement `RBACManager` with Azure AD (FR-SEC-101, BR-GOV-001):
+- [x] **9.4.2** Implement `RBACManager` with Azure AD (FR-SEC-101, BR-GOV-001):
   - Roles: VIEWER, CONTRIBUTOR (approve PRs), ADMIN (configure scanners, budgets), SECURITY_ADMIN (override security blocks)
   - Scoped per org/team/repo
   - Permission enforcement on every API request
-- [ ] **9.4.3** Implement `ApprovalWorkflowManager` (NEW — BR-GOV-002):
+- [x] **9.4.3** Implement `ApprovalWorkflowManager` (NEW — BR-GOV-002):
   ```python
   class ApprovalWorkflowManager:
       """Policy-driven approval gates for plan and PR creation."""
@@ -1373,7 +1373,7 @@ uv add --dev pytest pytest-cov pytest-asyncio ruff mypy vcrpy
 **File:** `src/codecustodian/enterprise/secrets_manager.py`
 
 **Tasks:**
-- [ ] **9.5.1** Implement `SecretsManager`:
+- [x] **9.5.1** Implement `SecretsManager`:
   ```python
   from azure.keyvault.secrets import SecretClient
   from azure.identity import DefaultAzureCredential
@@ -1397,8 +1397,8 @@ uv add --dev pytest pytest-cov pytest-asyncio ruff mypy vcrpy
       def get_devops_pat(self) -> str:
           return self.get_secret("devops-pat")
   ```
-- [ ] **9.5.2** Integrate with Container App managed identity
-- [ ] **9.5.3** Secret access logging for audit trail
+- [x] **9.5.2** Integrate with Container App managed identity
+- [x] **9.5.3** Secret access logging for audit trail
 
 ### Step 9.6 — Notification Engine
 
@@ -1407,7 +1407,7 @@ uv add --dev pytest pytest-cov pytest-asyncio ruff mypy vcrpy
 **File:** `src/codecustodian/intelligence/notifications.py`
 
 **Tasks:**
-- [ ] **9.6.1** Implement `NotificationEngine`:
+- [x] **9.6.1** Implement `NotificationEngine`:
   ```python
   class NotificationEngine:
       """Configurable notification system (BR-NOT-001)."""
@@ -1436,15 +1436,15 @@ uv add --dev pytest pytest-cov pytest-asyncio ruff mypy vcrpy
 **Requirements covered:** FR-DEPLOY-100
 
 **Tasks:**
-- [ ] **9.7.1** Create `Dockerfile`
-- [ ] **9.7.2** Create `scripts/deploy-to-azure.sh` one-click deployment (FR-DEPLOY-100):
+- [x] **9.7.1** Create `Dockerfile`
+- [x] **9.7.2** Create `scripts/deploy-to-azure.sh` one-click deployment (FR-DEPLOY-100):
   - Create resource group, ACR, Container App
   - Configure Key Vault with managed identity
   - Set up Azure Monitor workspace
   - Deploy dashboards
   - Health check verification
   - Auto-scaling: 1-10 instances, scale-to-zero when idle
-- [ ] **9.7.3** Create `.github/workflows/deploy-azure.yml`
+- [x] **9.7.3** Create `.github/workflows/deploy-azure.yml`
 
 ---
 

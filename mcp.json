@@ -7,6 +7,11 @@
         "GITHUB_TOKEN": "${GITHUB_TOKEN}",
         "COPILOT_TOKEN": "${COPILOT_TOKEN}"
       }
+    },
+    "work-iq": {
+      "command": "npx",
+      "args": ["-y", "@microsoft/workiq", "mcp"],
+      "env": {}
     }
   }
 }
