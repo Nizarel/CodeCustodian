@@ -82,5 +82,6 @@ class TestTrendAnalyzer:
     def test_empty_findings(self):
         analyzer = TrendAnalyzer()
         result = analyzer.analyze_findings([])
-        assert result["total_findings"] == 0
         assert result["hotspots"] == []
+        assert result["type_distribution"] == {}
+        assert result["severity_distribution"] == {}

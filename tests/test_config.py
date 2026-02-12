@@ -26,29 +26,31 @@ class TestCodeCustodianConfig:
 
     def test_scanners_defaults(self):
         config = CodeCustodianConfig()
-        assert config.scanners.deprecated_api is True
-        assert config.scanners.code_smells is True
-        assert config.scanners.security is True
-        assert config.scanners.todo_comments is True
-        assert config.scanners.type_coverage is True
+        assert config.scanners.deprecated_apis.enabled is True
+        assert config.scanners.code_smells.enabled is True
+        assert config.scanners.security_patterns.enabled is True
+        assert config.scanners.todo_comments.enabled is True
+        assert config.scanners.type_coverage.enabled is True
 
     def test_behavior_defaults(self):
         config = CodeCustodianConfig()
-        assert config.behavior.auto_fix is True
-        assert config.behavior.create_prs is True
-        assert config.behavior.min_confidence >= 1
-        assert config.behavior.min_confidence <= 10
+        assert config.behavior.require_human_review is True
+        assert config.behavior.auto_merge is False
+        assert config.behavior.confidence_threshold >= 1
+        assert config.behavior.confidence_threshold <= 10
 
     def test_from_file(self):
         """Test loading config from a YAML file."""
         yaml_content = """
 version: "1.0"
 scanners:
-  deprecated_api: true
-  code_smells: false
+  deprecated_apis:
+    enabled: true
+  code_smells:
+    enabled: false
 behavior:
-  auto_fix: false
-  min_confidence: 9
+  auto_merge: true
+  confidence_threshold: 9
 """
         with tempfile.NamedTemporaryFile(
             mode="w", suffix=".yml", delete=False
@@ -57,17 +59,21 @@ behavior:
             f.flush()
 
             config = CodeCustodianConfig.from_file(f.name)
-            assert config.scanners.deprecated_api is True
-            assert config.scanners.code_smells is False
-            assert config.behavior.auto_fix is False
-            assert config.behavior.min_confidence == 9
+            assert config.scanners.deprecated_apis.enabled is True
+            assert config.scanners.code_smells.enabled is False
+            assert config.behavior.auto_merge is True
+            assert config.behavior.confidence_threshold == 9
 
     def test_to_yaml(self):
-        config = CodeCustodianConfig()
-        yaml_str = config.to_yaml()
+        config = CodeCustodianConfig(version="2.0")
+        with tempfile.NamedTemporaryFile(
+            mode="w", suffix=".yml", delete=False
+        ) as f:
+            config.to_yaml(f.name)
+            yaml_str = Path(f.name).read_text()
         assert "version" in yaml_str
         parsed = yaml.safe_load(yaml_str)
-        assert parsed["version"] == "1.0"
+        assert parsed["version"] == "2.0"
 
 
 class TestDefaultConfig:
@@ -90,8 +96,8 @@ class TestCopilotConfig:
 
 class TestBehaviorConfig:
     def test_confidence_range(self):
-        config = BehaviorConfig(min_confidence=1)
-        assert config.min_confidence == 1
+        config = BehaviorConfig(confidence_threshold=1)
+        assert config.confidence_threshold == 1
 
-        config = BehaviorConfig(min_confidence=10)
-        assert config.min_confidence == 10
+        config = BehaviorConfig(confidence_threshold=10)
+        assert config.confidence_threshold == 10

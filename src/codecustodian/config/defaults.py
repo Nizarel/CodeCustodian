@@ -10,6 +10,12 @@ from codecustodian.config.schema import CodeCustodianConfig
 
 DEFAULT_CONFIG = CodeCustodianConfig()
 
+
+def get_default_config() -> CodeCustodianConfig:
+    """Return a fresh default configuration instance."""
+    return CodeCustodianConfig()
+
+
 DEFAULT_YAML = """\
 version: "1.0"
 

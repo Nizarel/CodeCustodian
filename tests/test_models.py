@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from pathlib import Path
+
 import pytest
 
 from codecustodian.models import (
@@ -79,7 +81,7 @@ class TestFinding:
             line=10,
             description="Hardcoded password",
         )
-        assert str(f.file_path) == "src/utils/helpers.py"
+        assert f.file_path == Path("src/utils/helpers.py")
 
     def test_metadata(self):
         f = Finding(

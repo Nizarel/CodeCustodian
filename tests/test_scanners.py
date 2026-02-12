@@ -24,9 +24,10 @@ class TestScannerRegistry:
             def scan(self, repo_path, **kwargs):
                 return []
 
-        scanner = DummyScanner()
-        registry.register(scanner)
-        assert registry.get("dummy") is scanner
+        registry.register(DummyScanner)
+        scanner = registry.get("dummy")
+        assert scanner is not None
+        assert scanner.name == "dummy"
 
     def test_get_unknown(self):
         registry = ScannerRegistry()
@@ -47,8 +48,8 @@ class TestScannerRegistry:
             def scan(self, repo_path, **kwargs):
                 return []
 
-        registry.register(A())
-        registry.register(B())
+        registry.register(A)
+        registry.register(B)
         listing = registry.list_scanners()
         assert "a" in listing
         assert "b" in listing
@@ -56,7 +57,7 @@ class TestScannerRegistry:
     def test_default_registry(self):
         registry = get_default_registry()
         listing = registry.list_scanners()
-        assert "deprecated_api" in listing
+        assert "deprecated_apis" in listing
         assert "todo_comments" in listing
         assert "code_smells" in listing
         assert "type_coverage" in listing
@@ -149,9 +150,9 @@ class TestTypeCoverageScanner:
 
 class TestDeprecatedApiScanner:
     def test_detects_deprecated_import(self):
-        from codecustodian.scanner.deprecated_api import DeprecatedApiScanner
+        from codecustodian.scanner.deprecated_api import DeprecatedAPIScanner
 
-        scanner = DeprecatedApiScanner()
+        scanner = DeprecatedAPIScanner()
 
         with tempfile.TemporaryDirectory() as tmpdir:
             py_file = Path(tmpdir) / "old_code.py"
