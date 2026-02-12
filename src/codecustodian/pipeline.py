@@ -606,13 +606,77 @@ class Pipeline:
                 "plan.id": plan.id,
             },
         ):
-            # TODO: Wire up PRCreator (Phase 5)
             logger.info(
                 "Creating PR for %s",
                 finding.id,
                 extra={"stage": PipelineStage.PR.value},
             )
-            return None
+
+            if not self.github_token:
+                logger.warning(
+                    "No GitHub token — skipping PR creation for %s",
+                    finding.id,
+                )
+                return None
+
+            try:
+                from codecustodian.executor.git_manager import GitManager
+                from codecustodian.integrations.github_integration.comments import (
+                    CommentManager,
+                )
+                from codecustodian.integrations.github_integration.pr_creator import (
+                    PullRequestCreator,
+                )
+
+                # Derive repo name
+                git_mgr = GitManager(self.repo_path)
+                repo_name = git_mgr.get_repo_name(
+                    config_override=self.config.github.repo_name,
+                )
+
+                # Push the branch to remote
+                git_mgr.push(execution.branch_name)
+
+                # Create the PR
+                creator = PullRequestCreator(self.github_token, repo_name)
+                pr_info = creator.create_pr(
+                    finding=finding,
+                    plan=plan,
+                    execution=execution,
+                    verification=verification,
+                    branch=execution.branch_name,
+                    base=self.config.github.base_branch,
+                    draft_threshold=self.config.github.draft_threshold,
+                    reviewers=self.config.github.reviewers,
+                    team_reviewers=self.config.github.team_reviewers,
+                )
+
+                # Post audit trail comment
+                try:
+                    cm = CommentManager(self.github_token, repo_name)
+                    cm.post_audit_summary(
+                        pr_number=pr_info.number,
+                        finding=finding,
+                        plan=plan,
+                        execution=execution,
+                        verification=verification,
+                    )
+                except Exception:
+                    logger.warning(
+                        "Failed to post audit summary on PR #%d",
+                        pr_info.number,
+                    )
+
+                return pr_info
+
+            except Exception as exc:
+                logger.exception(
+                    "PR creation failed for finding %s", finding.id,
+                )
+                self._result.errors.append(
+                    f"{finding.id}: pr_creation: {exc}",
+                )
+                return None
 
     async def _rollback(self, execution: ExecutionResult) -> None:
         """Restore files from backup after verification failure."""

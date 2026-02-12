@@ -6,6 +6,7 @@ Implements convention for branch naming: ``tech-debt/{category}-{file}-{timestam
 
 from __future__ import annotations
 
+import re
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import TYPE_CHECKING
@@ -20,6 +21,10 @@ if TYPE_CHECKING:
     pass
 
 logger = get_logger("executor.git_manager")
+
+# Patterns for parsing GitHub remote URLs
+_HTTPS_PATTERN = re.compile(r"github\.com[/:]([^/]+/[^/.]+?)(?:\.git)?$")
+_SSH_PATTERN = re.compile(r"git@github\.com:([^/]+/[^/.]+?)(?:\.git)?$")
 
 
 class GitManager:
@@ -210,3 +215,37 @@ class GitManager:
     def stash_pop(self) -> None:
         """Pop stashed changes."""
         self.repo.git.stash("pop")
+
+    def get_repo_name(self, config_override: str = "") -> str:
+        """Derive the GitHub ``owner/repo`` name.
+
+        Resolution order:
+        1. *config_override* (from ``GitHubConfig.repo_name``).
+        2. Parse the ``origin`` remote URL (HTTPS or SSH).
+
+        Returns:
+            ``owner/repo`` string.
+
+        Raises:
+            ExecutorError: If the repo name cannot be determined.
+        """
+        if config_override:
+            return config_override
+
+        try:
+            origin = self.repo.remote("origin")
+            url = next(origin.urls, None)
+        except (ValueError, StopIteration):
+            url = None
+
+        if url:
+            for pattern in (_HTTPS_PATTERN, _SSH_PATTERN):
+                m = pattern.search(url)
+                if m:
+                    return m.group(1)
+
+        raise ExecutorError(
+            "Cannot determine GitHub repo name — set github.repo_name in "
+            ".codecustodian.yml or add a GitHub 'origin' remote.",
+            details={"remote_url": url or "<none>"},
+        )

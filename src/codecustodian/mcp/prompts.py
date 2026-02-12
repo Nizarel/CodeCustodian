@@ -1,66 +1,116 @@
-"""MCP prompt definitions.
+"""MCP prompt definitions for the CodeCustodian server.
 
 Pre-built prompts that AI assistants can use for common
-CodeCustodian workflows.
+CodeCustodian workflows — analysis, prioritisation, ROI reporting,
+and repository onboarding.
 """
 
 from __future__ import annotations
 
 from fastmcp import FastMCP
 
+from codecustodian.logging import get_logger
+
+logger = get_logger("mcp.prompts")
+
 
 def register_prompts(mcp: FastMCP) -> None:
     """Register all MCP prompts on the server instance."""
 
+    # ── 1. refactor_finding ────────────────────────────────────────────
+
     @mcp.prompt()
-    def analyze_finding(
+    def refactor_finding(
         finding_type: str,
-        description: str,
         file_path: str,
         line: int,
+        description: str = "",
     ) -> str:
-        """Generate a prompt for analyzing a specific finding."""
-        return f"""\
-Analyze this tech debt finding and suggest a refactoring plan:
+        """Generate a prompt for analysing and fixing a specific finding.
 
-Type: {finding_type}
-File: {file_path}
-Line: {line}
-Description: {description}
+        Args:
+            finding_type: Category (deprecated_api, code_smell, …).
+            file_path: Source file containing the issue.
+            line: Line number of the finding.
+            description: Human-readable description of the issue.
+        """
+        return (
+            "Analyse the following technical debt finding and produce a "
+            "refactoring plan:\n\n"
+            f"**Type:** {finding_type}\n"
+            f"**File:** {file_path}\n"
+            f"**Line:** {line}\n"
+            f"**Description:** {description}\n\n"
+            "Please provide:\n"
+            "1. Root cause analysis\n"
+            "2. Recommended fix with complete code changes\n"
+            "3. Risk assessment (low / medium / high)\n"
+            "4. Confidence score (1–10)\n"
+            "5. Any alternative approaches\n"
+            "6. Testing recommendations"
+        )
 
-Please provide:
-1. Root cause analysis
-2. Recommended fix with code changes
-3. Risk assessment
-4. Testing recommendations
-"""
-
-    @mcp.prompt()
-    def prioritize_findings(total_count: int) -> str:
-        """Generate a prompt for prioritizing findings."""
-        return f"""\
-I have {total_count} tech debt findings. Please help prioritize them by:
-
-1. Business impact (what breaks if not fixed)
-2. Effort required (trivial/small/medium/large)
-3. Risk of the fix (low/medium/high)
-4. Dependencies between findings
-
-Suggest an optimal order for addressing them.
-"""
+    # ── 2. scan_summary ────────────────────────────────────────────────
 
     @mcp.prompt()
-    def review_plan(plan_summary: str, confidence: int) -> str:
-        """Generate a prompt for reviewing a refactoring plan."""
-        return f"""\
-Please review this refactoring plan:
+    def scan_summary(total_findings: int, repo_name: str = "this repository") -> str:
+        """Generate a prompt for prioritising scan findings.
 
-Summary: {plan_summary}
-AI Confidence: {confidence}/10
+        Args:
+            total_findings: Number of findings from the scan.
+            repo_name: Human-readable repository name.
+        """
+        return (
+            f"I have **{total_findings}** technical debt findings in "
+            f"**{repo_name}**. Please help prioritise them by:\n\n"
+            "1. **Business impact** — what breaks if not fixed?\n"
+            "2. **Effort required** — trivial / small / medium / large\n"
+            "3. **Risk of the fix** — low / medium / high\n"
+            "4. **Dependencies** between findings\n\n"
+            "Suggest an optimal order for addressing them and group "
+            "related findings that can be fixed together."
+        )
 
-Evaluate:
-1. Is the proposed change safe?
-2. Are there edge cases not covered?
-3. Will existing tests still pass?
-4. Are there better alternatives?
-"""
+    # ── 3. roi_report ──────────────────────────────────────────────────
+
+    @mcp.prompt()
+    def roi_report(team_name: str, period: str = "monthly") -> str:
+        """Generate a prompt for producing an ROI report.
+
+        Args:
+            team_name: Team or project to report on.
+            period: Reporting period (weekly / monthly / quarterly).
+        """
+        return (
+            f"Generate a **{period}** ROI report for team **{team_name}** "
+            "covering technical debt remediation.\n\n"
+            "Include:\n"
+            "1. Total findings fixed vs remaining\n"
+            "2. Estimated developer hours saved\n"
+            "3. Cost savings (automated fix cost vs manual effort)\n"
+            "4. Risk reduction across severity levels\n"
+            "5. Trend analysis — is debt growing or shrinking?\n"
+            "6. Recommendations for next period"
+        )
+
+    # ── 4. onboard_repo ────────────────────────────────────────────────
+
+    @mcp.prompt()
+    def onboard_repo(repo_url: str, language: str = "python") -> str:
+        """Generate a prompt for onboarding a new repository.
+
+        Args:
+            repo_url: Git clone URL or GitHub URL.
+            language: Primary language of the repository.
+        """
+        return (
+            f"Help me on-board the repository at **{repo_url}** "
+            f"(primary language: **{language}**) into CodeCustodian.\n\n"
+            "Walk me through:\n"
+            "1. Recommended `.codecustodian.yml` configuration\n"
+            "2. Which scanners to enable and why\n"
+            "3. Suggested thresholds (complexity, TODO age, coverage)\n"
+            "4. Paths to exclude\n"
+            "5. CI/CD integration steps (GitHub Actions)\n"
+            "6. Expected initial scan results and how to interpret them"
+        )

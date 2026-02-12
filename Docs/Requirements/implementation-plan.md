@@ -1081,8 +1081,8 @@ uv add --dev pytest pytest-cov pytest-asyncio ruff mypy vcrpy
 **File:** `src/codecustodian/integrations/github_integration/pr_creator.py`
 
 **Tasks:**
-- [ ] **7.1.1** Initialize PyGithub client, validate token
-- [ ] **7.1.2** `create_pr()` with comprehensive narrative template (BR-PR-001):
+- [x] **7.1.1** Initialize PyGithub client, validate token
+- [x] **7.1.2** `create_pr()` with comprehensive narrative template (BR-PR-001):
   - Summary, Finding details, AI Reasoning, Changes, Risks
   - Verification results (tests, linting, security)
   - Confidence score with factor breakdown
@@ -1090,14 +1090,14 @@ uv add --dev pytest pytest-cov pytest-asyncio ruff mypy vcrpy
   - Alternatives section if generated (FR-PLAN-102)
   - Work IQ expert recommendation
   - Cost and time-saved estimate
-- [ ] **7.1.3** Set `draft=True` if confidence < 7, add comprehensive labels (FR-UX-101):
+- [x] **7.1.3** Set `draft=True` if confidence < 7, add comprehensive labels (FR-UX-101):
   - Category: `tech-debt`, `security`, `performance`
   - Priority: `P1-critical`, `P2-high`, `P3-medium`, `P4-low`
   - Status: `ready-for-review`, `draft`, `needs-senior-review`
   - Risk: `low-risk`, `medium-risk`, `high-risk`
   - Effort: `effort-low`, `effort-medium`, `effort-high`
   - Confidence: `confidence-high`, `confidence-medium`, `confidence-low`
-- [ ] **7.1.4** Implement proposal-only creation (BR-PR-003):
+- [x] **7.1.4** Implement proposal-only creation (BR-PR-003):
   - Create GitHub Issue (not PR) with step-by-step remediation guidance
   - Label as `proposal`, include recommended steps and estimated effort
 
@@ -1110,7 +1110,7 @@ uv add --dev pytest pytest-cov pytest-asyncio ruff mypy vcrpy
 > **NEW from business-requirements.md:** Engineers should be able to interact with CodeCustodian via PR comments. This enables clarification, modification requests, and feedback without leaving GitHub.
 
 **Tasks:**
-- [ ] **7.2.1** Implement webhook listener for PR comment events:
+- [x] **7.2.1** Implement command dispatcher for PR comment events (webhook deferred):
   ```python
   class PRInteractionBot:
       COMMANDS = {
@@ -1132,12 +1132,12 @@ uv add --dev pytest pytest-cov pytest-asyncio ruff mypy vcrpy
               response = await handler(command, pr_number)
               await self.github.create_pr_comment(pr_number, response)
   ```
-- [ ] **7.2.2** `@codecustodian why` — Explain AI reasoning for specific change
-- [ ] **7.2.3** `@codecustodian alternatives` — Show alternative approaches
-- [ ] **7.2.4** `@codecustodian modify <instruction>` — Re-generate plan with modification
-- [ ] **7.2.5** `@codecustodian feedback: <preference>` — Record team/engineer preference (FR-LEARN-100)
-- [ ] **7.2.6** `@codecustodian smaller` — Auto-split PR into smaller PRs (BR-PLN-002)
-- [ ] **7.2.7** `@codecustodian propose` — Convert PR to proposal-only
+- [x] **7.2.2** `@codecustodian why` — Explain AI reasoning for specific change
+- [x] **7.2.3** `@codecustodian alternatives` — Show alternative approaches
+- [x] **7.2.4** `@codecustodian modify <instruction>` — Re-generate plan with modification
+- [x] **7.2.5** `@codecustodian feedback: <preference>` — Record team/engineer preference (FR-LEARN-100)
+- [x] **7.2.6** `@codecustodian smaller` — Auto-split PR into smaller PRs (BR-PLN-002)
+- [x] **7.2.7** `@codecustodian propose` — Convert PR to proposal-only
 
 ### Step 7.3 — Issue Creator & PR Comments
 
@@ -1146,9 +1146,9 @@ uv add --dev pytest pytest-cov pytest-asyncio ruff mypy vcrpy
 **Files:** `src/codecustodian/integrations/github_integration/issues.py`, `src/codecustodian/integrations/github_integration/comments.py`
 
 **Tasks:**
-- [ ] **7.3.1** `create_issue_from_todo()` with duplicate detection
-- [ ] **7.3.2** Inline PR comments with AI reasoning
-- [ ] **7.3.3** Summary comment with audit trail (`<details>` block)
+- [x] **7.3.1** `create_issue_from_todo()` with duplicate detection
+- [x] **7.3.2** Inline PR comments with AI reasoning
+- [x] **7.3.3** Summary comment with audit trail (`<details>` block)
 
 ### Step 7.4 — Azure DevOps Integration
 

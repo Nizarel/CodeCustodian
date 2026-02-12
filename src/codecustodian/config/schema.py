@@ -145,6 +145,10 @@ class BehaviorConfig(BaseModel):
 class GitHubConfig(BaseModel):
     """GitHub integration configuration."""
 
+    repo_name: str = Field(
+        default="",
+        description="GitHub repo in owner/repo format; auto-derived from git remote if empty",
+    )
     pr_labels: list[str] = Field(
         default_factory=lambda: ["tech-debt", "automated", "codecustodian"]
     )
@@ -153,6 +157,12 @@ class GitHubConfig(BaseModel):
     team_reviewers: list[str] = Field(default_factory=list)
     base_branch: str = "main"
     branch_prefix: str = "tech-debt"
+    draft_threshold: int = Field(
+        default=7,
+        ge=1,
+        le=10,
+        description="Confidence below this → PR created as draft",
+    )
     delete_branch_on_merge: bool = True
 
 

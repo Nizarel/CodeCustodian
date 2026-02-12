@@ -1,125 +1,69 @@
 """FastMCP server for CodeCustodian.
 
-Exposes scanning, planning, and configuration as MCP tools and resources
-consumable by Copilot Chat, VS Code, and other MCP clients.
+Thin entry point: initialises the ``FastMCP`` instance and wires in
+tools, resources, and prompts from their dedicated modules.
+
+Exposes scanning, planning, execution, and configuration as MCP-native
+primitives consumable by Copilot Chat, VS Code, Claude Desktop, and
+other MCP clients.
 """
 
 from __future__ import annotations
 
+import sys
+
 from fastmcp import FastMCP
+from starlette.requests import Request
+from starlette.responses import JSONResponse
 
 from codecustodian import __version__
 
+from .prompts import register_prompts
+from .resources import register_resources
+from .tools import register_tools
+
+# ── Server initialisation ──────────────────────────────────────────────────
+
 mcp = FastMCP(
     name="CodeCustodian",
+    instructions="Autonomous AI agent for technical debt management",
     version=__version__,
-    description="Autonomous AI agent for technical debt management",
+    on_duplicate_tools="error",
 )
 
-
-# ── Tools ──────────────────────────────────────────────────────────────────
-
-
-@mcp.tool()
-def scan_repository(repo_path: str = ".", config_path: str = ".codecustodian.yml") -> dict:
-    """Scan a repository for technical debt issues.
-
-    Returns a summary of findings grouped by type and severity.
-    """
-    from codecustodian.config.schema import CodeCustodianConfig
-    from codecustodian.scanner.registry import get_default_registry
-
-    config = CodeCustodianConfig.from_file(config_path)
-    registry = get_default_registry(config)
-
-    all_findings = []
-    for scanner in registry.get_enabled():
-        findings = scanner.scan(repo_path)
-        all_findings.extend(findings)
-
-    return {
-        "total": len(all_findings),
-        "findings": [f.model_dump() for f in all_findings[:20]],
-        "summary": _summarize_findings(all_findings),
-    }
+# Wire modular registrations
+register_tools(mcp)
+register_resources(mcp)
+register_prompts(mcp)
 
 
-@mcp.tool()
-def validate_config(config_path: str = ".codecustodian.yml") -> dict:
-    """Validate a CodeCustodian configuration file."""
-    from codecustodian.config.schema import CodeCustodianConfig
-
-    try:
-        config = CodeCustodianConfig.from_file(config_path)
-        return {"valid": True, "config": config.model_dump(exclude_defaults=True)}
-    except Exception as exc:
-        return {"valid": False, "error": str(exc)}
+# ── Health check (Azure Container Apps / load-balancer probes) ─────────────
 
 
-@mcp.tool()
-def list_scanners() -> list[dict]:
-    """List all available scanners and their status."""
-    from codecustodian.scanner.registry import get_default_registry
-
-    registry = get_default_registry()
-    return [
-        {"name": name, "available": registry.get(name) is not None}
-        for name in registry.list_scanners()
-    ]
+@mcp.custom_route("/health", methods=["GET"])
+async def health_check(request: Request) -> JSONResponse:
+    """Lightweight health probe for HTTP deployments."""
+    return JSONResponse({"status": "ok", "version": __version__})
 
 
-# ── Resources ──────────────────────────────────────────────────────────────
-
-
-@mcp.resource("codecustodian://config")
-def get_config() -> str:
-    """Return the current CodeCustodian configuration as YAML."""
-    from codecustodian.config.defaults import DEFAULT_YAML
-
-    return DEFAULT_YAML
-
-
-@mcp.resource("codecustodian://version")
-def get_version() -> str:
-    """Return the CodeCustodian version."""
-    return __version__
-
-
-# ── Prompts ────────────────────────────────────────────────────────────────
-
-
-@mcp.prompt()
-def analyze_finding(finding_type: str, file_path: str, line: int) -> str:
-    """Generate a prompt to analyze a specific finding."""
-    return (
-        f"Analyze the following technical debt finding:\n"
-        f"Type: {finding_type}\n"
-        f"File: {file_path}\n"
-        f"Line: {line}\n\n"
-        f"Provide:\n"
-        f"1. Root cause analysis\n"
-        f"2. Recommended fix with code\n"
-        f"3. Risk assessment (low/medium/high)\n"
-        f"4. Confidence score (1-10)"
-    )
-
-
-# ── Helpers ────────────────────────────────────────────────────────────────
-
-
-def _summarize_findings(findings: list) -> dict:
-    """Group findings by type and severity."""
-    by_type: dict[str, int] = {}
-    by_severity: dict[str, int] = {}
-    for f in findings:
-        by_type[f.type.value] = by_type.get(f.type.value, 0) + 1
-        by_severity[f.severity.value] = by_severity.get(f.severity.value, 0) + 1
-    return {"by_type": by_type, "by_severity": by_severity}
+# ── Entry point ────────────────────────────────────────────────────────────
 
 
 def main() -> None:
-    """Entry point for ``codecustodian-mcp`` command."""
-    mcp.run()
+    """Entry point for the ``codecustodian-mcp`` console script.
+
+    Accepts an optional ``--transport`` flag:
+
+    * ``stdio``  (default) — for Claude Desktop / VS Code / CLI
+    * ``streamable-http`` — for remote / Azure Container Apps deployment
+    """
+    transport = "stdio"
+    if "--transport" in sys.argv:
+        idx = sys.argv.index("--transport")
+        if idx + 1 < len(sys.argv):
+            transport = sys.argv[idx + 1]
+
+    mcp.run(transport=transport)
 
 
 if __name__ == "__main__":
