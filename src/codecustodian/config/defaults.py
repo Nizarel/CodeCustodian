@@ -59,6 +59,11 @@ behavior:
   auto_merge: false
   draft_prs_for_complex: true
   confidence_threshold: 7
+  max_files_per_pr: 5
+  max_lines_per_pr: 500
+  auto_split_prs: true
+  proposal_mode_threshold: 5
+  enable_alternatives: true
 
 github:
   pr_labels:
@@ -68,6 +73,43 @@ github:
   base_branch: main
   branch_prefix: tech-debt
   delete_branch_on_merge: true
+
+azure:
+  devops_org_url: ""
+  devops_pat: ""
+  devops_project: ""
+  monitor_connection_string: ""
+  tenant_id: ""
+  keyvault_name: ""
+
+work_iq:
+  enabled: false
+  mcp_server_url: ""
+  api_key: ""
+
+budget:
+  monthly_budget: 500.0
+  alert_thresholds:
+    - 50
+    - 80
+    - 90
+    - 100
+  hard_limit: true
+
+approval:
+  require_plan_approval: false
+  require_pr_approval: true
+  approved_repos: []
+  sensitive_paths:
+    - "**/auth/**"
+    - "**/payments/**"
+    - "**/security/**"
+
+notifications:
+  severity_threshold: medium
+  events:
+    - pr_created
+    - pipeline_failed
 
 advanced:
   copilot:

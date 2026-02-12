@@ -96,8 +96,105 @@ class TestCopilotConfig:
 
 class TestBehaviorConfig:
     def test_confidence_range(self):
-        config = BehaviorConfig(confidence_threshold=1)
+        # confidence_threshold=1 requires proposal_mode_threshold <= 1
+        config = BehaviorConfig(confidence_threshold=1, proposal_mode_threshold=1)
         assert config.confidence_threshold == 1
 
         config = BehaviorConfig(confidence_threshold=10)
         assert config.confidence_threshold == 10
+
+    def test_new_pr_sizing_fields(self):
+        config = BehaviorConfig()
+        assert config.max_files_per_pr == 5
+        assert config.max_lines_per_pr == 500
+        assert config.auto_split_prs is True
+        assert config.enable_alternatives is True
+
+    def test_proposal_mode_threshold_default(self):
+        config = BehaviorConfig()
+        assert config.proposal_mode_threshold == 5
+        assert config.proposal_mode_threshold <= config.confidence_threshold
+
+    def test_threshold_ordering_validation(self):
+        """proposal_mode_threshold must be <= confidence_threshold."""
+        with pytest.raises(Exception, match="proposal_mode_threshold"):
+            BehaviorConfig(confidence_threshold=3, proposal_mode_threshold=5)
+
+
+class TestAzureConfig:
+    def test_defaults(self):
+        from codecustodian.config.schema import AzureConfig
+
+        config = AzureConfig()
+        assert config.devops_org_url == ""
+        assert config.monitor_connection_string == ""
+
+    def test_valid_url(self):
+        from codecustodian.config.schema import AzureConfig
+
+        config = AzureConfig(devops_org_url="https://dev.azure.com/myorg")
+        assert config.devops_org_url == "https://dev.azure.com/myorg"
+
+    def test_valid_connection_string(self):
+        from codecustodian.config.schema import AzureConfig
+
+        config = AzureConfig(
+            monitor_connection_string="InstrumentationKey=abc-123"
+        )
+        assert "InstrumentationKey=" in config.monitor_connection_string
+
+    def test_invalid_url_rejected(self):
+        from codecustodian.config.schema import AzureConfig
+
+        with pytest.raises(Exception, match="Invalid URL"):
+            AzureConfig(devops_org_url="not-a-url")
+
+
+class TestBudgetConfig:
+    def test_defaults(self):
+        from codecustodian.config.schema import BudgetConfig
+
+        config = BudgetConfig()
+        assert config.monthly_budget == 500.0
+        assert config.hard_limit is True
+        assert config.alert_thresholds == [50, 80, 90, 100]
+
+    def test_thresholds_sorted(self):
+        from codecustodian.config.schema import BudgetConfig
+
+        config = BudgetConfig(alert_thresholds=[90, 50, 100, 80])
+        assert config.alert_thresholds == [50, 80, 90, 100]
+
+    def test_threshold_out_of_range(self):
+        from codecustodian.config.schema import BudgetConfig
+
+        with pytest.raises(Exception, match="between 0 and 100"):
+            BudgetConfig(alert_thresholds=[50, 150])
+
+
+class TestApprovalConfig:
+    def test_defaults(self):
+        from codecustodian.config.schema import ApprovalConfig
+
+        config = ApprovalConfig()
+        assert config.require_plan_approval is False
+        assert config.require_pr_approval is True
+        assert len(config.sensitive_paths) >= 1
+
+
+class TestWorkIQConfig:
+    def test_defaults(self):
+        from codecustodian.config.schema import WorkIQConfig
+
+        config = WorkIQConfig()
+        assert config.enabled is False
+        assert config.mcp_server_url == ""
+
+
+class TestRootConfigExtensions:
+    def test_new_sections_present(self):
+        config = CodeCustodianConfig()
+        assert config.azure is not None
+        assert config.work_iq is not None
+        assert config.budget is not None
+        assert config.approval is not None

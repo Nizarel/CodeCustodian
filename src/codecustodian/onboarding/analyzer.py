@@ -42,7 +42,7 @@ class ProjectAnalyzer:
 
         # Adjust based on analysis
         if not analysis.get("has_tests"):
-            config.behavior.min_confidence = 8  # Higher bar without tests
+            config.behavior.confidence_threshold = 8  # Higher bar without tests
 
         if analysis.get("python_files", 0) > 500:
             config.behavior.max_prs_per_run = 3  # Limit for large repos
