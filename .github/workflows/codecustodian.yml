@@ -1,0 +1,63 @@
+name: "\U0001F6E1\uFE0F CodeCustodian"
+
+on:
+  schedule:
+    - cron: "0 2 * * *"  # Daily at 2 AM UTC
+  workflow_dispatch:
+    inputs:
+      max_prs:
+        description: "Maximum PRs to create"
+        required: false
+        default: "5"
+      scan_type:
+        description: "Scanner filter"
+        required: false
+        default: "all"
+        type: choice
+        options:
+          - all
+          - deprecated_apis
+          - todo_comments
+          - code_smells
+          - security
+
+permissions:
+  contents: write
+  pull-requests: write
+  issues: write
+
+jobs:
+  maintenance:
+    name: Run CodeCustodian
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Install CodeCustodian
+        run: pip install .
+
+      - name: Run CodeCustodian
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          COPILOT_TOKEN: ${{ secrets.COPILOT_TOKEN }}
+        run: |
+          codecustodian run \
+            --repo-path . \
+            --config .codecustodian.yml \
+            --max-prs ${{ github.event.inputs.max_prs || '5' }}
+
+      - name: Upload results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: codecustodian-report
+          path: reports/

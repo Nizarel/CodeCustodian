@@ -1,0 +1,126 @@
+{
+  "version": "1.0",
+  "deprecations": [
+    {
+      "name": "pd.DataFrame.append",
+      "message": "pandas.DataFrame.append() is deprecated since pandas 1.4.0 and removed in 2.0",
+      "replacement": "Use pd.concat([df1, df2], ignore_index=True) instead",
+      "severity": "high",
+      "deprecated_since": "1.4.0",
+      "removal_version": "2.0.0",
+      "priority": 150.0
+    },
+    {
+      "name": "pd.DataFrame.iteritems",
+      "message": "DataFrame.iteritems() is deprecated, use DataFrame.items() instead",
+      "replacement": "df.items()",
+      "severity": "medium",
+      "deprecated_since": "1.5.0",
+      "removal_version": "2.0.0",
+      "priority": 100.0
+    },
+    {
+      "name": "np.float",
+      "message": "np.float is deprecated, use Python builtin float instead",
+      "replacement": "float",
+      "severity": "high",
+      "deprecated_since": "1.20.0",
+      "removal_version": "1.24.0",
+      "priority": 130.0
+    },
+    {
+      "name": "np.int",
+      "message": "np.int is deprecated, use Python builtin int instead",
+      "replacement": "int",
+      "severity": "high",
+      "deprecated_since": "1.20.0",
+      "removal_version": "1.24.0",
+      "priority": 130.0
+    },
+    {
+      "name": "np.bool",
+      "message": "np.bool is deprecated, use Python builtin bool instead",
+      "replacement": "bool",
+      "severity": "high",
+      "deprecated_since": "1.20.0",
+      "removal_version": "1.24.0",
+      "priority": 130.0
+    },
+    {
+      "name": "np.str",
+      "message": "np.str is deprecated, use Python builtin str instead",
+      "replacement": "str",
+      "severity": "high",
+      "deprecated_since": "1.20.0",
+      "removal_version": "1.24.0",
+      "priority": 130.0
+    },
+    {
+      "name": "requests.packages.urllib3",
+      "message": "Accessing urllib3 via requests.packages is deprecated",
+      "replacement": "Import urllib3 directly",
+      "severity": "low",
+      "deprecated_since": "2.16.0",
+      "priority": 40.0
+    },
+    {
+      "name": "flask.Markup",
+      "message": "flask.Markup is deprecated, use markupsafe.Markup instead",
+      "replacement": "from markupsafe import Markup",
+      "severity": "medium",
+      "deprecated_since": "2.0.0",
+      "priority": 80.0
+    },
+    {
+      "name": "flask.json.jsonify",
+      "message": "flask.json.jsonify is deprecated in favor of flask.jsonify",
+      "replacement": "from flask import jsonify",
+      "severity": "low",
+      "deprecated_since": "2.2.0",
+      "priority": 30.0
+    },
+    {
+      "name": "django.utils.encoding.smart_text",
+      "message": "smart_text is deprecated, use smart_str instead",
+      "replacement": "django.utils.encoding.smart_str",
+      "severity": "medium",
+      "deprecated_since": "4.0",
+      "priority": 80.0
+    },
+    {
+      "name": "django.conf.urls.url",
+      "message": "django.conf.urls.url() is deprecated, use re_path() or path()",
+      "replacement": "from django.urls import re_path",
+      "severity": "high",
+      "deprecated_since": "3.1",
+      "removal_version": "4.0",
+      "priority": 120.0
+    },
+    {
+      "name": "unittest.TestCase.assertEquals",
+      "message": "assertEquals is deprecated, use assertEqual instead",
+      "replacement": "self.assertEqual(a, b)",
+      "severity": "low",
+      "deprecated_since": "3.2",
+      "priority": 30.0
+    },
+    {
+      "name": "collections.MutableMapping",
+      "message": "collections.MutableMapping moved to collections.abc in Python 3.3+",
+      "replacement": "collections.abc.MutableMapping",
+      "severity": "high",
+      "deprecated_since": "3.3",
+      "removal_version": "3.10",
+      "priority": 140.0
+    },
+    {
+      "name": "collections.MutableSequence",
+      "message": "collections.MutableSequence moved to collections.abc in Python 3.3+",
+      "replacement": "collections.abc.MutableSequence",
+      "severity": "high",
+      "deprecated_since": "3.3",
+      "removal_version": "3.10",
+      "priority": 140.0
+    }
+  ]
+}

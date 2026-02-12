@@ -1,0 +1,12 @@
+{
+  "mcpServers": {
+    "codecustodian": {
+      "command": "codecustodian-mcp",
+      "args": [],
+      "env": {
+        "GITHUB_TOKEN": "${GITHUB_TOKEN}",
+        "COPILOT_TOKEN": "${COPILOT_TOKEN}"
+      }
+    }
+  }
+}

@@ -1,0 +1,101 @@
+[project]
+name = "codecustodian"
+version = "0.1.0"
+description = "Autonomous AI agent for technical debt management powered by GitHub Copilot SDK"
+readme = "README.md"
+license = { text = "MIT" }
+requires-python = ">=3.11"
+authors = [{ name = "Nizarel" }]
+keywords = ["technical-debt", "ai-agent", "copilot-sdk", "mcp", "refactoring"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Software Development :: Quality Assurance",
+]
+
+dependencies = [
+    # ── GitHub Copilot SDK (AI Planning) ──
+    "github-copilot-sdk>=0.1.23",
+
+    # ── MCP Server (FastMCP v2) ──
+    "fastmcp>=2.14.0,<3",
+
+    # ── GitHub & Git ──
+    "PyGithub>=2.1.1",
+    "GitPython>=3.1.40",
+
+    # ── Azure Integrations ──
+    "azure-devops>=7.1.0b4",
+    "azure-monitor-opentelemetry>=1.2.0",
+    "azure-keyvault-secrets>=4.7.0",
+    "azure-identity>=1.15.0",
+    "opentelemetry-api>=1.20.0",
+    "opentelemetry-sdk>=1.20.0",
+
+    # ── Configuration ──
+    "pyyaml>=6.0.1",
+    "pydantic>=2.5.0",
+
+    # ── CLI ──
+    "typer>=0.9.0",
+    "rich>=13.7.0",
+    "InquirerPy>=0.3.4",
+
+    # ── Analysis ──
+    "radon>=6.0.1",
+    "astroid>=3.0.1",
+    "bandit>=1.7.5",
+
+    # ── Utilities ──
+    "httpx>=0.25.0",
+    "tinydb>=4.8.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.4.3",
+    "pytest-cov>=4.1.0",
+    "pytest-asyncio>=0.23.0",
+    "ruff>=0.1.7",
+    "mypy>=1.7.1",
+    "vcrpy>=6.0.0",
+]
+
+[project.scripts]
+codecustodian = "codecustodian.cli.main:app"
+codecustodian-mcp = "codecustodian.mcp.server:main"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/codecustodian"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+asyncio_mode = "auto"
+addopts = "--strict-markers -v"
+markers = [
+    "slow: marks tests as slow",
+    "integration: marks integration tests",
+    "e2e: marks end-to-end tests",
+]
+
+[tool.mypy]
+python_version = "3.11"
+strict = true
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = true
+
+[tool.coverage.run]
+source = ["src/codecustodian"]
+omit = ["tests/*"]
+
+[tool.coverage.report]
+fail_under = 80
+show_missing = true

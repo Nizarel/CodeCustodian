@@ -1,0 +1,53 @@
+# ── Python ──
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+*.egg-info/
+*.egg
+dist/
+build/
+.eggs/
+
+# ── Virtual environments ──
+.venv/
+venv/
+ENV/
+
+# ── IDE ──
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# ── OS ──
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# ── Testing ──
+.coverage
+htmlcov/
+.pytest_cache/
+coverage.xml
+results.xml
+
+# ── Type checking ──
+.mypy_cache/
+
+# ── Ruff ──
+.ruff_cache/
+
+# ── CodeCustodian ──
+.codecustodian-backups/
+.codecustodian-cache/
+reports/
+
+# ── Secrets ──
+.env
+*.pem
+*.key
+
+# ── uv ──
+uv.lock
