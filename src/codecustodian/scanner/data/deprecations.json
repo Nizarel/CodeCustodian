@@ -1,59 +1,175 @@
 {
-  "version": "1.0",
+  "version": "2.0",
   "deprecations": [
     {
-      "name": "pd.DataFrame.append",
+      "name": "pandas.DataFrame.append",
       "message": "pandas.DataFrame.append() is deprecated since pandas 1.4.0 and removed in 2.0",
       "replacement": "Use pd.concat([df1, df2], ignore_index=True) instead",
       "severity": "high",
       "deprecated_since": "1.4.0",
       "removal_version": "2.0.0",
-      "priority": 150.0
+      "priority": 150.0,
+      "migration_guide_url": "https://pandas.pydata.org/docs/whatsnew/v1.4.0.html#deprecations"
     },
     {
-      "name": "pd.DataFrame.iteritems",
+      "name": "pandas.DataFrame.iteritems",
       "message": "DataFrame.iteritems() is deprecated, use DataFrame.items() instead",
       "replacement": "df.items()",
       "severity": "medium",
       "deprecated_since": "1.5.0",
       "removal_version": "2.0.0",
-      "priority": 100.0
+      "priority": 100.0,
+      "migration_guide_url": "https://pandas.pydata.org/docs/whatsnew/v1.5.0.html#deprecations"
     },
     {
-      "name": "np.float",
+      "name": "pandas.DataFrame.swaplevel",
+      "message": "DataFrame.swaplevel() default axis is deprecated, specify axis explicitly",
+      "replacement": "df.swaplevel(axis=0)",
+      "severity": "low",
+      "deprecated_since": "1.5.0",
+      "removal_version": "2.0.0",
+      "priority": 50.0,
+      "migration_guide_url": ""
+    },
+    {
+      "name": "numpy.float",
       "message": "np.float is deprecated, use Python builtin float instead",
       "replacement": "float",
       "severity": "high",
       "deprecated_since": "1.20.0",
       "removal_version": "1.24.0",
-      "priority": 130.0
+      "priority": 130.0,
+      "migration_guide_url": "https://numpy.org/devdocs/release/1.20.0-notes.html#deprecations"
     },
     {
-      "name": "np.int",
+      "name": "numpy.int",
       "message": "np.int is deprecated, use Python builtin int instead",
       "replacement": "int",
       "severity": "high",
       "deprecated_since": "1.20.0",
       "removal_version": "1.24.0",
-      "priority": 130.0
+      "priority": 130.0,
+      "migration_guide_url": "https://numpy.org/devdocs/release/1.20.0-notes.html#deprecations"
     },
     {
-      "name": "np.bool",
+      "name": "numpy.bool",
       "message": "np.bool is deprecated, use Python builtin bool instead",
       "replacement": "bool",
       "severity": "high",
       "deprecated_since": "1.20.0",
       "removal_version": "1.24.0",
-      "priority": 130.0
+      "priority": 130.0,
+      "migration_guide_url": "https://numpy.org/devdocs/release/1.20.0-notes.html#deprecations"
     },
     {
-      "name": "np.str",
+      "name": "numpy.str",
       "message": "np.str is deprecated, use Python builtin str instead",
       "replacement": "str",
       "severity": "high",
       "deprecated_since": "1.20.0",
       "removal_version": "1.24.0",
-      "priority": 130.0
+      "priority": 130.0,
+      "migration_guide_url": "https://numpy.org/devdocs/release/1.20.0-notes.html#deprecations"
+    },
+    {
+      "name": "numpy.complex",
+      "message": "np.complex is deprecated, use Python builtin complex instead",
+      "replacement": "complex",
+      "severity": "high",
+      "deprecated_since": "1.20.0",
+      "removal_version": "1.24.0",
+      "priority": 130.0,
+      "migration_guide_url": "https://numpy.org/devdocs/release/1.20.0-notes.html#deprecations"
+    },
+    {
+      "name": "numpy.object",
+      "message": "np.object is deprecated, use Python builtin object instead",
+      "replacement": "object",
+      "severity": "high",
+      "deprecated_since": "1.20.0",
+      "removal_version": "1.24.0",
+      "priority": 130.0,
+      "migration_guide_url": "https://numpy.org/devdocs/release/1.20.0-notes.html#deprecations"
+    },
+    {
+      "name": "numpy.matrix",
+      "message": "np.matrix is deprecated, use np.ndarray or np.array instead",
+      "replacement": "np.array()",
+      "severity": "high",
+      "deprecated_since": "1.15.0",
+      "removal_version": "",
+      "priority": 120.0,
+      "migration_guide_url": "https://numpy.org/devdocs/reference/generated/numpy.matrix.html"
+    },
+    {
+      "name": "os.popen",
+      "message": "os.popen() is deprecated, use subprocess.run() instead",
+      "replacement": "subprocess.run(cmd, capture_output=True, text=True)",
+      "severity": "medium",
+      "deprecated_since": "3.0",
+      "removal_version": "",
+      "priority": 90.0,
+      "migration_guide_url": "https://docs.python.org/3/library/subprocess.html"
+    },
+    {
+      "name": "os.system",
+      "message": "os.system() is a security risk and deprecated in favor of subprocess",
+      "replacement": "subprocess.run(cmd, check=True)",
+      "severity": "high",
+      "deprecated_since": "3.0",
+      "removal_version": "",
+      "priority": 110.0,
+      "migration_guide_url": "https://docs.python.org/3/library/subprocess.html"
+    },
+    {
+      "name": "typing.List",
+      "message": "typing.List is deprecated since Python 3.9, use builtin list instead",
+      "replacement": "list[T]",
+      "severity": "low",
+      "deprecated_since": "3.9",
+      "removal_version": "",
+      "priority": 40.0,
+      "migration_guide_url": "https://docs.python.org/3/whatsnew/3.9.html#type-hinting-generics-in-standard-collections"
+    },
+    {
+      "name": "typing.Dict",
+      "message": "typing.Dict is deprecated since Python 3.9, use builtin dict instead",
+      "replacement": "dict[K, V]",
+      "severity": "low",
+      "deprecated_since": "3.9",
+      "removal_version": "",
+      "priority": 40.0,
+      "migration_guide_url": "https://docs.python.org/3/whatsnew/3.9.html#type-hinting-generics-in-standard-collections"
+    },
+    {
+      "name": "typing.Set",
+      "message": "typing.Set is deprecated since Python 3.9, use builtin set instead",
+      "replacement": "set[T]",
+      "severity": "low",
+      "deprecated_since": "3.9",
+      "removal_version": "",
+      "priority": 40.0,
+      "migration_guide_url": "https://docs.python.org/3/whatsnew/3.9.html#type-hinting-generics-in-standard-collections"
+    },
+    {
+      "name": "typing.Tuple",
+      "message": "typing.Tuple is deprecated since Python 3.9, use builtin tuple instead",
+      "replacement": "tuple[T, ...]",
+      "severity": "low",
+      "deprecated_since": "3.9",
+      "removal_version": "",
+      "priority": 40.0,
+      "migration_guide_url": "https://docs.python.org/3/whatsnew/3.9.html#type-hinting-generics-in-standard-collections"
+    },
+    {
+      "name": "typing.Optional",
+      "message": "typing.Optional is deprecated since Python 3.10, use X | None instead",
+      "replacement": "X | None",
+      "severity": "low",
+      "deprecated_since": "3.10",
+      "removal_version": "",
+      "priority": 30.0,
+      "migration_guide_url": "https://docs.python.org/3/whatsnew/3.10.html#pep-604-new-type-union-operator"
     },
     {
       "name": "requests.packages.urllib3",
@@ -61,7 +177,8 @@
       "replacement": "Import urllib3 directly",
       "severity": "low",
       "deprecated_since": "2.16.0",
-      "priority": 40.0
+      "priority": 40.0,
+      "migration_guide_url": ""
     },
     {
       "name": "flask.Markup",
@@ -69,7 +186,8 @@
       "replacement": "from markupsafe import Markup",
       "severity": "medium",
       "deprecated_since": "2.0.0",
-      "priority": 80.0
+      "priority": 80.0,
+      "migration_guide_url": "https://flask.palletsprojects.com/en/2.0.x/changes/#version-2-0-0"
     },
     {
       "name": "flask.json.jsonify",
@@ -77,7 +195,8 @@
       "replacement": "from flask import jsonify",
       "severity": "low",
       "deprecated_since": "2.2.0",
-      "priority": 30.0
+      "priority": 30.0,
+      "migration_guide_url": ""
     },
     {
       "name": "django.utils.encoding.smart_text",
@@ -85,7 +204,8 @@
       "replacement": "django.utils.encoding.smart_str",
       "severity": "medium",
       "deprecated_since": "4.0",
-      "priority": 80.0
+      "priority": 80.0,
+      "migration_guide_url": "https://docs.djangoproject.com/en/4.0/releases/4.0/"
     },
     {
       "name": "django.conf.urls.url",
@@ -94,7 +214,8 @@
       "severity": "high",
       "deprecated_since": "3.1",
       "removal_version": "4.0",
-      "priority": 120.0
+      "priority": 120.0,
+      "migration_guide_url": "https://docs.djangoproject.com/en/3.1/releases/3.1/"
     },
     {
       "name": "unittest.TestCase.assertEquals",
@@ -102,7 +223,8 @@
       "replacement": "self.assertEqual(a, b)",
       "severity": "low",
       "deprecated_since": "3.2",
-      "priority": 30.0
+      "priority": 30.0,
+      "migration_guide_url": "https://docs.python.org/3/library/unittest.html"
     },
     {
       "name": "collections.MutableMapping",
@@ -111,7 +233,8 @@
       "severity": "high",
       "deprecated_since": "3.3",
       "removal_version": "3.10",
-      "priority": 140.0
+      "priority": 140.0,
+      "migration_guide_url": "https://docs.python.org/3/whatsnew/3.9.html#you-should-check-for-deprecationwarning-in-your-code"
     },
     {
       "name": "collections.MutableSequence",
@@ -120,7 +243,8 @@
       "severity": "high",
       "deprecated_since": "3.3",
       "removal_version": "3.10",
-      "priority": 140.0
+      "priority": 140.0,
+      "migration_guide_url": "https://docs.python.org/3/whatsnew/3.9.html#you-should-check-for-deprecationwarning-in-your-code"
     }
   ]
 }

@@ -175,13 +175,38 @@ class Pipeline:
             "pipeline.scan",
             attributes={"pipeline.repo_path": self.repo_path},
         ):
-            # TODO: Wire up ScannerRegistry once implemented (Phase 2)
+            from codecustodian.scanner.registry import get_default_registry
+
             logger.info(
                 "Scanning %s …",
                 self.repo_path,
                 extra={"stage": PipelineStage.SCAN.value},
             )
-            return []
+
+            registry = get_default_registry(self.config)
+            all_findings: list[Finding] = []
+
+            for scanner in registry.get_enabled():
+                scanner_name = scanner.name
+                with tracer.start_as_current_span(
+                    f"pipeline.scan.{scanner_name}",
+                    attributes={"scanner.name": scanner_name},
+                ):
+                    try:
+                        results = scanner.scan(self.repo_path)
+                        logger.info(
+                            "Scanner %s found %d issues",
+                            scanner_name,
+                            len(results),
+                        )
+                        all_findings.extend(results)
+                    except Exception as exc:
+                        logger.exception("Scanner %s failed", scanner_name)
+                        self._result.errors.append(
+                            f"scanner.{scanner_name}: {exc}"
+                        )
+
+            return all_findings
 
     def _dedup(self, findings: list[Finding]) -> list[Finding]:
         """Remove duplicate findings using dedup_key."""

@@ -575,15 +575,15 @@ uv add --dev pytest pytest-cov pytest-asyncio ruff mypy vcrpy
 **Files:** `src/codecustodian/scanner/base.py`, `src/codecustodian/scanner/registry.py`, `src/codecustodian/scanner/deduplication.py`
 
 **Tasks:**
-- [ ] **4.1.1** Implement `BaseScanner` ABC with:
+- [x] **4.1.1** Implement `BaseScanner` ABC with:
   - `name`, `description`, `enabled` class attributes
   - `scan(repo_path: str) -> List[Finding]` abstract method
   - `is_excluded(file_path, exclude_patterns)` using `fnmatch`
   - `calculate_priority(finding) -> float` using the priority algorithm
-- [ ] **4.1.2** Implement priority algorithm (FR-SCAN-002):
+- [x] **4.1.2** Implement priority algorithm (FR-SCAN-002):
   - `Priority = (severity_weight × urgency × impact) / effort`
   - Range 0–200; severity weights: critical=10, high=7, medium=4, low=2
-- [ ] **4.1.3** Implement `ScannerRegistry` for dynamic scanner discovery (BR-SCN-003):
+- [x] **4.1.3** Implement `ScannerRegistry` for dynamic scanner discovery (BR-SCN-003):
   ```python
   class ScannerRegistry:
       """Marketplace-style catalog for scanner plugins."""
@@ -603,7 +603,7 @@ uv add --dev pytest pytest-cov pytest-asyncio ruff mypy vcrpy
           return [{"name": s.name, "description": s.description, "detects": s.detects}
                   for s in cls._scanners.values()]
   ```
-- [ ] **4.1.4** Implement `FindingDeduplicator` (NEW — BR-SCN-001):
+- [x] **4.1.4** Implement `FindingDeduplicator` (NEW — BR-SCN-001):
   ```python
   class FindingDeduplicator:
       """De-duplicate findings across runs to prevent noisy repeats."""
@@ -631,7 +631,7 @@ uv add --dev pytest pytest-cov pytest-asyncio ruff mypy vcrpy
           """Mark finding as resolved (for trend tracking)."""
           ...
   ```
-- [ ] **4.1.5** Implement file-walking utility respecting `.gitignore`, exclude patterns, and denylist (BR-CFG-002)
+- [x] **4.1.5** Implement file-walking utility respecting `.gitignore`, exclude patterns, and denylist (BR-CFG-002)
 
 ### Step 4.2 — Deprecated API Scanner
 
@@ -640,7 +640,7 @@ uv add --dev pytest pytest-cov pytest-asyncio ruff mypy vcrpy
 **Files:** `src/codecustodian/scanner/deprecated_api.py`, `src/codecustodian/scanner/data/deprecations.json`
 
 **Tasks:**
-- [ ] **4.2.1** Create deprecation database JSON (FR-SCAN-011):
+- [x] **4.2.1** Create deprecation database JSON (FR-SCAN-011):
   - **pandas**: `DataFrame.append`, `DataFrame.swaplevel`, `read_table` defaults
   - **numpy**: `np.matrix`, `np.bool`, `np.int`, `np.float`, `np.complex`, `np.object`, `np.str`
   - **os**: `os.popen`, `os.system`
@@ -648,10 +648,10 @@ uv add --dev pytest pytest-cov pytest-asyncio ruff mypy vcrpy
   - **typing**: deprecated aliases (`typing.List` → `list` for Python 3.9+)
   - **unittest**: `assertEquals` → `assertEqual`
   - Each entry includes: `deprecated_in`, `removed_in`, `replacement`, `migration_guide_url` (FR-SCAN-100)
-- [ ] **4.2.2** Implement `DeprecatedAPIVisitor(ast.NodeVisitor)` (FR-SCAN-012)
-- [ ] **4.2.3** Implement import alias resolution
-- [ ] **4.2.4** Implement version-aware detection with urgency scoring (FR-SCAN-014)
-- [ ] **4.2.5** Implement usage frequency counting across repo (FR-SCAN-013)
+- [x] **4.2.2** Implement `DeprecatedAPIVisitor(ast.NodeVisitor)` (FR-SCAN-012)
+- [x] **4.2.3** Implement import alias resolution
+- [x] **4.2.4** Implement version-aware detection with urgency scoring (FR-SCAN-014)
+- [x] **4.2.5** Implement usage frequency counting across repo (FR-SCAN-013)
 
 ### Step 4.3 — TODO Comment Scanner
 
@@ -660,11 +660,11 @@ uv add --dev pytest pytest-cov pytest-asyncio ruff mypy vcrpy
 **File:** `src/codecustodian/scanner/todo_comments.py`
 
 **Tasks:**
-- [ ] **4.3.1** Implement regex pattern matching for TODO, FIXME, HACK, XXX (FR-SCAN-021)
-- [ ] **4.3.2** Implement Git blame integration with age calculation (FR-SCAN-022)
-- [ ] **4.3.3** Implement age-based severity mapping
-- [ ] **4.3.4** Implement auto-issue creation flag for TODO > 90 days (FR-SCAN-023, FR-SCAN-103)
-- [ ] **4.3.5** Include author attribution from git blame (FR-SCAN-103)
+- [x] **4.3.1** Implement regex pattern matching for TODO, FIXME, HACK, XXX (FR-SCAN-021)
+- [x] **4.3.2** Implement Git blame integration with age calculation (FR-SCAN-022)
+- [x] **4.3.3** Implement age-based severity mapping
+- [x] **4.3.4** Implement auto-issue creation flag for TODO > 90 days (FR-SCAN-023, FR-SCAN-103)
+- [x] **4.3.5** Include author attribution from git blame (FR-SCAN-103)
 
 ### Step 4.4 — Code Smell Scanner
 
@@ -673,11 +673,11 @@ uv add --dev pytest pytest-cov pytest-asyncio ruff mypy vcrpy
 **File:** `src/codecustodian/scanner/code_smells.py`
 
 **Tasks:**
-- [ ] **4.4.1** Implement radon cyclomatic complexity integration (FR-SCAN-031)
-- [ ] **4.4.2** Implement cognitive complexity (Sonar-style) (NEW — FR-SCAN-102)
-- [ ] **4.4.3** Implement additional detectors: long functions, too many parameters, deep nesting, dead code
-- [ ] **4.4.4** Implement maintainability index composite score (NEW — FR-SCAN-102)
-- [ ] **4.4.5** Make all thresholds configurable (FR-SCAN-033)
+- [x] **4.4.1** Implement radon cyclomatic complexity integration (FR-SCAN-031)
+- [x] **4.4.2** Implement cognitive complexity (Sonar-style) (NEW — FR-SCAN-102)
+- [x] **4.4.3** Implement additional detectors: long functions, too many parameters, deep nesting, dead code
+- [x] **4.4.4** Implement maintainability index composite score (NEW — FR-SCAN-102)
+- [x] **4.4.5** Make all thresholds configurable (FR-SCAN-033)
 
 ### Step 4.5 — Security Pattern Scanner
 
@@ -686,11 +686,11 @@ uv add --dev pytest pytest-cov pytest-asyncio ruff mypy vcrpy
 **File:** `src/codecustodian/scanner/security.py`
 
 **Tasks:**
-- [ ] **4.5.1** Run Bandit as subprocess with JSON output (FR-SCAN-041)
-- [ ] **4.5.2** Implement custom security patterns: hardcoded secrets, weak crypto, SQL injection, command injection, deserialization, path traversal (FR-SCAN-042, FR-SCAN-101)
-- [ ] **4.5.3** Implement severity mapping with CWE references (FR-SCAN-043)
-- [ ] **4.5.4** Include exploit scenario description per finding (NEW — FR-SCAN-101)
-- [ ] **4.5.5** Include compliance impact per finding: PCI DSS, GDPR, SOC 2 (NEW — FR-SCAN-101)
+- [x] **4.5.1** Run Bandit as subprocess with JSON output (FR-SCAN-041)
+- [x] **4.5.2** Implement custom security patterns: hardcoded secrets, weak crypto, SQL injection, command injection, deserialization, path traversal (FR-SCAN-042, FR-SCAN-101)
+- [x] **4.5.3** Implement severity mapping with CWE references (FR-SCAN-043)
+- [x] **4.5.4** Include exploit scenario description per finding (NEW — FR-SCAN-101)
+- [x] **4.5.5** Include compliance impact per finding: PCI DSS, GDPR, SOC 2 (NEW — FR-SCAN-101)
 
 ### Step 4.6 — Type Coverage Scanner
 
@@ -699,9 +699,9 @@ uv add --dev pytest pytest-cov pytest-asyncio ruff mypy vcrpy
 **File:** `src/codecustodian/scanner/type_coverage.py`
 
 **Tasks:**
-- [ ] **4.6.1** Implement `TypeCoverageVisitor(ast.NodeVisitor)` (FR-SCAN-051)
-- [ ] **4.6.2** Implement per-file and overall coverage reporting (FR-SCAN-052)
-- [ ] **4.6.3** Implement AI-inferred type suggestions ranked by business value (FR-SCAN-104)
+- [x] **4.6.1** Implement `TypeCoverageVisitor(ast.NodeVisitor)` (FR-SCAN-051)
+- [x] **4.6.2** Implement per-file and overall coverage reporting (FR-SCAN-052)
+- [x] **4.6.3** Implement AI-inferred type suggestions ranked by business value (FR-SCAN-104) *(stub — deferred to Phase 3)*
 
 ---
 

@@ -50,10 +50,18 @@ class ScannerRegistry:
         return cls(config=self.config)
 
     def get_enabled(self) -> list[BaseScanner]:
-        """Return instances of all enabled scanners (per config)."""
+        """Return instances of all enabled scanners (per config).
+
+        A scanner is disabled when:
+        1. Its class attribute ``enabled`` is ``False``, **or**
+        2. The matching config section sets ``enabled = False``.
+        """
         enabled: list[BaseScanner] = []
         for name, cls in self._scanners.items():
-            # Check if scanner is enabled in config
+            # Class-level opt-out
+            if not getattr(cls, "enabled", True):
+                continue
+            # Config-level opt-out
             if self.config and hasattr(self.config.scanners, name):
                 scanner_cfg = getattr(self.config.scanners, name)
                 if hasattr(scanner_cfg, "enabled") and not scanner_cfg.enabled:
@@ -64,6 +72,22 @@ class ScannerRegistry:
     def list_scanners(self) -> list[str]:
         """Return names of all registered scanners."""
         return sorted(self._scanners.keys())
+
+    def list_catalog(self) -> list[dict[str, str]]:
+        """Return a marketplace-style catalog of registered scanners.
+
+        Each entry contains ``name``, ``description``, and ``detects``
+        (the finding type the scanner targets).
+        """
+        catalog: list[dict[str, str]] = []
+        for name, cls in sorted(self._scanners.items()):
+            catalog.append({
+                "name": cls.name,
+                "description": cls.description,
+                "detects": cls.name,
+                "enabled": str(getattr(cls, "enabled", True)),
+            })
+        return catalog
 
     def __len__(self) -> int:
         return len(self._scanners)
