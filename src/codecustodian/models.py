@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import hashlib
 import uuid
-from datetime import datetime
+from datetime import UTC, datetime
 from enum import Enum
 from pathlib import Path
 from typing import Any
@@ -106,7 +106,7 @@ class Finding(BaseModel):
     )
     metadata: dict[str, Any] = Field(default_factory=dict)
     scanner_name: str = ""
-    created_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
 
     @field_validator("reviewer_effort_estimate")
     @classmethod
@@ -221,7 +221,7 @@ class RefactoringPlan(BaseModel):
     changes_signature: bool = False
     requires_manual_verification: bool = False
     files_to_change: list[str] = Field(default_factory=list)
-    created_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
 
     @field_validator("reviewer_effort")
     @classmethod
@@ -312,7 +312,7 @@ class PullRequestInfo(BaseModel):
     branch: str = ""
     base_branch: str = "main"
     draft: bool = False
-    created_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
 
 
 class PipelineResult(BaseModel):
@@ -329,7 +329,7 @@ class PipelineResult(BaseModel):
     pull_requests: list[PullRequestInfo] = Field(default_factory=list)
     total_duration_seconds: float = 0.0
     errors: list[str] = Field(default_factory=list)
-    started_at: datetime = Field(default_factory=datetime.utcnow)
+    started_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
     completed_at: datetime | None = None
 
     @property

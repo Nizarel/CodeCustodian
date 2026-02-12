@@ -12,7 +12,7 @@ from __future__ import annotations
 import ast
 import shutil
 import tempfile
-from datetime import datetime
+from datetime import UTC, datetime
 from pathlib import Path
 
 from codecustodian.logging import get_logger
@@ -126,7 +126,7 @@ class SafeFileEditor:
 
     def _create_backup(self, file_path: Path) -> Path:
         """Create a timestamped backup."""
-        timestamp = datetime.utcnow().strftime("%Y%m%d-%H%M%S")
+        timestamp = datetime.now(UTC).strftime("%Y%m%d-%H%M%S")
         backup_path = self.backup_dir / f"{file_path.name}-{timestamp}.bak"
         shutil.copy2(file_path, backup_path)
         logger.debug("Backup created: %s", backup_path)

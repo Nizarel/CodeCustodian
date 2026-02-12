@@ -5,7 +5,7 @@ Handles branching, commits, and push operations for refactoring PRs.
 
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -42,7 +42,7 @@ class GitManager:
         """
         category = finding.type.value.replace("_", "-")
         file_short = Path(finding.file).stem[:20]
-        timestamp = datetime.utcnow().strftime("%Y%m%d-%H%M")
+        timestamp = datetime.now(UTC).strftime("%Y%m%d-%H%M")
         branch_name = f"{prefix}/{category}-{file_short}-{timestamp}"
 
         self.repo.git.checkout("-b", branch_name)

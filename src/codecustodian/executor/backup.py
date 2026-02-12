@@ -6,7 +6,7 @@ Handles backup creation, retention, and restoration.
 from __future__ import annotations
 
 import shutil
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
 from codecustodian.logging import get_logger
@@ -28,7 +28,7 @@ class BackupManager:
 
     def create_backup(self, file_path: Path) -> Path:
         """Create a backup of the given file."""
-        timestamp = datetime.utcnow().strftime("%Y%m%d-%H%M%S-%f")
+        timestamp = datetime.now(UTC).strftime("%Y%m%d-%H%M%S-%f")
         backup_name = f"{file_path.name}-{timestamp}.bak"
         backup_path = self.backup_dir / backup_name
         shutil.copy2(file_path, backup_path)
@@ -59,11 +59,11 @@ class BackupManager:
 
     def cleanup(self) -> int:
         """Remove backups older than retention period. Returns count removed."""
-        cutoff = datetime.utcnow() - timedelta(days=self.retention_days)
+        cutoff = datetime.now(UTC) - timedelta(days=self.retention_days)
         removed = 0
         for backup in self.backup_dir.glob("*.bak"):
             stat = backup.stat()
-            modified = datetime.utcfromtimestamp(stat.st_mtime)
+            modified = datetime.fromtimestamp(stat.st_mtime, tz=UTC)
             if modified < cutoff:
                 backup.unlink()
                 removed += 1

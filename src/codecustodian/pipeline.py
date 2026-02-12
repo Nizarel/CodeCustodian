@@ -14,7 +14,7 @@ from __future__ import annotations
 import os
 import time
 from collections import defaultdict
-from datetime import datetime
+from datetime import UTC, datetime
 from typing import TYPE_CHECKING
 
 from opentelemetry import trace
@@ -124,7 +124,7 @@ class Pipeline:
 
             elapsed = time.monotonic() - start
             self._result.total_duration_seconds = elapsed
-            self._result.completed_at = datetime.utcnow()
+            self._result.completed_at = datetime.now(UTC)
 
             root_span.set_attribute("pipeline.duration_seconds", elapsed)
             root_span.set_attribute("pipeline.findings_count", len(self._result.findings))

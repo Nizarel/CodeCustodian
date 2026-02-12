@@ -370,32 +370,32 @@ uv add --dev pytest pytest-cov pytest-asyncio ruff mypy vcrpy
 **File:** `src/codecustodian/models.py`
 
 **Tasks:**
-- [ ] **3.1.1** Define `Finding` dataclass with all fields:
+- [x] **3.1.1** Define `Finding` dataclass with all fields:
   - `id`, `type`, `severity`, `file`, `line`, `description`, `suggestion`
   - `priority_score`, `business_impact_score` (NEW — FR-PRIORITY-100)
   - `metadata`, `context`, `timestamp`
   - `dedup_key` (NEW — hash for cross-run de-duplication, BR-SCN-001)
   - `reviewer_effort_estimate` (NEW — low/medium/high, BR-PR-002)
-- [ ] **3.1.2** Define `CodeContext` dataclass:
+- [x] **3.1.2** Define `CodeContext` dataclass:
   - `code`, `line_start`, `line_end`, `function_signature`, `imports`
   - `has_tests`, `coverage_percentage`, `call_sites`, `last_modified`
   - `usage_frequency` (NEW — telemetry-based, FR-PRIORITY-100)
   - `criticality_level` (NEW — critical path detection)
-- [ ] **3.1.3** Define `RefactoringPlan` Pydantic model:
+- [x] **3.1.3** Define `RefactoringPlan` Pydantic model:
   - `summary`, `reasoning`, `changes: List[CodeChange]`, `risks`
   - `requires_manual_verification`, `confidence_factors`, `confidence_score`
   - `alternatives: List[AlternativeSolution]` (NEW — FR-PLAN-102)
   - `reviewer_effort: str` (NEW — BR-PR-002)
-- [ ] **3.1.4** Define `AlternativeSolution` Pydantic model (NEW — FR-PLAN-102):
+- [x] **3.1.4** Define `AlternativeSolution` Pydantic model (NEW — FR-PLAN-102):
   - `name`, `description`, `pros: List[str]`, `cons: List[str]`
   - `changes: List[CodeChange]`, `confidence_score`, `recommended: bool`
-- [ ] **3.1.5** Define `CodeChange` Pydantic model:
+- [x] **3.1.5** Define `CodeChange` Pydantic model:
   - `file`, `old_code`, `new_code`, `line_start`, `line_end`
-- [ ] **3.1.6** Define `VerificationResult` dataclass
-- [ ] **3.1.7** Define `ProposalResult` Pydantic model (NEW — BR-PR-003):
+- [x] **3.1.6** Define `VerificationResult` dataclass
+- [x] **3.1.7** Define `ProposalResult` Pydantic model (NEW — BR-PR-003):
   - `finding`, `recommended_steps: List[str]`, `estimated_effort`, `risks`
   - `is_proposal_only: bool` (no code changes, advisory only)
-- [ ] **3.1.8** Define custom exception hierarchy:
+- [x] **3.1.8** Define custom exception hierarchy:
   - `CodeCustodianError` → `ScannerError`, `PlannerError`, `ExecutorError`, `VerifierError`, `GitHubAPIError`, `AzureIntegrationError`, `BudgetExceededError` (NEW), `ApprovalRequiredError` (NEW)
 
 ### Step 3.2 — Configuration & Policy System
@@ -405,7 +405,7 @@ uv add --dev pytest pytest-cov pytest-asyncio ruff mypy vcrpy
 **Files:** `src/codecustodian/config/schema.py`, `src/codecustodian/config/defaults.py`, `src/codecustodian/config/policies.py`
 
 **Tasks:**
-- [ ] **3.2.1** Implement `CodeCustodianConfig` Pydantic model hierarchy:
+- [x] **3.2.1** Implement `CodeCustodianConfig` Pydantic model hierarchy:
   - `ScannersConfig` → `DeprecatedAPIConfig`, `TODOConfig`, `CodeSmellConfig`
   - `BehaviorConfig`:
     - `max_prs_per_run`, `confidence_threshold`
@@ -427,7 +427,7 @@ uv add --dev pytest pytest-cov pytest-asyncio ruff mypy vcrpy
     - `require_plan_approval: bool`, `require_pr_approval: bool`
     - `approved_repos: List[str]`, `sensitive_paths: List[str]`
 
-- [ ] **3.2.2** Implement `PolicyManager` (NEW — BR-CFG-001, BR-CFG-002):
+- [x] **3.2.2** Implement `PolicyManager` (NEW — BR-CFG-001, BR-CFG-002):
   ```python
   class PolicyManager:
       """Central policy management with org-wide + per-repo overrides."""
@@ -457,15 +457,15 @@ uv add --dev pytest pytest-cov pytest-asyncio ruff mypy vcrpy
           ...
   ```
 
-- [ ] **3.2.3** Implement policy templates (BR-ONB-002):
+- [x] **3.2.3** Implement policy templates (BR-ONB-002):
   - **"Security First"**: security scanner enabled, confidence ≥ 8, denylist = `["**/auth/**", "**/payments/**"]`
   - **"Deprecations First"**: deprecated_api scanner priority, aggressive PR sizing
   - **"Low-Risk Maintenance"**: confidence ≥ 9, max 3 files per PR, TODO + type_coverage only
   - **"Full Scan"**: all scanners, balanced settings
 
-- [ ] **3.2.4** Implement config merging: defaults ← org policy ← repo override ← env vars ← CLI args
-- [ ] **3.2.5** Create default `.codecustodian.yml` template with all options documented
-- [ ] **3.2.6** Add Pydantic validators for cross-field constraints
+- [x] **3.2.4** Implement config merging: defaults ← org policy ← repo override ← env vars ← CLI args
+- [x] **3.2.5** Create default `.codecustodian.yml` template with all options documented
+- [x] **3.2.6** Add Pydantic validators for cross-field constraints
 
 ### Step 3.3 — Pipeline Orchestrator
 
@@ -474,26 +474,26 @@ uv add --dev pytest pytest-cov pytest-asyncio ruff mypy vcrpy
 **File:** `src/codecustodian/pipeline.py`
 
 **Tasks:**
-- [ ] **3.3.1** Implement `Pipeline` class with sequential stage execution:
+- [x] **3.3.1** Implement `Pipeline` class with sequential stage execution:
   ```
   scan() → dedup() → prioritize() → plan() → [approve?] → execute() → verify() → create_pr_or_proposal()
   ```
-- [ ] **3.3.2** Implement fail-fast per-finding behavior
-- [ ] **3.3.3** Implement finding prioritization with business impact scoring
-- [ ] **3.3.4** Implement dry-run mode (scan + plan only, no execution)
-- [ ] **3.3.5** Implement **proposal mode** (BR-PR-003, BR-QA-002):
+- [x] **3.3.2** Implement fail-fast per-finding behavior
+- [x] **3.3.3** Implement finding prioritization with business impact scoring
+- [x] **3.3.4** Implement dry-run mode (scan + plan only, no execution)
+- [x] **3.3.5** Implement **proposal mode** (BR-PR-003, BR-QA-002):
   - If confidence < `proposal_mode_threshold`: create advisory issue, not PR
   - If policy requires proposal mode for sensitive paths: skip execution
   - If quality gates fail and can't be fixed: downgrade to proposal
-- [ ] **3.3.6** Implement **configurable PR sizing** (BR-PLN-002):
+- [x] **3.3.6** Implement **configurable PR sizing** (BR-PLN-002):
   - Group related findings into logical PR units
   - Split when max_files_per_pr or max_lines_per_pr exceeded
   - Create multiple smaller PRs instead of one mega-PR
-- [ ] **3.3.7** Implement **approval gates** (BR-GOV-002):
+- [x] **3.3.7** Implement **approval gates** (BR-GOV-002):
   - Plan approval checkpoint: pause and await approval before execution
   - Configurable per repo/category/severity
-- [ ] **3.3.8** Add structured logging at each stage transition
-- [ ] **3.3.9** Add OpenTelemetry tracing spans per stage (Azure Monitor integration)
+- [x] **3.3.8** Add structured logging at each stage transition
+- [x] **3.3.9** Add OpenTelemetry tracing spans per stage (Azure Monitor integration)
 
 ### Step 3.4 — Onboarding System
 
@@ -502,7 +502,7 @@ uv add --dev pytest pytest-cov pytest-asyncio ruff mypy vcrpy
 **Files:** `src/codecustodian/onboarding/onboard.py`, `src/codecustodian/onboarding/policy_templates.py`
 
 **Tasks:**
-- [ ] **3.4.1** Implement `OnboardingManager`:
+- [x] **3.4.1** Implement `OnboardingManager`:
   ```python
   class OnboardingManager:
       def onboard_organization(self, org_name: str, template: str = "full_scan") -> dict:
@@ -521,8 +521,8 @@ uv add --dev pytest pytest-cov pytest-asyncio ruff mypy vcrpy
           """Return: configured | scanning | blocked | requires_approval"""
           ...
   ```
-- [ ] **3.4.2** Implement policy template selection via CLI `init` command
-- [ ] **3.4.3** Create `.codecustodian.yml` + GitHub Action workflow on onboard
+- [ ] **3.4.2** Implement policy template selection via CLI `init` command (deferred to Phase 6 — CLI)
+- [ ] **3.4.3** Create `.codecustodian.yml` + GitHub Action workflow on onboard (deferred to Phase 6 — CLI)
 
 ### Step 3.5 — Structured Logging & Azure Monitor Telemetry
 
@@ -531,8 +531,8 @@ uv add --dev pytest pytest-cov pytest-asyncio ruff mypy vcrpy
 **Files:** `src/codecustodian/logging.py`, `src/codecustodian/integrations/azure_monitor.py`
 
 **Tasks:**
-- [ ] **3.5.1** Implement `JSONFormatter` for structured JSON log output
-- [ ] **3.5.2** Implement Azure Monitor integration with OpenTelemetry:
+- [ ] **3.5.1** Implement `JSONFormatter` for structured JSON log output (deferred — current logger sufficient)
+- [x] **3.5.2** Implement Azure Monitor integration with OpenTelemetry:
   ```python
   from azure.monitor.opentelemetry import configure_azure_monitor
   from opentelemetry import trace, metrics
@@ -550,16 +550,19 @@ uv add --dev pytest pytest-cov pytest-asyncio ruff mypy vcrpy
           self.cost_per_pr = self.meter.create_histogram("codecustodian.cost.per_pr")
           self.pipeline_duration = self.meter.create_histogram("codecustodian.pipeline.duration_ms")
   ```
-- [ ] **3.5.3** Implement distributed tracing spans (FR-OBS-101):
+- [x] **3.5.3** Implement distributed tracing spans (FR-OBS-101):
   - Parent: `refactoring_pipeline`, Children: `scan`, `plan` (with `copilot_sdk_call`, `tool_execution`), `execute`, `verify`, `create_pr`
   - Attributes: `finding.id`, `finding.type`, `ai.model`, `ai.tokens_used`, `ai.cost`, `test.pass_rate`, `pr.number`
-- [ ] **3.5.4** Implement SLA metrics collection (BR-ENT-002):
+- [x] **3.5.4** Implement SLA metrics collection (BR-ENT-002):
   - Run success rate, time to PR, failure reasons
 
 **Tests to write:**
-- [ ] `tests/unit/test_models.py` — Serialization, validation, priority, dedup_key
-- [ ] `tests/unit/test_config.py` — YAML loading, defaults, merging, policy overrides
-- [ ] `tests/unit/test_pipeline.py` — Orchestration, PR sizing, proposal mode
+- [x] `tests/test_models.py` — Serialization, validation, priority, dedup_key, AlternativeSolution, ProposalResult
+- [x] `tests/test_config.py` — YAML loading, defaults, merging, new config models (Azure, Budget, Approval, WorkIQ)
+- [x] `tests/test_pipeline.py` — Orchestration, PR sizing, proposal mode, approval gates, dedup
+- [x] `tests/test_exceptions.py` — Exception hierarchy, GitHubAPIError, BudgetExceededError, ApprovalRequiredError
+- [x] `tests/test_policies.py` — PolicyManager, path controls, env overrides, deep merge
+- [x] `tests/test_observability.py` — ObservabilityProvider, AzureMonitorEmitter, SLA metrics
 
 ---
 
