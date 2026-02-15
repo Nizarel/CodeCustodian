@@ -10,6 +10,7 @@ other MCP clients.
 
 from __future__ import annotations
 
+import argparse
 import sys
 
 from fastmcp import FastMCP
@@ -57,13 +58,17 @@ def main() -> None:
     * ``stdio``  (default) — for Claude Desktop / VS Code / CLI
     * ``streamable-http`` — for remote / Azure Container Apps deployment
     """
-    transport = "stdio"
-    if "--transport" in sys.argv:
-        idx = sys.argv.index("--transport")
-        if idx + 1 < len(sys.argv):
-            transport = sys.argv[idx + 1]
+    parser = argparse.ArgumentParser(add_help=False)
+    parser.add_argument("--transport", default="stdio")
+    parser.add_argument("--host", default="0.0.0.0")
+    parser.add_argument("--port", type=int, default=8000)
+    args, _ = parser.parse_known_args(sys.argv[1:])
 
-    mcp.run(transport=transport)
+    if args.transport == "streamable-http":
+        mcp.run(transport=args.transport, host=args.host, port=args.port)
+        return
+
+    mcp.run(transport=args.transport)
 
 
 if __name__ == "__main__":

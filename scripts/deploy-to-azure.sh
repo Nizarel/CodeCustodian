@@ -5,9 +5,9 @@
 set -euo pipefail
 
 SUBSCRIPTION="da9dea7f-1fc8-44de-93da-ce5c58314cdb"
-RESOURCE_GROUP="${RESOURCE_GROUP:-codecustodian-prod-rg}"
+RESOURCE_GROUP="${RESOURCE_GROUP:-Custodian-Rg}"
 LOCATION="${LOCATION:-eastus2}"
-ENVIRONMENT="${ENVIRONMENT:-prod}"
+ENVIRONMENT="${ENVIRONMENT:-dev}"
 IMAGE_TAG="${IMAGE_TAG:-latest}"
 
 echo "==> Setting subscription to $SUBSCRIPTION"
@@ -23,7 +23,7 @@ echo "==> Deploying Bicep template"
 az deployment group create \
   --resource-group "$RESOURCE_GROUP" \
   --template-file infra/main.bicep \
-  --parameters infra/parameters.prod.bicepparam \
+  --parameters "infra/parameters.${ENVIRONMENT}.bicepparam" \
   --parameters imageTag="$IMAGE_TAG" \
   --name "codecustodian-$(date +%Y%m%d%H%M%S)"
 
