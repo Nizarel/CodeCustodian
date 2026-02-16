@@ -86,6 +86,17 @@ CodeCustodian automates this maintenance work:
 - 👥 **Multi-repository management**
 - 🎛️ **Configuration UI** (no YAML editing required)
 - 🔐 **SOC 2 ready** (audit trails, encryption, RBAC)
+- 💰 **Budget management** (per-team cost tracking and enforcement)
+- 📋 **SLA & reliability reporting** (success rates, failure trends, alerts)
+
+### 🧠 Business Intelligence & Learning
+
+- 📊 **5-factor business impact scoring** — usage frequency, criticality, change frequency, velocity impact, regulatory risk
+- 🔄 **Dynamic re-prioritization** — event-driven adjustments for production incidents, CVEs, deadlines, budget changes
+- 📝 **Feedback loop** — learns from PR outcomes (merged/rejected/modified) to improve over time
+- 🎯 **Team preference learning** — remembers coding preferences and injects them into AI prompts
+- 🏛️ **Historical pattern recognition** — queries past refactorings across the org for similar patterns
+- 📈 **Auto-adjusting confidence** — scanner success rates automatically tune confidence thresholds
 
 ---
 
@@ -1693,6 +1704,12 @@ git push origin feature/my-amazing-feature
 - [x] GitHub Actions workflow
 - [x] Basic CLI
 - [x] Safety guarantees (atomic operations, backups, rollback)
+- [x] MCP Server with FastMCP (10 tools, resources, prompts)
+- [x] Azure integrations (Key Vault, Container Apps, Monitor)
+- [x] Enterprise features (RBAC, multi-tenant, approval workflows, budget)
+- [x] Business intelligence (5-factor impact scoring, dynamic re-prioritization)
+- [x] Feedback & learning (PR outcomes, preferences, historical patterns)
+- [x] SLA & reliability reporting
 
 ### Q2 2026 🚧
 - [ ] **JavaScript/TypeScript support**

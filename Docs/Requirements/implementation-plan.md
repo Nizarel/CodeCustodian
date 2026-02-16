@@ -1459,7 +1459,7 @@ uv add --dev pytest pytest-cov pytest-asyncio ruff mypy vcrpy
 **File:** `src/codecustodian/intelligence/business_impact.py`
 
 **Tasks:**
-- [ ] **10.1.1** Implement 5-factor `BusinessImpactScorer`:
+- [x] **10.1.1** Implement 5-factor `BusinessImpactScorer`:
   ```python
   class BusinessImpactScorer:
       """5-factor business impact scoring (FR-PRIORITY-100).
@@ -1498,7 +1498,7 @@ uv add --dev pytest pytest-cov pytest-asyncio ruff mypy vcrpy
 **File:** `src/codecustodian/intelligence/reprioritization.py`
 
 **Tasks:**
-- [ ] **10.2.1** Implement event-driven re-prioritization:
+- [x] **10.2.1** Implement event-driven re-prioritization:
   ```python
   class DynamicReprioritizer:
       """Re-evaluate priorities based on changing context (FR-PRIORITY-101)."""
@@ -1528,7 +1528,7 @@ uv add --dev pytest pytest-cov pytest-asyncio ruff mypy vcrpy
 **Files:** `src/codecustodian/feedback/learning.py`, `src/codecustodian/feedback/history.py`, `src/codecustodian/feedback/preferences.py`
 
 **Tasks:**
-- [ ] **10.3.1** Implement `FeedbackCollector` (FR-LEARN-100):
+- [x] **10.3.1** Implement `FeedbackCollector` (FR-LEARN-100):
   ```python
   class FeedbackCollector:
       """Track PR outcomes to learn and improve over time."""
@@ -1555,7 +1555,7 @@ uv add --dev pytest pytest-cov pytest-asyncio ruff mypy vcrpy
           return merged / max(len(records), 1)
   ```
 
-- [ ] **10.3.2** Implement `PreferenceStore` (from `@codecustodian feedback` commands):
+- [x] **10.3.2** Implement `PreferenceStore` (from `@codecustodian feedback` commands):
   ```python
   class PreferenceStore:
       """Store team/engineer preferences learned from feedback."""
@@ -1569,7 +1569,7 @@ uv add --dev pytest pytest-cov pytest-asyncio ruff mypy vcrpy
           ...
   ```
 
-- [ ] **10.3.3** Implement `HistoricalPatternRecognizer` (FR-LEARN-101):
+- [x] **10.3.3** Implement `HistoricalPatternRecognizer` (FR-LEARN-101):
   ```python
   class HistoricalPatternRecognizer:
       """Query historical refactorings across org for similar patterns."""
@@ -1589,7 +1589,7 @@ uv add --dev pytest pytest-cov pytest-asyncio ruff mypy vcrpy
           } for r in similar]
   ```
 
-- [ ] **10.3.4** Inject learned preferences into Copilot SDK prompts:
+- [x] **10.3.4** Inject learned preferences into Copilot SDK prompts:
   - Append team preferences to system prompt
   - Include similar historical patterns as context
   - Auto-adjust confidence thresholds based on scanner success rates
@@ -1601,7 +1601,7 @@ uv add --dev pytest pytest-cov pytest-asyncio ruff mypy vcrpy
 **File:** `src/codecustodian/enterprise/sla_reporter.py`
 
 **Tasks:**
-- [ ] **10.4.1** Implement `SLAReporter`:
+- [x] **10.4.1** Implement `SLAReporter`:
   - Track: run success rate, average time to PR, failure reasons, failure trends
   - Alert on abnormal failure spikes
   - Dashboard metrics export to Azure Monitor
