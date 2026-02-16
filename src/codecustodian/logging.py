@@ -7,6 +7,7 @@ context injection (finding_id, pipeline stage, file paths).
 from __future__ import annotations
 
 import logging
+import re
 import sys
 from typing import Any
 
@@ -17,6 +18,36 @@ _console = Console(stderr=True)
 
 # Shared logger name
 LOGGER_NAME = "codecustodian"
+
+_SECRET_PATTERNS: list[re.Pattern[str]] = [
+    re.compile(r"\bghp_[A-Za-z0-9]{20,}\b"),
+    re.compile(r"\bsk-[A-Za-z0-9\-_]{20,}\b"),
+    re.compile(r"\bAKIA[A-Z0-9]{16}\b"),
+    re.compile(
+        r"(?i)(password|passwd|secret|token|api[_-]?key|authorization)\s*"
+        r"([:=])\s*([^,\s;]+)"
+    ),
+    re.compile(r"(?i)(Bearer\s+)([A-Za-z0-9\-._~+/]+=*)"),
+    re.compile(
+        r"(?i)(InstrumentationKey|AccountKey|SharedAccessKey|Sig)="
+        r"([^;\s]+)"
+    ),
+]
+
+
+def _mask_secrets(text: str) -> str:
+    """Redact common token and secret patterns from log text."""
+    masked = text
+    for pattern in _SECRET_PATTERNS:
+        if "Bearer" in pattern.pattern:
+            masked = pattern.sub(r"\1***REDACTED***", masked)
+        elif "password|passwd|secret|token|api" in pattern.pattern:
+            masked = pattern.sub(r"\1\2***REDACTED***", masked)
+        elif "InstrumentationKey" in pattern.pattern:
+            masked = pattern.sub(r"\1=***REDACTED***", masked)
+        else:
+            masked = pattern.sub("***REDACTED***", masked)
+    return masked
 
 
 def get_logger(name: str | None = None) -> logging.Logger:
@@ -77,14 +108,15 @@ class _JsonFormatter(logging.Formatter):
     def format(self, record: logging.LogRecord) -> str:
         import json
 
+        message = _mask_secrets(record.getMessage())
         entry: dict[str, Any] = {
             "ts": self.formatTime(record),
             "level": record.levelname,
             "logger": record.name,
-            "msg": record.getMessage(),
+            "msg": message,
         }
         if record.exc_info and record.exc_info[1]:
-            entry["exception"] = str(record.exc_info[1])
+            entry["exception"] = _mask_secrets(str(record.exc_info[1]))
         # Merge extra context injected via `logger.info("…", extra={…})`
         for key in ("finding_id", "stage", "file_path", "duration"):
             val = getattr(record, key, None)

@@ -63,6 +63,29 @@ module monitor 'modules/monitor.bicep' = {
   }
 }
 
+// ── Dashboard + Alerts ───────────────────────────────────────────────────
+
+module dashboard 'modules/dashboard.bicep' = {
+  name: 'dashboard'
+  params: {
+    projectName: projectName
+    environment: environment
+    location: location
+    appInsightsId: monitor.outputs.appInsightsId
+    lawId: monitor.outputs.lawId
+  }
+}
+
+module alerts 'modules/alerts.bicep' = {
+  name: 'alerts'
+  params: {
+    projectName: projectName
+    environment: environment
+    location: location
+    appInsightsId: monitor.outputs.appInsightsId
+  }
+}
+
 // ── Azure Container Registry ──────────────────────────────────────────────
 
 module acr 'modules/acr.bicep' = {
@@ -113,3 +136,5 @@ output containerAppFqdn string = containerApp.outputs.fqdn
 output keyVaultUri string = keyvault.outputs.vaultUri
 output appInsightsConnectionString string = monitor.outputs.appInsightsConnectionString
 output managedIdentityClientId string = identity.outputs.clientId
+output dashboardId string = dashboard.outputs.dashboardId
+output alertRuleIds array = alerts.outputs.alertRuleIds

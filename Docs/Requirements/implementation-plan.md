@@ -1616,14 +1616,14 @@ uv add --dev pytest pytest-cov pytest-asyncio ruff mypy vcrpy
 **Requirements covered:** FR-SEC-001 through FR-SEC-003, FR-SEC-100
 
 **Tasks:**
-- [ ] **11.1.1** Secrets management: Azure Key Vault (9.5), mask tokens in logs, validate at startup
-- [ ] **11.1.2** Code execution safety: path traversal prevention, 10MB limit, no `eval`
-- [ ] **11.1.3** Complete audit trail (FR-SEC-100): JSON log with SHA-256 hashing for every action:
+- [x] **11.1.1** Secrets management: Azure Key Vault (9.5), mask tokens in logs, validate at startup
+- [x] **11.1.2** Code execution safety: path traversal prevention, 10MB limit, no `eval`
+- [x] **11.1.3** Complete audit trail (FR-SEC-100): JSON log with SHA-256 hashing for every action:
   - timestamp, event_type, finding_id, file_path, actor, changes, ai_reasoning, confidence_score, verification results, pr_number, approver, merge_date
   - Primary: Azure Monitor Logs (KQL queryable)
   - Backup: Azure Blob Storage (immutable, 7-year retention configurable)
-- [ ] **11.1.4** Run Bandit on CodeCustodian's own codebase
-- [ ] **11.1.5** Add `SECURITY.md`
+- [x] **11.1.4** Run Bandit on CodeCustodian's own codebase
+- [x] **11.1.5** Add `SECURITY.md`
 
 ### Step 11.2 — Responsible AI Compliance
 
@@ -1631,7 +1631,7 @@ uv add --dev pytest pytest-cov pytest-asyncio ruff mypy vcrpy
 **Requirements covered:** FR-SEC-001 (RAI — 15 pts)
 
 **Tasks:**
-- [ ] **11.2.1** Create `docs/RESPONSIBLE_AI.md`:
+- [x] **11.2.1** Create `docs/RESPONSIBLE_AI.md`:
   - **Human-in-the-loop**: All refactorings require human review before merge
   - **Explainability**: Every PR includes detailed AI reasoning from Copilot SDK
   - **Confidence scoring**: 1-10 with factor breakdown
@@ -1647,7 +1647,7 @@ uv add --dev pytest pytest-cov pytest-asyncio ruff mypy vcrpy
 **Requirements covered:** FR-OBS-100, FR-OBS-101
 
 **Tasks:**
-- [ ] **11.3.1** Create Azure Monitor dashboard definition (ARM template):
+- [x] **11.3.1** Create Azure Monitor dashboard definition (ARM template):
   - **Widget 1**: Findings over time by type (line chart)
   - **Widget 2**: PR success rate (target 95%+)
   - **Widget 3**: Cost savings (weekly, cumulative)
@@ -1656,7 +1656,7 @@ uv add --dev pytest pytest-cov pytest-asyncio ruff mypy vcrpy
   - **Widget 6**: ROI metrics (hours saved, cost per PR, payback)
   - **Widget 7**: Budget utilization per team (NEW — FR-COST-100)
   - **Widget 8**: SLA metrics (run success rate, time-to-PR) (NEW — BR-ENT-002)
-- [ ] **11.3.2** Configure alerts:
+- [x] **11.3.2** Configure alerts:
   - PR success rate below 90% → increase confidence threshold
   - Cost exceeds budget → pause non-critical
   - High-severity finding spike → notify security

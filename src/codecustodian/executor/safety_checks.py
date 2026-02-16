@@ -1,4 +1,4 @@
-"""Pre-execution safety checks — 5-point safety system (FR-EXEC-101).
+"""Pre-execution safety checks — extended safety system (FR-EXEC-101).
 
 Every refactoring must pass ALL checks before execution begins.
 Failure on any check aborts or downgrades to proposal mode.
@@ -8,7 +8,8 @@ Checks:
 2. Import Availability — verify all imports resolve
 3. Critical Path Protection — confidence ≥ 9 for critical files
 4. Concurrent Change Detection — git SHA mismatch → abort
-5. Secrets Detection — block hardcoded secrets
+5. Dangerous Function Detection — block ``eval``/``exec`` style calls
+6. Secrets Detection — block hardcoded secrets
 """
 
 from __future__ import annotations
@@ -71,9 +72,11 @@ PROTECTED_FILES: set[str] = {
     "LICENSE",
 }
 
+_DANGEROUS_CALLS: set[str] = {"eval", "exec", "compile", "__import__"}
+
 
 class SafetyCheckRunner:
-    """5-point pre-execution safety system (FR-EXEC-101).
+    """Extended pre-execution safety system (FR-EXEC-101).
 
     Usage::
 
@@ -89,7 +92,7 @@ class SafetyCheckRunner:
     async def run_all_checks(
         self, plan: RefactoringPlan, finding: Finding | None = None
     ) -> SafetyResult:
-        """Run all 5 safety checks sequentially.
+        """Run all safety checks sequentially.
 
         Args:
             plan: The refactoring plan to validate.
@@ -104,6 +107,7 @@ class SafetyCheckRunner:
         checks.append(await self.check_import_availability(plan))
         checks.append(await self.check_critical_path(plan, finding))
         checks.append(await self.check_concurrent_changes(plan))
+        checks.append(await self.check_dangerous_functions(plan))
         checks.append(await self.check_secrets(plan))
 
         any_failed = any(c.failed for c in checks)
@@ -310,7 +314,53 @@ class SafetyCheckRunner:
             pass
         return None
 
-    # ── Check 5: Secrets Detection ─────────────────────────────────────
+    # ── Check 5: Dangerous Function Detection ────────────────────────
+
+    async def check_dangerous_functions(
+        self, plan: RefactoringPlan
+    ) -> SafetyCheckResult:
+        """Block dangerous dynamic execution functions in generated code."""
+        findings: list[str] = []
+
+        for change in plan.changes:
+            if not change.new_content:
+                continue
+
+            try:
+                tree = ast.parse(change.new_content)
+            except SyntaxError:
+                continue
+
+            for node in ast.walk(tree):
+                if not isinstance(node, ast.Call):
+                    continue
+
+                called_name: str | None = None
+                if isinstance(node.func, ast.Name):
+                    called_name = node.func.id
+                elif isinstance(node.func, ast.Attribute):
+                    called_name = node.func.attr
+
+                if called_name in _DANGEROUS_CALLS:
+                    findings.append(f"{change.file_path}:{called_name}")
+
+        if findings:
+            return SafetyCheckResult(
+                name="dangerous_functions",
+                passed=False,
+                message=(
+                    "Dangerous dynamic execution calls detected: "
+                    f"{', '.join(findings)}."
+                ),
+            )
+
+        return SafetyCheckResult(
+            name="dangerous_functions",
+            passed=True,
+            message="No dangerous dynamic execution functions detected",
+        )
+
+    # ── Check 6: Secrets Detection ─────────────────────────────────────
 
     async def check_secrets(self, plan: RefactoringPlan) -> SafetyCheckResult:
         """Scan new code for hardcoded secrets (API keys, passwords, tokens)."""

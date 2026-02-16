@@ -2,62 +2,72 @@
 
 ## Overview
 
-CodeCustodian is designed with safety-first principles. All automated code changes go through multiple validation gates before being proposed as pull requests.
+CodeCustodian applies Responsible AI principles to autonomous refactoring in enterprise
+repositories. The system is built to keep humans in control, make decisions explainable,
+protect privacy, enforce safety checks, and provide clear accountability for every change.
 
-## Safety Measures
+## 1) Human-in-the-Loop
 
-### 1. Human-in-the-Loop
+- CodeCustodian never merges changes directly.
+- Every code modification is proposed through pull requests and requires human approval.
+- Policy-driven approval workflows can require additional approvers for sensitive repos,
+	high-risk findings, or critical-path files.
+- Low-confidence plans are downgraded to proposal mode instead of automatic execution.
 
-CodeCustodian never merges code directly. All changes are proposed as pull requests requiring human review and approval.
+## 2) Explainability
 
-### 2. Confidence Gating
+- Each pull request includes AI reasoning for why a change is recommended.
+- Confidence factors (test coverage, complexity, call sites, logic risk, multi-file scope)
+	are exposed to reviewers.
+- Alternative approaches can be generated for complex findings to support informed choice.
+- Verification outcomes (tests, linting, security checks) are attached for transparent review.
 
-Every refactoring plan receives a confidence score (1-10). Plans below the configured threshold (default: 7) are converted to issues instead of PRs.
+## 3) Confidence Scoring
 
-### 3. Pre-Execution Safety Checks
+- Confidence is scored from 1 to 10.
+- Action policy:
+	- **8–10**: standard PR flow
+	- **5–7**: draft PR with additional reviewer scrutiny
+	- **<5**: proposal-only mode (advisory issue, no direct execution)
+- Thresholds are configurable per repository and can be auto-adjusted from historical feedback.
 
-5-point validation before any code modification:
-1. File exists and is writable
-2. No uncommitted changes in target file
-3. Syntax validation of proposed changes
-4. Change scope within acceptable limits
-5. No protected files modified
+## 4) Fairness
 
-### 4. Atomic Operations
+- Reviewer and assignment recommendations prioritize expertise and current capacity,
+	not organizational seniority.
+- Work IQ context (team expertise, sprint load, incidents, dependency state) is used to
+	route changes to the right engineers at the right time.
+- The platform minimizes reviewer overload by controlling PR sizing and creation rate.
 
-All file modifications use atomic writes (temp file → rename) with automatic backup. On any failure, the original file is restored.
+## 5) Privacy
 
-### 5. Post-Execution Verification
+- Secrets are managed in Azure Key Vault and accessed via managed identity.
+- Structured logs redact tokens, API keys, bearer credentials, and connection-string secrets.
+- Tokens are scoped to least privilege and rotated regularly.
+- Source code is processed only for the refactoring workflow and is not retained beyond
+	configured local storage, logs, and audit requirements.
 
-After applying changes:
-- Full test suite execution
-- Lint/type checking (ruff + mypy)
-- Security scanning (Bandit)
-- Automatic rollback if any check fails
+## 6) Safety
 
-### 6. Scope Limitations
+- Multi-stage safety controls apply before, during, and after code execution.
+- Pre-execution checks include syntax validation, import availability, critical path
+	protection, concurrent change detection, dangerous function blocking (`eval`, `exec`,
+	`compile`, `__import__`), and secret detection.
+- File operations are atomic and rollback-safe.
+- Path traversal and symlink edits are blocked to keep modifications within repository scope.
+- Post-execution verification includes tests, linting, and security scans.
 
-- Maximum files per PR (configurable, default: 10)
-- Protected file detection (CI configs, build files)
-- Signature change detection
-- Risk level assessment (low/medium/high)
+## 7) Accountability
 
-## Transparency
+- Every operation is recorded in structured audit logs.
+- Audit entries include SHA-256 hashes for tamper-evident traceability.
+- Audit records capture actor, target files, change statistics, verification status,
+	and PR linkage metadata.
+- Commits and PRs include co-author traceability for AI-assisted changes.
 
-- Every PR includes AI reasoning and confidence scores
-- Alternative approaches are listed for review
-- Audit logs record all operations
-- Feedback loops capture reviewer decisions for improvement
+## 8) Proposal Mode and Continuous Improvement
 
-## Data Handling
-
-- No source code is stored permanently
-- Scan results are cached locally only
-- GitHub tokens use minimal required scopes
-- Azure Key Vault for secret management in production
-
-## Bias Mitigation
-
-- Scanners use deterministic rules, not ML-based pattern matching
-- Confidence scoring is formula-based with documented factors
-- Feedback loops enable correction over time
+- Proposal mode ensures the system defers to humans for uncertain or high-risk situations.
+- Reviewer feedback is captured to improve planner behavior and confidence calibration.
+- Historical outcomes are used to refine prompts, thresholds, and prioritization over time.
+- This closed-loop design supports safe continuous improvement without removing human control.

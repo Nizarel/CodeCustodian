@@ -37,9 +37,11 @@ class SafeFileEditor:
     def __init__(
         self,
         backup_dir: str | Path = ".codecustodian-backups",
+        repo_root: str | Path | None = None,
         validate_syntax: bool = True,
         backup_manager: BackupManager | None = None,
     ) -> None:
+        self.repo_root = Path(repo_root).resolve() if repo_root is not None else None
         self.validate_syntax = validate_syntax
         if backup_manager is not None:
             self.backup_manager = backup_manager
@@ -118,9 +120,21 @@ class SafeFileEditor:
 
     # ── Validation helpers ─────────────────────────────────────────────
 
-    @staticmethod
-    def _validate_file(file_path: Path, change: FileChange) -> None:
+    def _validate_file(self, file_path: Path, change: FileChange) -> None:
         """Validate file before editing — edge case handling."""
+        normalized = Path(file_path)
+        if ".." in normalized.parts:
+            raise ValueError(f"Path traversal sequence not allowed: {file_path}")
+
+        resolved_target = normalized.resolve(strict=False)
+        if self.repo_root is not None and not resolved_target.is_relative_to(self.repo_root):
+            raise ValueError(
+                f"File path must remain within repository root {self.repo_root}: {file_path}"
+            )
+
+        if file_path.exists() and file_path.is_symlink():
+            raise ValueError(f"Symlink targets are not editable: {file_path}")
+
         if change.change_type == ChangeType.INSERT and not file_path.exists():
             # Creating a new file — OK
             return

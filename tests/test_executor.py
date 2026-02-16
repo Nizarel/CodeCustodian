@@ -384,7 +384,7 @@ class TestSafetyCheckRunner:
             result = _run(runner.run_all_checks(plan))
 
             assert result.passed
-            assert len(result.checks) == 5
+            assert len(result.checks) == 6
             assert result.action == "proceed"
 
     def test_syntax_check_fails(self):
