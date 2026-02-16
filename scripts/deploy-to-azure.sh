@@ -9,6 +9,7 @@ RESOURCE_GROUP="${RESOURCE_GROUP:-Custodian-Rg}"
 LOCATION="${LOCATION:-eastus2}"
 ENVIRONMENT="${ENVIRONMENT:-dev}"
 IMAGE_TAG="${IMAGE_TAG:-latest}"
+DEPLOYMENT_NAME="codecustodian-$(date +%Y%m%d%H%M%S)"
 
 echo "==> Setting subscription to $SUBSCRIPTION"
 az account set --subscription "$SUBSCRIPTION"
@@ -25,10 +26,26 @@ az deployment group create \
   --template-file infra/main.bicep \
   --parameters "infra/parameters.${ENVIRONMENT}.bicepparam" \
   --parameters imageTag="$IMAGE_TAG" \
-  --name "codecustodian-$(date +%Y%m%d%H%M%S)"
+  --name "$DEPLOYMENT_NAME"
 
 echo "==> Deployment complete"
 az deployment group show \
   --resource-group "$RESOURCE_GROUP" \
-  --name "$(az deployment group list --resource-group "$RESOURCE_GROUP" --query '[0].name' -o tsv)" \
+  --name "$DEPLOYMENT_NAME" \
   --query properties.outputs
+
+FQDN="$(az deployment group show \
+  --resource-group "$RESOURCE_GROUP" \
+  --name "$DEPLOYMENT_NAME" \
+  --query properties.outputs.containerAppFqdn.value \
+  -o tsv)"
+
+if [ -z "$FQDN" ]; then
+  echo "!! Could not resolve Container App FQDN from deployment outputs"
+  exit 1
+fi
+
+echo "==> Running health check on https://${FQDN}/health"
+curl --retry 5 --retry-delay 10 --retry-all-errors --fail "https://${FQDN}/health"
+echo
+echo "==> Health check passed"

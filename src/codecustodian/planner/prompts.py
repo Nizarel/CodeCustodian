@@ -180,11 +180,24 @@ _TYPE_PROMPT_MAP: dict[str, object] = {
 # ── Public prompt builders ─────────────────────────────────────────────────
 
 
-def build_finding_prompt(finding: Finding, context: CodeContext) -> str:
+def build_finding_prompt(
+    finding: Finding,
+    context: CodeContext,
+    *,
+    preferences: str = "",
+    historical_context: str = "",
+) -> str:
     """Build a comprehensive user prompt for refactoring a specific finding.
 
-    Includes type-specific enrichments, code context, test info, and
-    call-site information.
+    Includes type-specific enrichments, code context, test info,
+    call-site information, and optionally learned preferences and
+    historical pattern context (FR-LEARN-100, FR-LEARN-101).
+
+    Args:
+        finding: The finding to plan for.
+        context: Code context surrounding the finding.
+        preferences: Formatted team/user preferences for prompt injection.
+        historical_context: Formatted historical pattern context.
     """
     # Type-specific enrichment
     type_builder = _TYPE_PROMPT_MAP.get(finding.type.value)
@@ -219,6 +232,10 @@ def build_finding_prompt(finding: Finding, context: CodeContext) -> str:
     # Truncate source if too long
     source = truncate_context(context.source_code)
 
+    # Learned preferences and history (FR-LEARN-100, FR-LEARN-101)
+    pref_section = f"\n\n{preferences}" if preferences else ""
+    hist_section = f"\n\n{historical_context}" if historical_context else ""
+
     return f"""\
 {type_section}
 
@@ -237,6 +254,7 @@ Code Context:
 Has test coverage: {context.has_tests}
 
 Suggestion: {finding.suggestion}
+{pref_section}{hist_section}
 
 Task: Generate a refactoring plan as JSON following the output schema.
 Preserve exact behavior. Minimize changes.

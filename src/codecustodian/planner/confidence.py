@@ -15,6 +15,8 @@ from codecustodian.models import CodeContext, RefactoringPlan
 def calculate_confidence(
     plan: RefactoringPlan,
     context: CodeContext,
+    *,
+    scanner_adjustment: int = 0,
 ) -> tuple[int, list[str]]:
     """Score confidence 1-10 and return named deduction factors.
 
@@ -27,6 +29,13 @@ def calculate_confidence(
     - Complex multi-file refactoring
     - No test coverage
     - Significant logic changes
+
+    Args:
+        plan: The refactoring plan to score.
+        context: Code context for the finding.
+        scanner_adjustment: Adjustment from ``FeedbackCollector`` based
+            on historical scanner success rate (FR-LEARN-100).
+            Positive = increase threshold (reduce score), negative = boost.
 
     Returns:
         Tuple of ``(score, factors_list)`` where each factor string
@@ -91,6 +100,14 @@ def calculate_confidence(
     if context.criticality_level == "critical":
         score -= 1
         factors.append("critical_path: -1")
+
+    # ── Learning-based adjustment (FR-LEARN-100) ───────────────────
+    if scanner_adjustment > 0:
+        score -= scanner_adjustment
+        factors.append(f"scanner_history_adjustment: -{scanner_adjustment}")
+    elif scanner_adjustment < 0:
+        score -= scanner_adjustment  # Negative adjustment = boost
+        factors.append(f"scanner_history_boost: +{abs(scanner_adjustment)}")
 
     final_score = max(1, min(10, score))
     return final_score, factors

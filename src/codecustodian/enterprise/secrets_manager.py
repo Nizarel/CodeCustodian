@@ -196,6 +196,18 @@ class SecretsManager:
             )
         return stale
 
+    async def get_github_token(self) -> str:
+        """Retrieve GitHub token from Key Vault/env."""
+        return await self.get_secret("github-token")
+
+    async def get_copilot_token(self) -> str:
+        """Retrieve Copilot token from Key Vault/env."""
+        return await self.get_secret("copilot-token")
+
+    async def get_devops_pat(self) -> str:
+        """Retrieve Azure DevOps PAT from Key Vault/env."""
+        return await self.get_secret("devops-pat")
+
     # ── Internal ───────────────────────────────────────────────────────
 
     def _check_rotation(self, name: str, secret: Any) -> None:

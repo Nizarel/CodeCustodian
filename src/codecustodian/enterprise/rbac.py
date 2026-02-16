@@ -109,6 +109,7 @@ DEFAULT_POLICIES: list[RBACPolicy] = [
             Permission.EXECUTE,
             Permission.CREATE_PR,
             Permission.VIEW_REPORTS,
+            Permission.APPROVE_PRS,
         ],
     ),
     RBACPolicy(

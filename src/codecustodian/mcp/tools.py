@@ -441,53 +441,72 @@ def register_tools(mcp: FastMCP) -> None:  # noqa: C901 — intentionally long
     @mcp.tool(annotations=ToolAnnotations(readOnlyHint=True))
     async def get_business_impact(
         finding_id: str,
+        repo_path: str = ".",
         ctx: Context = None,  # type: ignore[assignment]
     ) -> dict:
         """Analyse business impact of a technical debt finding.
 
-        Considers severity, type, file location, and metadata to
-        produce an impact assessment.
+        Uses the 5-factor ``BusinessImpactScorer`` (FR-PRIORITY-100)
+        to compute usage frequency, criticality, change frequency,
+        velocity impact, and regulatory risk scores.
 
         Args:
             finding_id: ID of a cached finding.
+            repo_path: Path to repository root (for git history analysis).
         """
+        from codecustodian.intelligence.business_impact import BusinessImpactScorer
         from codecustodian.mcp.cache import scan_cache
 
         finding = await scan_cache.get_finding(finding_id)
         if finding is None:
             return {"error": f"Finding '{finding_id}' not in cache"}
 
+        if ctx:
+            await ctx.info(f"Scoring business impact for {finding.file}")
+
+        scorer = BusinessImpactScorer()
+        breakdown = await scorer.score_detailed(finding, repo_path)
+
         sev = finding.severity.value if hasattr(finding.severity, "value") else str(finding.severity)
-        typ = finding.type.value if hasattr(finding.type, "value") else str(finding.type)
 
-        impact_map = {
-            "critical": {"level": "critical", "user_impact": "Service outage or data loss risk"},
-            "high": {"level": "high", "user_impact": "Degraded reliability or performance"},
-            "medium": {"level": "medium", "user_impact": "Reduced maintainability"},
-            "low": {"level": "low", "user_impact": "Minor code quality concern"},
-            "info": {"level": "info", "user_impact": "Informational only"},
-        }
-
-        impact = impact_map.get(sev, impact_map["info"])
-
-        sla_risk = sev in ("critical", "high") and typ == "security"
+        # Map score to business impact level for backward compatibility
+        if breakdown.total > 500 or sev == "critical":
+            biz_level = "critical"
+        elif breakdown.total > 200 or sev == "high":
+            biz_level = "high"
+        elif breakdown.total > 100 or sev == "medium":
+            biz_level = "medium"
+        else:
+            biz_level = "low"
 
         result = {
             "finding_id": finding_id,
-            "business_impact_level": impact["level"],
-            "user_impact": impact["user_impact"],
-            "sla_risk": sla_risk,
+            "total_score": breakdown.total,
+            "factors": {
+                "usage_frequency": breakdown.usage,
+                "criticality": breakdown.criticality,
+                "change_frequency": breakdown.change_frequency,
+                "velocity_impact": breakdown.velocity_impact,
+                "regulatory_risk": breakdown.regulatory_risk,
+            },
+            "factor_descriptions": breakdown.factors,
             "affected_file": finding.file,
-            "finding_type": typ,
-            "priority_score": finding.priority_score,
+            "finding_type": finding.type.value if hasattr(finding.type, "value") else str(finding.type),
+            "severity": sev,
+            # Backward-compatible keys
+            "business_impact_level": biz_level,
+            "sla_risk": biz_level in ("critical", "high"),
             "recommendation": (
-                "Fix immediately" if sev == "critical"
-                else "Schedule for next sprint" if sev == "high"
+                "Fix immediately" if biz_level == "critical"
+                else "Schedule for next sprint" if biz_level in ("high", "medium")
                 else "Add to backlog"
             ),
         }
 
         if ctx:
-            await ctx.info(f"Business impact: {impact['level']} — {impact['user_impact']}")
+            await ctx.info(
+                f"Business impact: {breakdown.total:.0f} — "
+                f"{', '.join(breakdown.factors) or 'baseline'}"
+            )
 
         return result

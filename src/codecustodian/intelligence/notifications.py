@@ -24,7 +24,11 @@ Usage::
 
 from __future__ import annotations
 
+import asyncio
+import smtplib
 from datetime import datetime, timezone
+from email.message import EmailMessage
+from enum import Enum
 from typing import Any
 
 from pydantic import BaseModel, Field
@@ -37,6 +41,17 @@ logger = get_logger("intelligence.notifications")
 # ── Models ─────────────────────────────────────────────────────────────────
 
 SEVERITY_ORDER = {"critical": 0, "high": 1, "medium": 2, "low": 3, "info": 4}
+
+
+class NotificationEventType(str, Enum):
+    """Canonical notification event types."""
+
+    NEW_PR = "new_pr"
+    HIGH_SEVERITY_FINDING = "high_severity_finding"
+    VALIDATION_FAILURE = "validation_failure"
+    APPROVAL_REQUESTED = "approval_requested"
+    BUDGET_ALERT = "budget_alert"
+    SCAN_COMPLETE = "scan_complete"
 
 
 class NotificationEvent(BaseModel):
@@ -81,11 +96,13 @@ class NotificationEngine:
         self,
         github_token: str = "",
         teams_webhook_url: str = "",
+        email_config: dict[str, Any] | None = None,
         severity_threshold: str = "medium",
         enabled_events: list[str] | None = None,
     ) -> None:
         self.github_token = github_token
         self.teams_webhook_url = teams_webhook_url
+        self.email_config = email_config or {}
         self.severity_threshold = severity_threshold
         self.enabled_events = enabled_events or []
         self._history: list[NotificationEvent] = []
@@ -154,6 +171,18 @@ class NotificationEngine:
                 result.errors.append(f"teams: {exc}")
                 logger.warning("Teams notification failed: %s", exc)
 
+        # SMTP email
+        if self.email_config.get("smtp_host") and self.email_config.get("to_addrs"):
+            result.channels_attempted.append("email")
+            try:
+                await self._send_email(evt)
+                result.channels_succeeded.append("email")
+                evt.channels_sent.append("email")
+            except Exception as exc:
+                result.channels_failed.append("email")
+                result.errors.append(f"email: {exc}")
+                logger.warning("Email notification failed: %s", exc)
+
         self._history.append(evt)
         logger.info(
             "Notification '%s' sent to %d/%d channels",
@@ -212,6 +241,44 @@ class NotificationEngine:
         async with httpx.AsyncClient(timeout=15.0) as client:
             resp = await client.post(self.teams_webhook_url, json=payload)
             resp.raise_for_status()
+
+    async def _send_email(self, evt: NotificationEvent) -> None:
+        """Send SMTP email notification."""
+        smtp_host = str(self.email_config.get("smtp_host", ""))
+        smtp_port = int(self.email_config.get("smtp_port", 465))
+        username = str(self.email_config.get("username", ""))
+        password = str(self.email_config.get("password", ""))
+        from_addr = str(self.email_config.get("from_addr", username))
+        to_addrs = self.email_config.get("to_addrs", [])
+        if isinstance(to_addrs, str):
+            to_addrs = [to_addrs]
+
+        if not smtp_host or not to_addrs:
+            raise ValueError("Email config requires smtp_host and to_addrs")
+
+        message = EmailMessage()
+        message["Subject"] = f"[{evt.severity.upper()}] {evt.title or evt.event}"
+        message["From"] = from_addr
+        message["To"] = ", ".join(to_addrs)
+        message.set_content(
+            "\n".join(
+                [
+                    f"Event: {evt.event}",
+                    f"Severity: {evt.severity}",
+                    f"Time: {evt.timestamp}",
+                    "",
+                    evt.body,
+                ]
+            )
+        )
+
+        def _send() -> None:
+            with smtplib.SMTP_SSL(smtp_host, smtp_port, timeout=15) as smtp:
+                if username:
+                    smtp.login(username, password)
+                smtp.send_message(message)
+
+        await asyncio.to_thread(_send)
 
     def _build_adaptive_card(self, evt: NotificationEvent) -> dict[str, Any]:
         """Build an Adaptive Card JSON for Teams."""

@@ -34,6 +34,7 @@ class ExpertResult(BaseModel):
     relevance_score: float = 0.0
     recent_files: list[str] = Field(default_factory=list)
     teams: list[str] = Field(default_factory=list)
+    alternatives: list[dict[str, Any]] = Field(default_factory=list)
     available: bool = True
 
 
@@ -42,8 +43,11 @@ class SprintContext(BaseModel):
 
     sprint_name: str = ""
     days_remaining: int = 0
+    velocity: float = 0.0
     capacity_pct: float = 100.0
+    active_incidents: int = 0
     active_work_items: int = 0
+    committed_work_at_risk: bool = False
     is_code_freeze: bool = False
 
 
@@ -209,6 +213,7 @@ class WorkIQContextProvider:
             relevance_score=float(data.get("relevance", 0.0)),
             recent_files=data.get("recent_files", []),
             teams=data.get("teams", []),
+            alternatives=data.get("alternatives", []),
             available=data.get("available", True),
         )
 
@@ -234,13 +239,16 @@ class WorkIQContextProvider:
         return SprintContext(
             sprint_name=data.get("sprint_name", "current"),
             days_remaining=int(data.get("days_remaining", 0)),
+            velocity=float(data.get("velocity", 0.0)),
             capacity_pct=float(data.get("capacity_pct", 100.0)),
+            active_incidents=int(data.get("active_incidents", 0)),
             active_work_items=int(data.get("active_work_items", 0)),
+            committed_work_at_risk=bool(data.get("committed_work_at_risk", False)),
             is_code_freeze=is_freeze,
         )
 
     async def should_create_pr_now(self, finding: Finding) -> bool:
-        """Decide whether to create a PR now or defer (FR-WORKIQ-102).
+        """Decide whether to create a PR now or defer (FR-WORKIQ-101).
 
         Considers sprint capacity, code-freeze status, and severity.  If
         Work IQ is unreachable, defaults to ``True`` (always create).
@@ -251,24 +259,73 @@ class WorkIQContextProvider:
         if self._available is False:
             return True
 
+        priority = float(getattr(finding, "priority_score", 0.0))
+
+        days_remaining_raw = getattr(sprint, "days_remaining", None)
+        capacity_pct_raw = getattr(sprint, "capacity_pct", 100.0)
+        incidents_raw = getattr(sprint, "active_incidents", 0)
+        committed_risk_raw = getattr(sprint, "committed_work_at_risk", False)
+        is_code_freeze = bool(getattr(sprint, "is_code_freeze", False))
+
+        try:
+            days_remaining = int(days_remaining_raw)
+        except Exception:
+            days_remaining = 999
+
+        try:
+            capacity_pct = float(capacity_pct_raw)
+        except Exception:
+            capacity_pct = 100.0
+
+        try:
+            active_incidents = int(incidents_raw)
+        except Exception:
+            active_incidents = 0
+
+        committed_work_at_risk = bool(committed_risk_raw)
+
         # Never during code freeze (unless critical/high security)
-        if sprint.is_code_freeze:
+        if is_code_freeze:
             is_urgent = (
                 finding.severity in (SeverityLevel.CRITICAL, SeverityLevel.HIGH)
                 and finding.type.value == "security"
             )
-            if not is_urgent:
-                logger.info(
-                    "Deferring PR for %s — code freeze active", finding.id
-                )
-                return False
+            if is_urgent:
+                return True
+            logger.info(
+                "Deferring PR for %s — code freeze active", finding.id
+            )
+            return False
+
+        if days_remaining < 3 and priority < 150:
+            logger.info(
+                "Deferring PR for %s — sprint ending soon (%d days)",
+                finding.id,
+                days_remaining,
+            )
+            return False
+
+        if active_incidents > 0 and priority < 100:
+            logger.info(
+                "Deferring PR for %s — %d active incident(s)",
+                finding.id,
+                active_incidents,
+            )
+            return False
+
+        if committed_work_at_risk and priority <= 150:
+            logger.info(
+                "Deferring PR for %s — committed work is at risk",
+                finding.id,
+            )
+            return False
 
         # Defer if sprint is over-capacity (>90%)
-        if sprint.capacity_pct > 90.0:
+        if capacity_pct > 90.0:
             logger.info(
                 "Deferring PR for %s — sprint capacity at %.0f%%",
                 finding.id,
-                sprint.capacity_pct,
+                capacity_pct,
             )
             return False
 
@@ -278,7 +335,7 @@ class WorkIQContextProvider:
         self,
         query: str,
     ) -> OrgContext:
-        """Fetch organizational context for a topic (FR-WORKIQ-100).
+        """Fetch organizational context for a topic (FR-WORKIQ-102).
 
         Queries Work IQ for related documents, recent Teams discussions,
         upcoming meetings, and relevant teams.
@@ -290,6 +347,10 @@ class WorkIQContextProvider:
         msgs_data = await self._call_tool(
             "search_messages",
             {"query": query, "limit": 5},
+        )
+        meetings_data = await self._call_tool(
+            "search_events",
+            {"query": f"roadmap OR dependency OR {query}", "limit": 5},
         )
 
         return OrgContext(
@@ -304,6 +365,12 @@ class WorkIQContextProvider:
                 for m in msgs_data.get("messages", [])
             ]
             if msgs_data
+            else [],
+            upcoming_meetings=[
+                e.get("title", e.get("subject", ""))
+                for e in meetings_data.get("events", [])
+            ]
+            if meetings_data
             else [],
             related_teams=docs_data.get("teams", []) if docs_data else [],
         )

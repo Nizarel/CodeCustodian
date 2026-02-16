@@ -15,6 +15,7 @@ import os
 import time
 from collections import defaultdict
 from datetime import UTC, datetime
+from pathlib import Path
 from typing import TYPE_CHECKING
 
 from opentelemetry import trace
@@ -27,6 +28,9 @@ from codecustodian.exceptions import (
     VerifierError,
 )
 from codecustodian.logging import get_logger
+from codecustodian.intelligence.business_impact import BusinessImpactScorer
+from codecustodian.enterprise.sla_reporter import SLAReporter
+from codecustodian.integrations.work_iq import WorkIQContextProvider
 from codecustodian.models import (
     ExecutionResult,
     Finding,
@@ -69,6 +73,27 @@ class Pipeline:
         self.copilot_token = copilot_token
         self.dry_run = dry_run
         self._result = PipelineResult()
+        self._work_iq: WorkIQContextProvider | None = None
+        if getattr(self.config.work_iq, "enabled", False):
+            self._work_iq = WorkIQContextProvider()
+
+        # Phase 8: Business Impact Scorer
+        self._impact_scorer: BusinessImpactScorer | None = None
+        if getattr(self.config, "business_impact", None) and self.config.business_impact.enabled:
+            from codecustodian.intelligence.business_impact import ScoringWeights
+            weights = ScoringWeights(
+                usage=self.config.business_impact.usage_weight,
+                criticality=self.config.business_impact.criticality_weight,
+                change_frequency=self.config.business_impact.change_frequency_weight,
+                velocity_impact=self.config.business_impact.velocity_impact_weight,
+                regulatory_risk=self.config.business_impact.regulatory_risk_weight,
+            )
+            self._impact_scorer = BusinessImpactScorer(weights=weights)
+
+        # Phase 8: SLA Reporter
+        self._sla_reporter: SLAReporter | None = None
+        if getattr(self.config, "sla", None) and self.config.sla.enabled:
+            self._sla_reporter = SLAReporter(db_path=self.config.sla.db_path)
 
     async def run(self) -> PipelineResult:
         """Execute the full pipeline and return aggregated results."""
@@ -101,6 +126,7 @@ class Pipeline:
                 findings = self._dedup(findings)
 
                 # Stage 3: Prioritize (with business impact scoring)
+                findings = await self._score_business_impact(findings)
                 findings = self._prioritize(findings)
 
                 # Stage 4: Group & size for PR batching (BR-PLN-002)
@@ -129,6 +155,13 @@ class Pipeline:
             root_span.set_attribute("pipeline.duration_seconds", elapsed)
             root_span.set_attribute("pipeline.findings_count", len(self._result.findings))
             root_span.set_attribute("pipeline.prs_created", self._result.prs_created)
+
+            # Phase 8: Record SLA metrics (BR-ENT-002)
+            if self._sla_reporter is not None:
+                try:
+                    self._sla_reporter.record_from_pipeline_result(self._result)
+                except Exception as sla_exc:
+                    logger.warning("SLA recording failed: %s", sla_exc)
 
             logger.info("Pipeline finished in %.1fs", elapsed)
             return self._result
@@ -248,9 +281,58 @@ class Pipeline:
                 reverse=True,
             )
 
+    async def _score_business_impact(self, findings: list[Finding]) -> list[Finding]:
+        """Score business impact for all findings (FR-PRIORITY-100)."""
+        if self._impact_scorer is None:
+            return findings
+
+        with tracer.start_as_current_span(
+            "pipeline.business_impact",
+            attributes={"pipeline.input_count": len(findings)},
+        ):
+            logger.info("Scoring business impact for %d findings", len(findings))
+            for finding in findings:
+                try:
+                    score = await self._impact_scorer.score(finding, self.repo_path)
+                    finding.business_impact_score = score
+                except Exception as exc:
+                    logger.warning(
+                        "Business impact scoring failed for %s: %s",
+                        finding.id,
+                        exc,
+                    )
+            return findings
+
     async def _process_finding(self, finding: Finding) -> None:
         """Run plan → [approve] → execute/proposal → verify → PR for a finding."""
         try:
+            if self._work_iq is not None:
+                try:
+                    org_context = await self._work_iq.get_organizational_context(
+                        f"{finding.file} {finding.type.value}"
+                    )
+                    if (
+                        org_context.related_documents
+                        or org_context.recent_discussions
+                        or org_context.upcoming_meetings
+                        or org_context.related_teams
+                    ):
+                        finding.metadata["work_iq_context"] = org_context.model_dump()
+
+                    should_create = await self._work_iq.should_create_pr_now(finding)
+                    if not should_create:
+                        logger.info(
+                            "Deferring finding %s based on Work IQ sprint context",
+                            finding.id,
+                        )
+                        return
+                except Exception as exc:
+                    logger.warning(
+                        "Work IQ context lookup failed for %s: %s",
+                        finding.id,
+                        exc,
+                    )
+
             plan = await self._plan(finding)
             if plan is None:
                 return
@@ -639,6 +721,26 @@ class Pipeline:
 
                 # Create the PR
                 creator = PullRequestCreator(self.github_token, repo_name)
+                reviewers = list(self.config.github.reviewers)
+                team_reviewers = list(self.config.github.team_reviewers)
+
+                if self._work_iq is not None:
+                    try:
+                        expert = await self._work_iq.get_expert_for_finding(finding)
+                        finding.metadata["work_iq_expert"] = expert.model_dump()
+                        if expert.email and expert.available:
+                            reviewers = [expert.email] + [
+                                reviewer
+                                for reviewer in reviewers
+                                if reviewer != expert.email
+                            ]
+                    except Exception as exc:
+                        logger.warning(
+                            "Work IQ expert lookup failed for %s: %s",
+                            finding.id,
+                            exc,
+                        )
+
                 pr_info = creator.create_pr(
                     finding=finding,
                     plan=plan,
@@ -647,8 +749,8 @@ class Pipeline:
                     branch=execution.branch_name,
                     base=self.config.github.base_branch,
                     draft_threshold=self.config.github.draft_threshold,
-                    reviewers=self.config.github.reviewers,
-                    team_reviewers=self.config.github.team_reviewers,
+                    reviewers=reviewers,
+                    team_reviewers=team_reviewers,
                 )
 
                 # Post audit trail comment

@@ -15,6 +15,7 @@ Usage::
 from __future__ import annotations
 
 import json
+from calendar import monthrange
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
@@ -60,11 +61,17 @@ class BudgetAlert(BaseModel):
 class BudgetSummary(BaseModel):
     """Snapshot of the current budget state."""
 
+    team_id: str = ""
     monthly_budget: float
+    budget: float = 0.0
     total_spent: float
+    spent: float = 0.0
     remaining: float
     usage_pct: float
+    utilization_pct: float = 0.0
     entries_count: int
+    cost_per_pr: float = 0.0
+    projection: float = 0.0
     alerts_fired: list[int] = Field(default_factory=list)
     period: str = ""
 
@@ -88,11 +95,13 @@ class BudgetManager:
 
     def __init__(
         self,
+        team_id: str = "default",
         monthly_budget: float = 500.0,
         alert_thresholds: list[int] | None = None,
         hard_limit: bool = True,
         data_dir: str | Path = ".codecustodian-costs",
     ) -> None:
+        self.team_id = team_id
         self.monthly_budget = monthly_budget
         self.alert_thresholds = sorted(alert_thresholds or [50, 80, 90, 100])
         self.hard_limit = hard_limit
@@ -111,6 +120,7 @@ class BudgetManager:
     def from_config(cls, config: Any) -> BudgetManager:
         """Create a ``BudgetManager`` from a ``BudgetConfig`` model."""
         return cls(
+            team_id=getattr(config, "team_id", "default"),
             monthly_budget=config.monthly_budget,
             alert_thresholds=list(config.alert_thresholds),
             hard_limit=config.hard_limit,
@@ -155,6 +165,15 @@ class BudgetManager:
         )
 
         self._check_thresholds()
+        if self.hard_limit and self._total_spent > self.monthly_budget:
+            raise BudgetExceededError(
+                message=(
+                    f"Team {self.team_id} budget exhausted: "
+                    f"${self._total_spent:.2f}/${self.monthly_budget:.2f}"
+                ),
+                current_cost=self._total_spent,
+                budget_limit=self.monthly_budget,
+            )
         return entry
 
     # ── Budget enforcement ─────────────────────────────────────────────
@@ -193,12 +212,22 @@ class BudgetManager:
             if self.monthly_budget > 0
             else 0.0
         )
+        operation_counts = self._load_operation_counts()
+        pr_count = operation_counts.get("create_pr", 0)
+        cost_per_pr = self._total_spent / max(pr_count, 1)
+        projection = self._project_end_of_month()
         return BudgetSummary(
+            team_id=self.team_id,
             monthly_budget=self.monthly_budget,
+            budget=self.monthly_budget,
             total_spent=self._total_spent,
+            spent=self._total_spent,
             remaining=remaining,
             usage_pct=round(usage_pct, 2),
+            utilization_pct=round(usage_pct, 2),
             entries_count=self._count_entries(),
+            cost_per_pr=round(cost_per_pr, 4),
+            projection=round(projection, 2),
             alerts_fired=sorted(self._alerts_fired),
             period=self._period,
         )
@@ -269,3 +298,29 @@ class BudgetManager:
             for line in self._log_file.read_text(encoding="utf-8").splitlines()
             if line.strip()
         )
+
+    def _load_operation_counts(self) -> dict[str, int]:
+        """Count entries by operation for the current period."""
+        counts: dict[str, int] = {}
+        if not self._log_file.exists():
+            return counts
+        for line in self._log_file.read_text(encoding="utf-8").splitlines():
+            if not line.strip():
+                continue
+            try:
+                entry = json.loads(line)
+            except json.JSONDecodeError:
+                continue
+            op = str(entry.get("operation", "")).strip()
+            if not op:
+                continue
+            counts[op] = counts.get(op, 0) + 1
+        return counts
+
+    def _project_end_of_month(self) -> float:
+        """Estimate end-of-month spend using simple daily burn-rate projection."""
+        now = datetime.now(timezone.utc)
+        days_elapsed = max(now.day, 1)
+        days_in_month = monthrange(now.year, now.month)[1]
+        daily_burn = self._total_spent / days_elapsed
+        return daily_burn * days_in_month

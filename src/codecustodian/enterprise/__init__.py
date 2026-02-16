@@ -26,6 +26,7 @@ from codecustodian.enterprise.rbac import (
 )
 from codecustodian.enterprise.roi_calculator import ROICalculator, ROIReport
 from codecustodian.enterprise.secrets_manager import SecretsManager
+from codecustodian.enterprise.sla_reporter import SLARecord, SLAReport, SLAReporter
 
 __all__ = [
     "ApprovalRequest",
@@ -43,6 +44,9 @@ __all__ = [
     "ROICalculator",
     "ROIReport",
     "Role",
+    "SLARecord",
+    "SLAReport",
+    "SLAReporter",
     "SecretsManager",
     "TenantConfig",
     "TenantDirs",

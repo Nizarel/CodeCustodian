@@ -396,6 +396,48 @@ class BudgetConfig(BaseModel):
         return sorted(v)
 
 
+class SLAConfig(BaseModel):
+    """SLA & reliability reporting configuration (BR-ENT-002)."""
+
+    enabled: bool = True
+    db_path: str = ".codecustodian-cache/sla.json"
+    failure_spike_threshold: float = Field(
+        default=10.0,
+        ge=0.0,
+        description="Failure % above this triggers an alert",
+    )
+
+
+class LearningConfig(BaseModel):
+    """Feedback & learning configuration (FR-LEARN-100, FR-LEARN-101)."""
+
+    enabled: bool = True
+    feedback_db_path: str = ".codecustodian-cache/learning.json"
+    preferences_db_path: str = ".codecustodian-cache/preferences.json"
+    history_db_path: str = ".codecustodian-cache/history.json"
+    target_success_rate: float = Field(
+        default=0.9,
+        ge=0.0,
+        le=1.0,
+        description="Scanner success rate below this triggers threshold adjustment",
+    )
+    auto_adjust_confidence: bool = Field(
+        default=True,
+        description="Automatically adjust confidence thresholds based on PR outcomes",
+    )
+
+
+class BusinessImpactConfig(BaseModel):
+    """Business impact scoring configuration (FR-PRIORITY-100)."""
+
+    enabled: bool = True
+    usage_weight: float = Field(default=100.0, ge=0.0)
+    criticality_weight: float = Field(default=50.0, ge=0.0)
+    change_frequency_weight: float = Field(default=30.0, ge=0.0)
+    velocity_impact_weight: float = Field(default=40.0, ge=0.0)
+    regulatory_risk_weight: float = Field(default=80.0, ge=0.0)
+
+
 class ApprovalConfig(BaseModel):
     """Approval gate configuration (BR-GOV-002)."""
 
@@ -428,6 +470,10 @@ class CodeCustodianConfig(BaseModel):
     work_iq: WorkIQConfig = Field(default_factory=WorkIQConfig)
     budget: BudgetConfig = Field(default_factory=BudgetConfig)
     approval: ApprovalConfig = Field(default_factory=ApprovalConfig)
+    # ── NEW — Phase 8 config sections ─────────────────────────────────
+    sla: SLAConfig = Field(default_factory=SLAConfig)
+    learning: LearningConfig = Field(default_factory=LearningConfig)
+    business_impact: BusinessImpactConfig = Field(default_factory=BusinessImpactConfig)
 
     @classmethod
     def from_file(cls, path: str | Path) -> CodeCustodianConfig:

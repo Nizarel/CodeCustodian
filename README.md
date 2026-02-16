@@ -255,6 +255,16 @@ advanced:
 - Detailed scan report in Actions artifacts
 - Slack notification (if configured)
 
+### Optional: Validate remote MCP endpoint (Azure Container Apps)
+
+After deployment, run:
+
+```powershell
+pwsh ./scripts/smoke-mcp-remote.ps1 -Fqdn "<your-container-app-fqdn>"
+```
+
+This validates `/health`, MCP `initialize`, `tools/list`, and `tools/call` (`list_scanners`).
+
 ---
 
 ## 📖 Documentation

@@ -126,3 +126,26 @@ jobs:
             environment=${{ inputs.environment || 'prod' }}
             imageTag=${{ inputs.image_tag || 'latest' }}
           deploymentName: codecustodian-${{ github.run_number }}
+
+      - name: Resolve deployed Container App FQDN
+        id: app
+        run: |
+          DEPLOYMENT_NAME="codecustodian-${{ github.run_number }}"
+          FQDN=$(az deployment group show \
+            --resource-group ${{ env.RESOURCE_GROUP }} \
+            --name "$DEPLOYMENT_NAME" \
+            --query "properties.outputs.containerAppFqdn.value" \
+            -o tsv)
+
+          if [ -z "$FQDN" ]; then
+            echo "Failed to resolve container app FQDN from deployment outputs"
+            exit 1
+          fi
+
+          echo "fqdn=$FQDN" >> "$GITHUB_OUTPUT"
+          echo "Deployed app FQDN: $FQDN"
+
+      - name: MCP smoke test (health + protocol)
+        shell: pwsh
+        run: |
+          ./scripts/smoke-mcp-remote.ps1 -Fqdn "${{ steps.app.outputs.fqdn }}"

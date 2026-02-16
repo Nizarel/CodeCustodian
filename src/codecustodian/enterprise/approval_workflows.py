@@ -14,6 +14,7 @@ Usage::
 
 from __future__ import annotations
 
+import asyncio
 import json
 import uuid
 from datetime import datetime, timezone
@@ -79,6 +80,7 @@ class ApprovalWorkflowManager:
         require_pr_approval: bool = True,
         approved_repos: list[str] | None = None,
         sensitive_paths: list[str] | None = None,
+        approval_required_categories: list[str] | None = None,
         data_dir: str | Path = ".codecustodian-approvals",
     ) -> None:
         self.require_plan_approval = require_plan_approval
@@ -89,6 +91,7 @@ class ApprovalWorkflowManager:
             "**/payments/**",
             "**/security/**",
         ]
+        self.approval_required_categories = approval_required_categories or []
         self.data_dir = Path(data_dir)
         self.data_dir.mkdir(parents=True, exist_ok=True)
         self._log_file = self.data_dir / "approvals.jsonl"
@@ -103,6 +106,9 @@ class ApprovalWorkflowManager:
             require_pr_approval=config.require_pr_approval,
             approved_repos=list(config.approved_repos),
             sensitive_paths=list(config.sensitive_paths),
+            approval_required_categories=list(
+                getattr(config, "approval_required_categories", [])
+            ),
         )
 
     # ── Request / Approve / Reject ─────────────────────────────────────
@@ -186,6 +192,7 @@ class ApprovalWorkflowManager:
         *,
         repo: str = "",
         file_path: str = "",
+        finding_type: str = "",
     ) -> bool:
         """Determine if an action needs approval.
 
@@ -204,10 +211,66 @@ class ApprovalWorkflowManager:
         if repo and repo in self.approved_repos:
             return False
 
+        if finding_type and finding_type in self.approval_required_categories:
+            return True
+
         if resource_type == "plan":
             return self.require_plan_approval
         if resource_type == "pr":
             return self.require_pr_approval
+        return False
+
+    async def request_plan_approval(
+        self,
+        plan: Any,
+        repo: str,
+        *,
+        requester: str = "codecustodian",
+        timeout: int = 3600,
+    ) -> bool:
+        """Request and await plan approval for sensitive categories/repos."""
+        finding_type = str(getattr(plan, "finding_type", ""))
+        metadata = {"repo": repo, "finding_type": finding_type}
+
+        if not self.needs_approval("plan", repo=repo, finding_type=finding_type):
+            return True
+
+        req = self.request_approval(
+            resource_id=str(getattr(plan, "id", "")),
+            resource_type="plan",
+            requester=requester,
+            metadata=metadata,
+        )
+        await self._notify_approvers(req)
+        return await self._wait_for_approval(req.id, timeout=timeout)
+
+    async def _notify_approvers(self, req: ApprovalRequest) -> None:
+        """Send approval notification to configured approvers."""
+        logger.info(
+            "Approval notification sent for %s (%s)",
+            req.resource_id,
+            req.id,
+        )
+
+    async def _wait_for_approval(self, request_id: str, timeout: int = 3600) -> bool:
+        """Poll approval status until approved/rejected/expired or timeout."""
+        start = datetime.now(timezone.utc)
+        while (datetime.now(timezone.utc) - start).total_seconds() < timeout:
+            req = self._requests.get(request_id)
+            if not req:
+                return False
+            if req.status in (ApprovalStatus.APPROVED, ApprovalStatus.AUTO_APPROVED):
+                return True
+            if req.status in (ApprovalStatus.REJECTED, ApprovalStatus.EXPIRED):
+                return False
+            await asyncio.sleep(5)
+
+        req = self._requests.get(request_id)
+        if req and req.status == ApprovalStatus.PENDING:
+            req.status = ApprovalStatus.EXPIRED
+            req.reason = "Approval request timed out"
+            req.approved_at = datetime.now(timezone.utc).isoformat()
+            self._persist(req)
         return False
 
     def get_pending(self) -> list[ApprovalRequest]:
@@ -238,6 +301,24 @@ class ApprovalWorkflowManager:
         logger.info("Auto-approved %s: %s", resource_id, reason)
         return req
 
+    def expire_stale(self, timeout_seconds: int = 3600) -> list[ApprovalRequest]:
+        """Mark pending approval requests older than timeout as expired."""
+        now = datetime.now(timezone.utc)
+        expired: list[ApprovalRequest] = []
+        for req in self._requests.values():
+            if req.status != ApprovalStatus.PENDING:
+                continue
+            created = self._parse_timestamp(req.timestamp)
+            if created is None:
+                continue
+            if (now - created).total_seconds() > timeout_seconds:
+                req.status = ApprovalStatus.EXPIRED
+                req.reason = "Approval request expired"
+                req.approved_at = now.isoformat()
+                self._persist(req)
+                expired.append(req)
+        return expired
+
     # ── Internal ───────────────────────────────────────────────────────
 
     def _is_sensitive(self, file_path: str) -> bool:
@@ -251,6 +332,17 @@ class ApprovalWorkflowManager:
         """Append an approval request to the JSONL log."""
         with open(self._log_file, "a", encoding="utf-8") as f:
             f.write(req.model_dump_json() + "\n")
+
+    @staticmethod
+    def _parse_timestamp(value: str) -> datetime | None:
+        """Parse ISO timestamp safely."""
+        try:
+            dt = datetime.fromisoformat(value)
+            if dt.tzinfo is None:
+                return dt.replace(tzinfo=timezone.utc)
+            return dt
+        except Exception:
+            return None
 
     def _load(self) -> None:
         """Load approval requests from the JSONL log."""
