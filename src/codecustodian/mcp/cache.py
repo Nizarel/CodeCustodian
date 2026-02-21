@@ -30,7 +30,7 @@ class _Entry:
         self.created_at: float = time.monotonic()
 
     def expired(self, ttl: int) -> bool:
-        return (time.monotonic() - self.created_at) > ttl
+        return (time.monotonic() - self.created_at) >= ttl
 
 
 class ScanCache:
