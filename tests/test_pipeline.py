@@ -7,11 +7,15 @@ import pytest
 from codecustodian.config.schema import CodeCustodianConfig
 from codecustodian.exceptions import ApprovalRequiredError
 from codecustodian.models import (
+    ExecutionResult,
+    FileChange,
     Finding,
     FindingType,
     ProposalResult,
+    PullRequestInfo,
     RefactoringPlan,
     SeverityLevel,
+    VerificationResult,
 )
 from codecustodian.pipeline import Pipeline
 
@@ -163,3 +167,173 @@ class TestPipelineApprovalGate:
         plan = RefactoringPlan(finding_id="f1", summary="test", confidence_score=8)
         with pytest.raises(ApprovalRequiredError):
             pipeline._check_approval(plan)
+
+
+class TestPipelineProcessFinding:
+    @pytest.mark.asyncio
+    async def test_process_finding_dry_run_records_plan(self, monkeypatch):
+        config = CodeCustodianConfig()
+        pipeline = Pipeline(config=config, repo_path="/tmp/repo", dry_run=True)
+        finding = _make_finding(description="dry-run finding")
+
+        async def _fake_plan(_self, _finding):
+            return RefactoringPlan(
+                finding_id=_finding.id,
+                summary="test plan",
+                confidence_score=8,
+                changes=[
+                    FileChange(
+                        file_path=_finding.file,
+                        change_type="replace",
+                        old_content="x",
+                        new_content="y",
+                    )
+                ],
+            )
+
+        monkeypatch.setattr(Pipeline, "_plan", _fake_plan)
+
+        await pipeline._process_finding(finding)
+
+        assert len(pipeline._result.plans) == 1
+        assert len(pipeline._result.executions) == 0
+
+    @pytest.mark.asyncio
+    async def test_process_finding_low_confidence_creates_proposal(self, monkeypatch):
+        config = CodeCustodianConfig()
+        config.behavior.proposal_mode_threshold = 5
+        pipeline = Pipeline(config=config, repo_path="/tmp/repo", dry_run=False)
+        finding = _make_finding(description="proposal finding")
+
+        async def _fake_plan(_self, _finding):
+            return RefactoringPlan(
+                finding_id=_finding.id,
+                summary="low confidence plan",
+                confidence_score=3,
+            )
+
+        monkeypatch.setattr(Pipeline, "_plan", _fake_plan)
+
+        await pipeline._process_finding(finding)
+
+        assert len(pipeline._result.proposals) == 1
+        assert pipeline._result.proposals[0].is_proposal_only is True
+
+    @pytest.mark.asyncio
+    async def test_process_finding_approval_required_adds_error(self, monkeypatch):
+        config = CodeCustodianConfig()
+        config.approval.require_plan_approval = True
+        pipeline = Pipeline(config=config, repo_path="/tmp/repo", dry_run=False)
+        finding = _make_finding(description="approval finding")
+
+        async def _fake_plan(_self, _finding):
+            return RefactoringPlan(
+                finding_id=_finding.id,
+                summary="approval plan",
+                confidence_score=9,
+            )
+
+        monkeypatch.setattr(Pipeline, "_plan", _fake_plan)
+
+        await pipeline._process_finding(finding)
+
+        assert pipeline._result.errors
+        assert "awaiting approval" in pipeline._result.errors[0]
+
+    @pytest.mark.asyncio
+    async def test_process_finding_execute_verify_pr_success(self, monkeypatch):
+        config = CodeCustodianConfig()
+        config.approval.require_plan_approval = False
+        pipeline = Pipeline(config=config, repo_path="/tmp/repo", dry_run=False)
+        finding = _make_finding(description="success finding")
+
+        async def _fake_plan(_self, _finding):
+            return RefactoringPlan(
+                finding_id=_finding.id,
+                summary="success plan",
+                confidence_score=9,
+                changes=[
+                    FileChange(
+                        file_path=_finding.file,
+                        change_type="replace",
+                        old_content="a",
+                        new_content="b",
+                    )
+                ],
+            )
+
+        async def _fake_execute(_self, plan):
+            return ExecutionResult(
+                plan_id=plan.id,
+                success=True,
+                changes_applied=plan.changes,
+                branch_name="branch/test",
+                commit_sha="123",
+            )
+
+        async def _fake_verify(_self, _execution):
+            return VerificationResult(passed=True, tests_run=1, tests_passed=1)
+
+        async def _fake_create_pr(_self, _finding, _plan, _execution, _verification):
+            return PullRequestInfo(number=1, url="https://example/pr/1", title="Test PR")
+
+        monkeypatch.setattr(Pipeline, "_plan", _fake_plan)
+        monkeypatch.setattr(Pipeline, "_execute", _fake_execute)
+        monkeypatch.setattr(Pipeline, "_verify", _fake_verify)
+        monkeypatch.setattr(Pipeline, "_create_pr", _fake_create_pr)
+
+        await pipeline._process_finding(finding)
+
+        assert len(pipeline._result.executions) == 1
+        assert len(pipeline._result.verifications) == 1
+        assert pipeline._result.prs_created == 1
+
+    @pytest.mark.asyncio
+    async def test_process_finding_verify_fail_rolls_back_to_proposal(self, monkeypatch):
+        config = CodeCustodianConfig()
+        config.approval.require_plan_approval = False
+        pipeline = Pipeline(config=config, repo_path="/tmp/repo", dry_run=False)
+        finding = _make_finding(description="verify fail finding")
+        rollback_called = {"called": False}
+
+        async def _fake_plan(_self, _finding):
+            return RefactoringPlan(
+                finding_id=_finding.id,
+                summary="verify-fail plan",
+                confidence_score=9,
+                changes=[
+                    FileChange(
+                        file_path=_finding.file,
+                        change_type="replace",
+                        old_content="a",
+                        new_content="b",
+                    )
+                ],
+            )
+
+        async def _fake_execute(_self, plan):
+            return ExecutionResult(
+                plan_id=plan.id,
+                success=True,
+                changes_applied=plan.changes,
+                branch_name="branch/test",
+                commit_sha="123",
+                backup_paths=["/tmp/backup"],
+            )
+
+        async def _fake_verify(_self, _execution):
+            return VerificationResult(passed=False, tests_run=1, tests_failed=1)
+
+        async def _fake_rollback(_self, _execution):
+            rollback_called["called"] = True
+
+        monkeypatch.setattr(Pipeline, "_plan", _fake_plan)
+        monkeypatch.setattr(Pipeline, "_execute", _fake_execute)
+        monkeypatch.setattr(Pipeline, "_verify", _fake_verify)
+        monkeypatch.setattr(Pipeline, "_rollback", _fake_rollback)
+
+        await pipeline._process_finding(finding)
+
+        assert rollback_called["called"] is True
+        assert len(pipeline._result.proposals) == 1
+        assert pipeline._result.prs_created == 0

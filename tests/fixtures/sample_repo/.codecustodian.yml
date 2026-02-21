@@ -1,0 +1,15 @@
+version: "1.0"
+scanners:
+  deprecated_apis:
+    enabled: true
+  todo_comments:
+    enabled: true
+  code_smells:
+    enabled: true
+  security_patterns:
+    enabled: true
+  type_coverage:
+    enabled: true
+behavior:
+  max_prs_per_run: 5
+  confidence_threshold: 7
