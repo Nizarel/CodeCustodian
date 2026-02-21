@@ -10,11 +10,46 @@ cd CodeCustodian
 # Install with uv
 uv sync --all-extras
 
+# Or with pip
+pip install -e ".[dev]"
+
 # Run CLI
 codecustodian --help
 
 # Run MCP server
 codecustodian-mcp
+```
+
+### CLI Commands
+
+| Command | Description |
+|---------|-------------|
+| `codecustodian run` | Full pipeline (scan → plan → execute → verify → PR) |
+| `codecustodian init` | Bootstrap `.codecustodian.yml` + GitHub Actions workflow |
+| `codecustodian validate` | Validate configuration file |
+| `codecustodian scan` | Run scanners (table/json/csv output) |
+| `codecustodian findings` | List and filter findings |
+| `codecustodian create-prs` | Create PRs for top-N findings |
+| `codecustodian onboard` | Onboard a repository or organization |
+| `codecustodian status` | Show findings + budget + SLA summary |
+| `codecustodian report` | Generate ROI report (json/csv) |
+| `codecustodian interactive` | InquirerPy-powered menu |
+| `codecustodian version` | Print version |
+
+### Running Tests
+
+```bash
+# Full suite
+pytest
+
+# With coverage
+pytest --cov=codecustodian --cov-report=term-missing
+
+# Integration only
+pytest tests/integration/
+
+# E2E only
+pytest tests/e2e/
 ```
 
 ## GitHub Actions

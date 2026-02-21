@@ -26,6 +26,7 @@ resource appInsights 'Microsoft.Insights/components@2020-02-02' = {
 
 output lawId string = law.id
 output lawCustomerId string = law.properties.customerId
+@description('LAW shared key for Container Apps environment')
 output lawSharedKey string = law.listKeys().primarySharedKey
 output appInsightsId string = appInsights.id
 output appInsightsConnectionString string = appInsights.properties.ConnectionString

@@ -17,8 +17,7 @@ param projectName string = 'codecustodian'
 @description('Container image tag')
 param imageTag string = 'latest'
 
-@description('Application Insights connection string (from monitor module)')
-param appInsightsConnectionString string = ''
+
 
 // ── Derived names ─────────────────────────────────────────────────────────
 

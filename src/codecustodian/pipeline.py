@@ -32,6 +32,7 @@ from codecustodian.intelligence.business_impact import BusinessImpactScorer
 from codecustodian.enterprise.sla_reporter import SLAReporter
 from codecustodian.integrations.work_iq import WorkIQContextProvider
 from codecustodian.models import (
+    CodeContext,
     ExecutionResult,
     Finding,
     PipelineResult,
@@ -152,6 +153,9 @@ class Pipeline:
             self._result.total_duration_seconds = elapsed
             self._result.completed_at = datetime.now(UTC)
 
+            # Cost savings estimation (BR-ENT-001)
+            self._result.cost_savings_estimate = self._estimate_cost_savings()
+
             root_span.set_attribute("pipeline.duration_seconds", elapsed)
             root_span.set_attribute("pipeline.findings_count", len(self._result.findings))
             root_span.set_attribute("pipeline.prs_created", self._result.prs_created)
@@ -199,6 +203,32 @@ class Pipeline:
 
         # Respect overall PR limit
         return batches[:max_prs]
+
+    # ── Cost savings estimation ────────────────────────────────────────
+
+    _EFFORT_HOURS: dict[str, float] = {
+        "deprecated_api": 2.0,
+        "todo_comment": 0.5,
+        "code_smell": 1.5,
+        "security": 3.0,
+        "missing_type_hints": 0.25,
+    }
+
+    def _estimate_cost_savings(self, hourly_rate: float = 85.0) -> dict[str, float]:
+        """Estimate hours and dollars saved by automating these findings."""
+        manual_hours = sum(
+            self._EFFORT_HOURS.get(f.type.value, 1.0) for f in self._result.findings
+        )
+        # Automated resolution averages ~5 min per finding
+        automated_hours = round(len(self._result.findings) * (5.0 / 60.0), 2)
+        hours_saved = round(manual_hours - automated_hours, 2)
+        return {
+            "manual_hours": round(manual_hours, 2),
+            "automated_hours": automated_hours,
+            "hours_saved": max(hours_saved, 0.0),
+            "savings_usd": round(max(hours_saved, 0.0) * hourly_rate, 2),
+            "hourly_rate": hourly_rate,
+        }
 
     # ── Stage implementations ──────────────────────────────────────────
 
@@ -494,13 +524,72 @@ class Pipeline:
                 "finding.type": finding.type.value,
             },
         ):
-            # TODO: Wire up CopilotPlanner (Phase 3)
             logger.info(
                 "Planning for %s",
                 finding.id,
                 extra={"stage": PipelineStage.PLAN.value},
             )
-            return None
+
+            copilot_config = self.config.advanced.copilot
+
+            # Inject token from pipeline args if the config doesn't have one
+            if self.copilot_token and not copilot_config.github_token:
+                copilot_config.github_token = self.copilot_token
+
+            try:
+                from codecustodian.planner.copilot_client import CopilotPlannerClient
+                from codecustodian.planner.planner import Planner
+
+                client = CopilotPlannerClient(copilot_config)
+                await client.start()
+            except (PlannerError, ImportError):
+                logger.warning(
+                    "Copilot SDK unavailable — skipping planning for %s",
+                    finding.id,
+                )
+                return None
+
+            try:
+                planner = Planner(config=copilot_config, copilot_client=client)
+                context = self._build_code_context(finding)
+                result = await planner.plan_refactoring(finding, context)
+
+                # Planner may return ProposalResult for very low confidence
+                if isinstance(result, ProposalResult):
+                    self._result.proposals.append(result)
+                    logger.info(
+                        "Planner returned proposal (not plan) for %s",
+                        finding.id,
+                    )
+                    return None
+
+                return result
+            finally:
+                await client.stop()
+
+    def _build_code_context(self, finding: Finding) -> CodeContext:
+        """Build a CodeContext from a finding by reading source code."""
+        context = CodeContext(
+            file_path=finding.file,
+            source_code="",
+            start_line=max(1, finding.line - 15),
+            end_line=finding.line + 15,
+        )
+        try:
+            file_path = Path(self.repo_path) / finding.file
+            if file_path.exists():
+                lines = file_path.read_text(encoding="utf-8", errors="replace").splitlines()
+                start = max(0, finding.line - 16)
+                end = min(len(lines), finding.line + 15)
+                context.source_code = "\n".join(lines[start:end])
+                context.start_line = start + 1
+                context.end_line = end
+                context.imports = [
+                    l for l in lines if l.strip().startswith(("import ", "from "))
+                ]
+        except Exception as exc:
+            logger.debug("Could not read source for %s: %s", finding.file, exc)
+        return context
 
     async def _execute(self, plan: RefactoringPlan) -> ExecutionResult:
         """Apply code changes from the plan.

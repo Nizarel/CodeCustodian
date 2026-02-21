@@ -231,6 +231,16 @@ def run(
         console.print(f"  PRs created:   {result.prs_created}")
         console.print(f"  Success rate:  {result.success_rate:.0f}%")
         console.print(f"  Duration:      {result.total_duration_seconds:.1f}s")
+        if result.cost_savings_estimate:
+            cs = result.cost_savings_estimate
+            console.print(f"\n[bold]Cost Savings Estimate:[/]")
+            console.print(f"  Manual effort: {cs.get('manual_hours', 0):.1f}h")
+            console.print(f"  Automated:     {cs.get('automated_hours', 0):.1f}h")
+            console.print(f"  Hours saved:   {cs.get('hours_saved', 0):.1f}h")
+            console.print(
+                f"  [green bold]Savings:       ${cs.get('savings_usd', 0):,.2f}[/]"
+                f" (@ ${cs.get('hourly_rate', 85):.0f}/hr)"
+            )
         if result.errors:
             console.print(f"  [red]Errors:      {len(result.errors)}[/]")
 
@@ -336,11 +346,43 @@ def validate(
 @app.command(name="config")
 def config_cmd(
     validate: bool = typer.Option(False, "--validate", help="Validate configuration"),
+    show: bool = typer.Option(False, "--show", help="Show resolved configuration as JSON"),
+    get: Optional[str] = typer.Option(None, "--get", help="Get a specific config key (dot-notation, e.g. behavior.max_prs_per_run)"),
     path: str = typer.Option(".codecustodian.yml", "--path", "-p", help="Config file path"),
 ) -> None:
     """Manage CodeCustodian configuration."""
+    from codecustodian.config.schema import CodeCustodianConfig
+
     if validate:
         validate_config(path)
+        return
+
+    if show or get:
+        try:
+            cfg = CodeCustodianConfig.from_file(path)
+        except Exception as exc:
+            console.print(f"[red]✗ Failed to load config: {exc}[/]")
+            raise typer.Exit(1)
+
+        data = cfg.model_dump(mode="json")
+        if get:
+            keys = get.split(".")
+            current = data
+            for key in keys:
+                if isinstance(current, dict) and key in current:
+                    current = current[key]
+                else:
+                    console.print(f"[red]Key not found: {get}[/]")
+                    raise typer.Exit(1)
+            typer.echo(json.dumps(current, indent=2) if isinstance(current, (dict, list)) else current)
+        else:
+            typer.echo(json.dumps(data, indent=2, default=str))
+        return
+
+    console.print("Usage: codecustodian config [--validate] [--show] [--get KEY] [--path FILE]")
+    console.print("  --validate   Validate config file")
+    console.print("  --show       Show resolved config as JSON")
+    console.print("  --get KEY    Get a specific key (e.g. behavior.max_prs_per_run)")
 
 
 def validate_config(path: str) -> None:

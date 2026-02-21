@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CodeCustodian — Autonomous Technical Debt Agent</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: 'Segoe UI', system-ui, -apple-system, sans-serif; background: #0d1117; color: #e6edf3; }
+
+  /* Slide container */
+  .slides { display: flex; flex-direction: column; }
+  .slide {
+    min-height: 100vh; display: flex; flex-direction: column;
+    justify-content: center; align-items: center; padding: 4rem 6rem;
+    position: relative; page-break-after: always;
+  }
+  .slide h1 { font-size: 3rem; margin-bottom: 1rem; }
+  .slide h2 { font-size: 2rem; margin-bottom: 1.5rem; color: #58a6ff; }
+  .slide h3 { font-size: 1.5rem; margin-bottom: 1rem; color: #58a6ff; }
+  .slide p { font-size: 1.25rem; line-height: 1.8; max-width: 900px; text-align: center; }
+
+  /* Slide 1: Title */
+  .slide-title { background: linear-gradient(135deg, #0d1117 0%, #161b22 100%); }
+  .slide-title h1 { font-size: 4rem; background: linear-gradient(90deg, #58a6ff, #3fb950); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+  .slide-title .subtitle { font-size: 1.5rem; color: #8b949e; margin-top: 0.5rem; }
+  .slide-title .tagline { font-size: 1.1rem; color: #58a6ff; margin-top: 2rem; font-style: italic; }
+  .badge-row { display: flex; gap: 0.75rem; margin-top: 1.5rem; flex-wrap: wrap; justify-content: center; }
+  .badge { background: #21262d; border: 1px solid #30363d; border-radius: 6px; padding: 0.4rem 0.8rem; font-size: 0.85rem; color: #8b949e; }
+  .badge.green { border-color: #3fb950; color: #3fb950; }
+  .badge.blue { border-color: #58a6ff; color: #58a6ff; }
+  .badge.purple { border-color: #bc8cff; color: #bc8cff; }
+
+  /* Slide 2: Business Value */
+  .slide-value { background: linear-gradient(135deg, #161b22 0%, #0d1117 100%); }
+  .metrics { display: grid; grid-template-columns: repeat(4, 1fr); gap: 2rem; margin-top: 2rem; }
+  .metric { background: #21262d; border-radius: 12px; padding: 2rem 1.5rem; text-align: center; border: 1px solid #30363d; }
+  .metric .num { font-size: 3rem; font-weight: 700; }
+  .metric .num.green { color: #3fb950; }
+  .metric .num.blue { color: #58a6ff; }
+  .metric .num.purple { color: #bc8cff; }
+  .metric .num.orange { color: #d29922; }
+  .metric .label { font-size: 0.95rem; color: #8b949e; margin-top: 0.5rem; }
+  .pipeline { display: flex; align-items: center; gap: 0.5rem; margin-top: 2.5rem; flex-wrap: wrap; justify-content: center; }
+  .pipeline .step { background: #21262d; border: 1px solid #30363d; border-radius: 8px; padding: 0.6rem 1rem; font-size: 0.9rem; }
+  .pipeline .arrow { color: #3fb950; font-size: 1.2rem; }
+
+  /* Slide 3: Architecture */
+  .slide-arch { background: #0d1117; padding: 3rem 4rem; }
+  .arch-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 2rem; margin-top: 1.5rem; width: 100%; max-width: 1100px; }
+  .arch-box { background: #161b22; border: 1px solid #30363d; border-radius: 12px; padding: 1.5rem; }
+  .arch-box h3 { font-size: 1.15rem; margin-bottom: 0.75rem; display: flex; align-items: center; gap: 0.5rem; }
+  .arch-box ul { list-style: none; }
+  .arch-box li { font-size: 0.95rem; color: #8b949e; padding: 0.3rem 0; padding-left: 1.2rem; position: relative; }
+  .arch-box li::before { content: "→"; position: absolute; left: 0; color: #3fb950; }
+  .arch-box.azure { border-color: #0078d4; }
+  .arch-box.azure h3 { color: #0078d4; }
+  .arch-box.copilot { border-color: #bc8cff; }
+  .arch-box.copilot h3 { color: #bc8cff; }
+  .arch-box.enterprise { border-color: #d29922; }
+  .arch-box.enterprise h3 { color: #d29922; }
+  .arch-box.security { border-color: #f85149; }
+  .arch-box.security h3 { color: #f85149; }
+  .footer-stats { display: flex; gap: 2rem; margin-top: 2rem; justify-content: center; }
+  .footer-stat { font-size: 1rem; color: #8b949e; }
+  .footer-stat strong { color: #e6edf3; }
+
+  /* Nav hint */
+  .nav-hint { position: fixed; bottom: 1rem; right: 1.5rem; color: #484f58; font-size: 0.8rem; }
+
+  @media print {
+    .slide { min-height: 100vh; page-break-after: always; }
+    .nav-hint { display: none; }
+  }
+  @media (max-width: 768px) {
+    .slide { padding: 2rem; }
+    .slide-title h1 { font-size: 2.5rem; }
+    .metrics { grid-template-columns: repeat(2, 1fr); gap: 1rem; }
+    .arch-grid { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+<div class="slides">
+
+  <!-- SLIDE 1: Title -->
+  <section class="slide slide-title">
+    <h1>CodeCustodian</h1>
+    <p class="subtitle">Autonomous AI Agent for Technical Debt Management</p>
+    <p class="tagline">"Engineering teams spend 40% on maintenance. What if an AI agent handled it?"</p>
+    <div class="badge-row">
+      <span class="badge green">Python 3.11+</span>
+      <span class="badge blue">GitHub Copilot SDK</span>
+      <span class="badge purple">FastMCP v2</span>
+      <span class="badge">Azure Container Apps</span>
+      <span class="badge green">609 Tests &bull; 82% Cov</span>
+    </div>
+    <div class="pipeline" style="margin-top:2.5rem">
+      <span class="step">Scan</span><span class="arrow">→</span>
+      <span class="step">De-dup</span><span class="arrow">→</span>
+      <span class="step">Prioritize</span><span class="arrow">→</span>
+      <span class="step">Plan (Copilot SDK)</span><span class="arrow">→</span>
+      <span class="step">Execute</span><span class="arrow">→</span>
+      <span class="step">Verify</span><span class="arrow">→</span>
+      <span class="step">PR</span>
+    </div>
+  </section>
+
+  <!-- SLIDE 2: Business Value + Metrics -->
+  <section class="slide slide-value">
+    <h2>Enterprise Business Value</h2>
+    <p>Scan → Plan → Fix → PR in minutes, not sprints. Confidence-gated safety with human-in-the-loop.</p>
+    <div class="metrics">
+      <div class="metric">
+        <div class="num green">5</div>
+        <div class="label">Built-in Scanners<br>(Deprecated APIs, TODOs, Code Smells, Security, Type Coverage)</div>
+      </div>
+      <div class="metric">
+        <div class="num blue">$9,520</div>
+        <div class="label">Savings per scan<br>(60 findings × $85/hr avg)</div>
+      </div>
+      <div class="metric">
+        <div class="num purple">112h</div>
+        <div class="label">Engineering hours saved<br>per scan cycle</div>
+      </div>
+      <div class="metric">
+        <div class="num orange">10</div>
+        <div class="label">CLI Commands<br>(scan, run, status, report, audit, …)</div>
+      </div>
+    </div>
+    <div class="pipeline">
+      <span class="step" style="border-color:#3fb950">Confidence 8-10 → Auto-PR</span>
+      <span class="step" style="border-color:#d29922">Confidence 5-7 → Draft PR</span>
+      <span class="step" style="border-color:#f85149">Confidence &lt;5 → Proposal Only</span>
+    </div>
+  </section>
+
+  <!-- SLIDE 3: Architecture + Azure Integration -->
+  <section class="slide slide-arch">
+    <h2>Architecture &amp; Azure Integration</h2>
+    <div class="arch-grid">
+      <div class="arch-box copilot">
+        <h3>&#x1f916; AI &amp; Developer Experience</h3>
+        <ul>
+          <li><strong>GitHub Copilot SDK</strong> — AI-powered refactoring planner</li>
+          <li><strong>FastMCP v2 Server</strong> — 8 tools in VS Code Copilot Chat</li>
+          <li><strong>Typer + Rich CLI</strong> — 10 commands with JSON/table/CSV output</li>
+          <li><strong>Feedback Loop</strong> — learns from PR outcomes over time</li>
+        </ul>
+      </div>
+      <div class="arch-box azure">
+        <h3>&#x2601;&#xFE0F; Azure &amp; Microsoft (6 services)</h3>
+        <ul>
+          <li><strong>Azure Key Vault</strong> — secrets management</li>
+          <li><strong>Azure Container Apps</strong> — serverless deployment (Bicep IaC)</li>
+          <li><strong>Azure Monitor</strong> — OpenTelemetry observability</li>
+          <li><strong>Azure DevOps</strong> — work item integration</li>
+          <li><strong>GitHub Actions</strong> — 4 CI/CD workflows</li>
+          <li><strong>Work IQ MCP</strong> — sprint context enrichment</li>
+        </ul>
+      </div>
+      <div class="arch-box enterprise">
+        <h3>&#x1f3e2; Enterprise Features</h3>
+        <ul>
+          <li><strong>Budget Manager</strong> — AI spend caps with alerts</li>
+          <li><strong>SLA Reporter</strong> — resolution time tracking</li>
+          <li><strong>ROI Calculator</strong> — cost savings with CSV/Markdown export</li>
+          <li><strong>RBAC + Approval Workflows</strong> — multi-team governance</li>
+          <li><strong>Business Impact Scoring</strong> — 5-factor prioritization</li>
+        </ul>
+      </div>
+      <div class="arch-box security">
+        <h3>&#x1f6e1;&#xFE0F; Security &amp; Responsible AI</h3>
+        <ul>
+          <li><strong>Audit Logger</strong> — SHA-256 tamper-evident chain</li>
+          <li><strong>Path traversal + symlink blocking</strong></li>
+          <li><strong>Dangerous function detection</strong> (eval, exec, __import__)</li>
+          <li><strong>Confidence-gated safety</strong> — low confidence = proposal only</li>
+          <li><strong>Responsible AI Policy</strong> — 8 documented principles</li>
+        </ul>
+      </div>
+    </div>
+    <div class="footer-stats">
+      <span class="footer-stat"><strong>609</strong> tests</span>
+      <span class="footer-stat"><strong>82%</strong> coverage</span>
+      <span class="footer-stat"><strong>4</strong> CI/CD workflows</span>
+      <span class="footer-stat"><strong>v0.10.0</strong></span>
+      <span class="footer-stat"><strong>MIT</strong> License</span>
+    </div>
+  </section>
+
+</div>
+<div class="nav-hint">Scroll to navigate slides</div>
+</body>
+</html>

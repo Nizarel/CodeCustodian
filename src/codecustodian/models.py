@@ -413,6 +413,10 @@ class PipelineResult(BaseModel):
     errors: list[str] = Field(default_factory=list)
     started_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
     completed_at: datetime | None = None
+    cost_savings_estimate: dict[str, float] = Field(
+        default_factory=dict,
+        description="Estimated cost savings: manual_hours, automated_hours, hours_saved, savings_usd",
+    )
 
     @property
     def success_rate(self) -> float:

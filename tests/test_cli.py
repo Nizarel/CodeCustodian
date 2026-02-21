@@ -28,7 +28,7 @@ def _load_json_from_output(output: str):
 def test_version_command(cli_runner) -> None:
     result = cli_runner.invoke(app, ["version"])
     assert result.exit_code == 0
-    assert "codecustodian 0.8.0" in result.stdout
+    assert "codecustodian 0.10.0" in result.stdout
 
 
 def test_validate_command_success(cli_runner) -> None:

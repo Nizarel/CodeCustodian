@@ -171,6 +171,41 @@ class TestPipelineApprovalGate:
 
 class TestPipelineProcessFinding:
     @pytest.mark.asyncio
+    async def test_plan_graceful_when_sdk_unavailable(self, monkeypatch):
+        """When Copilot SDK is unavailable, _plan returns None (no crash)."""
+        config = CodeCustodianConfig()
+        pipeline = Pipeline(config=config, repo_path="/tmp/repo")
+        finding = _make_finding(description="sdk unavailable")
+
+        # Simulate the SDK being uninstallable by making the constructor raise
+        class FakeClient:
+            def __init__(self, *a, **kw):
+                raise ImportError("no sdk")
+
+        monkeypatch.setattr(
+            "codecustodian.planner.copilot_client.CopilotPlannerClient",
+            FakeClient,
+        )
+
+        result = await pipeline._plan(finding)
+        assert result is None
+
+    def test_build_code_context(self, tmp_path):
+        """_build_code_context reads source code around the finding line."""
+        src = tmp_path / "src" / "main.py"
+        src.parent.mkdir(parents=True)
+        src.write_text("import os\n\ndef foo():\n    pass\n\ndef bar():\n    return 1\n")
+
+        config = CodeCustodianConfig()
+        pipeline = Pipeline(config=config, repo_path=str(tmp_path))
+        finding = _make_finding(file="src/main.py", line=4)
+
+        ctx = pipeline._build_code_context(finding)
+        assert "def foo" in ctx.source_code
+        assert ctx.file_path == "src/main.py"
+        assert len(ctx.imports) >= 1  # "import os"
+
+    @pytest.mark.asyncio
     async def test_process_finding_dry_run_records_plan(self, monkeypatch):
         config = CodeCustodianConfig()
         pipeline = Pipeline(config=config, repo_path="/tmp/repo", dry_run=True)

@@ -7,6 +7,7 @@
 **The autonomous guardian of your codebase**
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![CI](https://github.com/Nizarel/CodeCustodian/actions/workflows/ci.yml/badge.svg)](https://github.com/Nizarel/CodeCustodian/actions/workflows/ci.yml)
 [![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/downloads/)
 [![GitHub Actions](https://img.shields.io/badge/CI%2FCD-GitHub%20Actions-2088FF?logo=github-actions)](https://github.com/features/actions)
 [![Powered by GitHub Copilot](https://img.shields.io/badge/Powered%20by-GitHub%20Copilot-000000?logo=github)](https://github.com/features/copilot)
@@ -1205,22 +1206,93 @@ advanced:
 ### CLI Reference
 
 ```bash
-# Main command
-codecustodian run [OPTIONS]
+# ── Main Commands ──────────────────────────────────────────────
 
-# Options:
+# Run full pipeline (scan → plan → execute → verify → PR)
+codecustodian run [OPTIONS]
 #   --repo-path PATH          Path to repository (default: .)
 #   --config PATH             Config file path (default: .codecustodian.yml)
 #   --max-prs INT             Max PRs per run (default: 5)
-#   --scan-type TYPE          Scanner filter (all|deprecated|todo|smells)
+#   --scan-type TYPE          Scanner filter (all|deprecated_apis|todo_comments|...)
 #   --dry-run                 Preview without creating PRs
-#   --verbose / -v            Increase logging verbosity
+#   --verbose / -v            Verbose logging
 #   --quiet / -q              Suppress non-error output
 #   --debug                   Enable debug mode (full traces)
-#   --help                    Show help message
+#   --log-file PATH           Log to file
+#   --enable-work-iq          Enable Work IQ integration
+#   --output-format FMT       Output format: table or json
 
-# Examples:
+# Initialize CodeCustodian in a repository
+codecustodian init [PATH] [OPTIONS]
+#   --template NAME           Policy template:
+#                              security_first, deprecations_first,
+#                              low_risk_maintenance, full_scan (default)
 
+# Validate configuration
+codecustodian validate [OPTIONS]
+#   --path PATH               Config file path (default: .codecustodian.yml)
+
+# ── Scanning ───────────────────────────────────────────────────
+
+# Run scanners without creating PRs
+codecustodian scan [OPTIONS]
+#   --repo-path PATH          Repository path
+#   --scanner NAME            Scanner to run (default: all)
+#   --config PATH             Config file path
+#   --output-format FMT       Output: table, json, or csv
+
+# List and filter findings
+codecustodian findings [OPTIONS]
+#   --repo-path PATH          Repository path
+#   --config PATH             Config file path
+#   --type NAME               Filter by finding type
+#   --severity LEVEL          Filter by severity (critical|high|medium|low)
+#   --status STATE            Filter by status (open|resolved)
+#   --file PATTERN            Filter by file path substring
+#   --output-format FMT       Output: table, json, or csv
+
+# ── Actions ────────────────────────────────────────────────────
+
+# Create PRs for top N findings
+codecustodian create-prs [OPTIONS]
+#   --repo-path PATH          Repository path
+#   --config PATH             Config file path
+#   --top INT                 Top N findings to process (default: 5)
+#   --dry-run                 Preview mode
+
+# Onboard a repository or organization
+codecustodian onboard [OPTIONS]
+#   --repo-path PATH          Repository path
+#   --org NAME                Organization name (org-level onboarding)
+#   --template NAME           Onboarding template
+
+# ── Reporting ──────────────────────────────────────────────────
+
+# Show findings, budget, and SLA status
+codecustodian status [OPTIONS]
+#   --repo-path PATH          Repository path
+#   --config PATH             Config file path
+
+# Generate ROI report
+codecustodian report [OPTIONS]
+#   --period YYYY-MM          Report period
+#   --format FMT              Report format: json or csv
+#   --output PATH             Write report to file
+
+# ── Other ──────────────────────────────────────────────────────
+
+# Interactive menu for common workflows
+codecustodian interactive [OPTIONS]
+#   --repo-path PATH          Repository path
+#   --config PATH             Config file path
+
+# Show version
+codecustodian version
+```
+
+#### Examples
+
+```bash
 # Run with defaults
 codecustodian run
 
@@ -1236,23 +1308,17 @@ codecustodian run --max-prs 10
 # Custom config location
 codecustodian run --config configs/prod.yml
 
-# Subcommands:
+# Scan and output JSON
+codecustodian scan --output-format json
 
-# Validate configuration
-codecustodian config validate
+# Filter high-severity findings in a specific file
+codecustodian findings --severity high --file utils.py
 
-# List available scanners
-codecustodian scanners list
+# Generate CSV ROI report
+codecustodian report --format csv --output roi.csv
 
-# Run specific scanner
-codecustodian scan --scanner deprecated_apis
-
-# Show version
-codecustodian version
-
-# Initialize new repository
-codecustodian init
-# Creates .codecustodian.yml and .github/workflows/codecustodian.yml
+# Initialize with security-first template
+codecustodian init --template security_first
 ```
 
 ---
@@ -1710,6 +1776,11 @@ git push origin feature/my-amazing-feature
 - [x] Business intelligence (5-factor impact scoring, dynamic re-prioritization)
 - [x] Feedback & learning (PR outcomes, preferences, historical patterns)
 - [x] SLA & reliability reporting
+- [x] Security hardening (path traversal guards, dangerous function detection, secret scanning)
+- [x] Responsible AI policy (human-in-the-loop, explainability, proposal mode)
+- [x] Audit logging with tamper-evident hashes
+- [x] Full CLI with 10 commands (run, init, validate, scan, onboard, status, report, findings, create-prs, interactive)
+- [x] 609 tests, 82% coverage (80% gate met)
 
 ### Q2 2026 🚧
 - [ ] **JavaScript/TypeScript support**

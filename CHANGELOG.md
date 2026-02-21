@@ -6,6 +6,65 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
 
+## [0.10.0] — 2026-02-21
+
+### Added — Phase 10: CLI Commands, Integration Tests & Coverage Closure
+
+#### CLI Commands (FR-CLI-100)
+- 10 fully implemented CLI commands: `run`, `init`, `validate`, `scan`, `onboard`,
+  `status`, `report`, `findings`, `create-prs`, `interactive`
+- Shared `_scan_findings()` and `_filter_findings()` helpers for consistent scanner invocation
+- `_print_findings()` supports table, JSON, and CSV output formats
+- `init` command applies policy templates and bootstraps `.github/workflows/codecustodian.yml`
+- `status` aggregates findings by type/severity, budget utilization, and SLA metrics
+- `report` generates ROI reports in JSON or CSV via `ROICalculator`
+- `findings` supports filtering by type, severity, status, and file pattern
+- `create-prs` delegates to Pipeline with configurable top-N and dry-run
+- `interactive` provides InquirerPy-powered menu loop for common workflows
+
+#### Integration & E2E Tests
+- 2 async integration tests in `tests/integration/test_pipeline_integration.py`
+  (dry-run pipeline on real git repo, full mocked path with execute/verify/PR)
+- 2 end-to-end tests in `tests/e2e/test_full_workflow.py`
+  (scan detection against fixture repo, dry-run pipeline JSON output)
+
+#### Coverage Closure
+- 21 verifier deep tests (`tests/test_verifier.py`) — TestRunner, LinterRunner, SecurityVerifier
+- 25 executor additional/edge-case tests (`tests/test_executor_additional.py`,
+  `tests/test_executor_edge_cases.py`) — GitManager, SafetyChecks, FileEditor, Backup
+- 18 pipeline tests with 5 new `TestPipelineProcessFinding` paths
+- 7 onboarding tests, 4 logging tests, 12 CLI tests
+- **609 tests passing**, 82.26% overall coverage (≥80% gate met)
+- Critical-path executor+verifier coverage: 90.20%
+
+---
+
+## [0.9.0] — 2026-02-18
+
+### Added — Phase 9: Security Hardening, Responsible AI & Observability
+
+#### Security Hardening
+- Path traversal and symlink blocking in `SafeFileEditor`
+- Dangerous function detection (`eval`, `exec`, `compile`, `__import__`) in safety checks
+- Secret detection (tokens, API keys, bearer credentials) in pre-execution validation
+- Repository-boundary enforcement for all file operations
+
+#### Responsible AI
+- `Docs/RESPONSIBLE_AI.md` — 8-section policy covering human-in-the-loop,
+  explainability, confidence scoring, fairness, privacy, safety, accountability,
+  and proposal mode
+
+#### Audit & Observability
+- `AuditLogger` with append-only JSONL and SHA-256 tamper-evident hashes
+- `_JsonFormatter` structured log formatter with secret masking
+- `SECURITY.md` security policy and disclosure process
+
+#### Tests
+- 7 tests in `tests/test_phase9_security.py` covering audit logging, path traversal
+  blocking, dangerous function detection, JSON log masking, and secret redaction
+
+---
+
 ## [0.8.0] — 2026-02-15
 
 ### Added — Phase 8: Business Intelligence, Feedback & Learning
