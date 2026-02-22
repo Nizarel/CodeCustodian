@@ -536,13 +536,20 @@ class Pipeline:
             if self.copilot_token and not copilot_config.github_token:
                 copilot_config.github_token = self.copilot_token
 
+            if not copilot_config.github_token:
+                logger.info(
+                    "No Copilot token configured — skipping AI planning for %s",
+                    finding.id,
+                )
+                return None
+
             try:
                 from codecustodian.planner.copilot_client import CopilotPlannerClient
                 from codecustodian.planner.planner import Planner
 
                 client = CopilotPlannerClient(copilot_config)
                 await client.start()
-            except (PlannerError, ImportError):
+            except (PlannerError, ImportError, OSError):
                 logger.warning(
                     "Copilot SDK unavailable — skipping planning for %s",
                     finding.id,

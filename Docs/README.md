@@ -7,6 +7,7 @@ CodeCustodian is an autonomous AI agent that detects, prioritizes, and fixes tec
 ## Contents
 
 - [Architecture](ARCHITECTURE.md) — System design, component map, and data flow
+- [Tools & Usage](TOOLS_AND_USAGE.md) — Complete CLI, MCP tools, resources, prompts, and configuration reference
 - [Responsible AI](RESPONSIBLE_AI.md) — Safety measures and ethical guidelines
 - [Deployment](DEPLOYMENT.md) — Installation, Docker, GitHub Actions, Azure Container Apps
 - [Business Value](BUSINESS_VALUE.md) — ROI analysis and competitive comparison

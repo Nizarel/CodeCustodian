@@ -83,6 +83,7 @@ markers = [
     "slow: marks tests as slow",
     "integration: marks integration tests",
     "e2e: marks end-to-end tests",
+    "azure_e2e: marks post-deployment tests against live Azure endpoint",
 ]
 
 [tool.mypy]
