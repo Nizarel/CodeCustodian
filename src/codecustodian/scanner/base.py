@@ -200,6 +200,53 @@ class BaseScanner(ABC):
 
         return sorted(py_files)
 
+    def find_files(
+        self,
+        repo_path: str | Path,
+        extensions: list[str],
+        exclude_patterns: list[str] | None = None,
+    ) -> list[Path]:
+        """Discover source files of given extensions, respecting ``.gitignore``.
+
+        Parameters
+        ----------
+        repo_path:
+            Root directory to search.
+        extensions:
+            File extensions to include, with leading dot (e.g. ``[".go", ".cs"]``).
+            Pass ``[".py"]`` to replicate :meth:`find_python_files` behaviour.
+        exclude_patterns:
+            Glob patterns to exclude (e.g. ``["vendor/**"]``).
+
+        Returns
+        -------
+        list[Path]
+            Sorted, deduplicated list of matching file paths.
+        """
+        root = Path(repo_path)
+        config_excludes = (
+            self.config.advanced.exclude_paths if self.config else []
+        )
+        user_excludes = exclude_patterns or []
+        gitignore_excludes = _load_gitignore_patterns(root)
+
+        all_excludes = list(set(config_excludes + user_excludes + gitignore_excludes))
+
+        found: list[Path] = []
+        seen: set[Path] = set()
+        for ext in extensions:
+            dot_ext = ext if ext.startswith(".") else f".{ext}"
+            for src_file in root.rglob(f"*{dot_ext}"):
+                if src_file in seen:
+                    continue
+                rel = str(src_file.relative_to(root)).replace("\\", "/")
+                if is_excluded(rel, all_excludes):
+                    continue
+                found.append(src_file)
+                seen.add(src_file)
+
+        return sorted(found)
+
     # ── Helpers ───────────────────────────────────────────────────────
 
     def __repr__(self) -> str:

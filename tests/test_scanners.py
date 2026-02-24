@@ -768,6 +768,246 @@ class TestDeduplicationEngine:
 
             engine._db.close()
 
+
+# ═══════════════════════════════════════════════════════════════════════════
+# Multi-Language Support
+# ═══════════════════════════════════════════════════════════════════════════
+
+
+class TestFindFiles:
+    """Tests for BaseScanner.find_files() — multi-extension file discovery."""
+
+    def _make_scanner(self):
+        class Dummy(BaseScanner):
+            name = "d"
+            description = "d"
+
+            def scan(self, repo_path, **kwargs):
+                return []
+
+        return Dummy()
+
+    def test_finds_go_files(self):
+        scanner = self._make_scanner()
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            (root / "main.go").write_text("package main\n")
+            (root / "main.py").write_text("pass\n")
+
+            files = scanner.find_files(root, [".go"])
+            names = [f.name for f in files]
+            assert "main.go" in names
+            assert "main.py" not in names
+
+    def test_finds_multiple_extensions(self):
+        scanner = self._make_scanner()
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            (root / "app.py").write_text("pass\n")
+            (root / "service.cs").write_text("// C#\n")
+            (root / "util.go").write_text("package main\n")
+            (root / "index.js").write_text("const x = 1;\n")
+
+            files = scanner.find_files(root, [".py", ".cs", ".go", ".js"])
+            names = {f.name for f in files}
+            assert names == {"app.py", "service.cs", "util.go", "index.js"}
+
+    def test_deduplicates_overlapping_calls(self):
+        scanner = self._make_scanner()
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            (root / "app.py").write_text("pass\n")
+
+            # Passing ".py" twice should not return the file twice
+            files = scanner.find_files(root, [".py", ".py"])
+            py_files = [f for f in files if f.name == "app.py"]
+            assert len(py_files) == 1
+
+    def test_respects_gitignore(self):
+        scanner = self._make_scanner()
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            (root / ".gitignore").write_text("vendor/\n")
+            (root / "vendor").mkdir()
+            (root / "vendor" / "dep.go").write_text("package dep\n")
+            (root / "main.go").write_text("package main\n")
+
+            files = scanner.find_files(root, [".go"])
+            names = [f.name for f in files]
+            assert "main.go" in names
+            assert "dep.go" not in names
+
+    def test_extension_without_dot_normalised(self):
+        scanner = self._make_scanner()
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            (root / "app.ts").write_text("const x: number = 1;\n")
+
+            # Extension supplied without leading dot
+            files = scanner.find_files(root, ["ts"])
+            assert any(f.name == "app.ts" for f in files)
+
+
+class TestTodoScannerMultiLang:
+    """Multi-language TODO/FIXME detection tests."""
+
+    def test_detects_todo_in_go_file(self):
+        from codecustodian.scanner.todo_comments import TodoCommentScanner
+
+        scanner = TodoCommentScanner()
+        with tempfile.TemporaryDirectory() as tmpdir:
+            (Path(tmpdir) / "main.go").write_text(
+                "// TODO: migrate authentication to OAuth\npackage main\n"
+            )
+
+            findings = scanner.scan(tmpdir)
+            assert any(f.metadata.get("tag") == "TODO" for f in findings)
+            assert any(f.metadata.get("language") == "go" for f in findings)
+
+    def test_detects_fixme_in_cs_file(self):
+        from codecustodian.scanner.todo_comments import TodoCommentScanner
+
+        scanner = TodoCommentScanner()
+        with tempfile.TemporaryDirectory() as tmpdir:
+            (Path(tmpdir) / "Service.cs").write_text(
+                "// FIXME: SQL injection risk\npublic class Svc {}\n"
+            )
+
+            findings = scanner.scan(tmpdir)
+            assert any(f.metadata.get("tag") == "FIXME" for f in findings)
+            assert any(f.metadata.get("language") == "cs" for f in findings)
+
+    def test_detects_todo_in_ts_file(self):
+        from codecustodian.scanner.todo_comments import TodoCommentScanner
+
+        scanner = TodoCommentScanner()
+        with tempfile.TemporaryDirectory() as tmpdir:
+            (Path(tmpdir) / "app.ts").write_text(
+                "// HACK: workaround pending upstream fix\nconst x = 1;\n"
+            )
+
+            findings = scanner.scan(tmpdir)
+            assert any(f.metadata.get("tag") == "HACK" for f in findings)
+            assert any(f.metadata.get("language") == "ts" for f in findings)
+
+    def test_language_metadata_on_python_file(self):
+        from codecustodian.scanner.todo_comments import TodoCommentScanner
+
+        scanner = TodoCommentScanner()
+        with tempfile.TemporaryDirectory() as tmpdir:
+            (Path(tmpdir) / "script.py").write_text("# TODO: clean up\n")
+
+            findings = scanner.scan(tmpdir)
+            assert any(f.metadata.get("language") == "py" for f in findings)
+
+    def test_block_comment_todo_in_go(self):
+        from codecustodian.scanner.todo_comments import TodoCommentScanner
+
+        scanner = TodoCommentScanner()
+        with tempfile.TemporaryDirectory() as tmpdir:
+            (Path(tmpdir) / "util.go").write_text(
+                "/* TODO: replace with Go generics */\nfunc id(x int) int { return x }\n"
+            )
+
+            findings = scanner.scan(tmpdir)
+            assert any(f.metadata.get("tag") == "TODO" for f in findings)
+
+
+class TestSecurityScannerMultiLang:
+    """Multi-language security pattern detection tests."""
+
+    def test_detects_hardcoded_secret_in_go(self):
+        from codecustodian.scanner.security import SecurityScanner
+
+        scanner = SecurityScanner()
+        with tempfile.TemporaryDirectory() as tmpdir:
+            (Path(tmpdir) / "config.go").write_text(
+                'package main\nconst apiSecret = "AKIAIOSFODNN7EXAMPLE"\n'
+            )
+
+            findings = scanner.scan(tmpdir)
+            secret_findings = [f for f in findings if f.metadata.get("category") == "hardcoded_secrets"]
+            assert len(secret_findings) >= 1
+            assert any(f.metadata.get("language") == "go" for f in secret_findings)
+
+    def test_detects_hardcoded_password_in_cs(self):
+        from codecustodian.scanner.security import SecurityScanner
+
+        scanner = SecurityScanner()
+        with tempfile.TemporaryDirectory() as tmpdir:
+            (Path(tmpdir) / "Auth.cs").write_text(
+                'string password = "admin123!";\n'
+            )
+
+            findings = scanner.scan(tmpdir)
+            secret_findings = [f for f in findings if f.metadata.get("category") == "hardcoded_secrets"]
+            assert len(secret_findings) >= 1
+            assert any(f.metadata.get("language") == "cs" for f in secret_findings)
+
+    def test_detects_exec_command_in_go(self):
+        from codecustodian.scanner.security import SecurityScanner
+
+        scanner = SecurityScanner()
+        with tempfile.TemporaryDirectory() as tmpdir:
+            (Path(tmpdir) / "runner.go").write_text(
+                'package main\nimport "os/exec"\nfunc run(cmd string) { exec.Command(cmd) }\n'
+            )
+
+            findings = scanner.scan(tmpdir)
+            cmd_findings = [f for f in findings if f.metadata.get("category") == "command_injection"]
+            assert any("exec.Command" in f.description for f in cmd_findings)
+
+    def test_detects_process_start_in_cs(self):
+        from codecustodian.scanner.security import SecurityScanner
+
+        scanner = SecurityScanner()
+        with tempfile.TemporaryDirectory() as tmpdir:
+            (Path(tmpdir) / "Launcher.cs").write_text(
+                "Process.Start(userInput);\n"
+            )
+
+            findings = scanner.scan(tmpdir)
+            cmd_findings = [f for f in findings if f.metadata.get("category") == "command_injection"]
+            assert any("Process.Start" in f.description for f in cmd_findings)
+
+    def test_detects_sql_injection_in_go(self):
+        from codecustodian.scanner.security import SecurityScanner
+
+        scanner = SecurityScanner()
+        with tempfile.TemporaryDirectory() as tmpdir:
+            (Path(tmpdir) / "repo.go").write_text(
+                'func get(id string) { db.Query("SELECT * FROM t WHERE id = " + id) }\n'
+            )
+
+            findings = scanner.scan(tmpdir)
+            sql_findings = [f for f in findings if f.metadata.get("category") == "sql_injection"]
+            assert len(sql_findings) >= 1
+
+    def test_language_field_present_in_metadata(self):
+        from codecustodian.scanner.security import SecurityScanner
+
+        scanner = SecurityScanner()
+        with tempfile.TemporaryDirectory() as tmpdir:
+            (Path(tmpdir) / "secrets.go").write_text(
+                'const token = "my_secret_token_value"\n'
+            )
+
+            findings = scanner.scan(tmpdir)
+            custom = [f for f in findings if f.metadata.get("source") == "custom_pattern"]
+            assert all("language" in f.metadata for f in custom)
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# DeduplicationEngine (continued)
+# ═══════════════════════════════════════════════════════════════════════════
+
+
+class TestDeduplicationEngineMore:
+    def _make_engine(self, tmpdir):
+        from codecustodian.scanner.deduplication import DeduplicationEngine
+
+        return DeduplicationEngine(db_path=Path(tmpdir) / "dedup.json")
+
     def test_mark_resolved(self):
         with tempfile.TemporaryDirectory() as tmpdir:
             engine = self._make_engine(tmpdir)

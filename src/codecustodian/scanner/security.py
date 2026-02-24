@@ -57,11 +57,53 @@ _CUSTOM_PATTERNS: dict[str, list[dict[str, Any]]] = {
             "cwe": "CWE-327",
             "priority": 140.0,
         },
+        {
+            "regex": r"""\bnew\s+(?:MD5|SHA1)(?:Managed|CryptoServiceProvider)?\s*\(""",
+            "message": "Weak hash algorithm (MD5/SHA1) used — vulnerable to collision attacks (C#)",
+            "severity": SeverityLevel.HIGH,
+            "cwe": "CWE-328",
+            "priority": 140.0,
+        },
+        {
+            "regex": r'''"crypto/md5"|"crypto/sha1"''',
+            "message": "Weak hash algorithm (MD5/SHA1) used — vulnerable to collision attacks (Go)",
+            "severity": SeverityLevel.HIGH,
+            "cwe": "CWE-328",
+            "priority": 140.0,
+        },
+        {
+            "regex": r"""MessageDigest\.getInstance\s*\(\s*["'](?:MD5|SHA-1)["']""",
+            "message": "Weak hash algorithm (MD5/SHA-1) used — vulnerable to collision attacks (Java)",
+            "severity": SeverityLevel.HIGH,
+            "cwe": "CWE-328",
+            "priority": 140.0,
+        },
     ],
     "sql_injection": [
         {
             "regex": r"""\.execute\s*\(\s*(?:f["']|["'].*%[sd]|.*\.format\s*\()""",
             "message": "Potential SQL injection — use parameterised queries",
+            "severity": SeverityLevel.CRITICAL,
+            "cwe": "CWE-89",
+            "priority": 185.0,
+        },
+        {
+            "regex": r"""\bSqlCommand\s*\([^)]*\+""",
+            "message": "Potential SQL injection via string concatenation in SqlCommand (C#)",
+            "severity": SeverityLevel.CRITICAL,
+            "cwe": "CWE-89",
+            "priority": 185.0,
+        },
+        {
+            "regex": r"""\bdb\.(?:Query|Exec)\s*\([^)]*\+""",
+            "message": "Potential SQL injection via string concatenation in db.Query/Exec (Go)",
+            "severity": SeverityLevel.CRITICAL,
+            "cwe": "CWE-89",
+            "priority": 185.0,
+        },
+        {
+            "regex": r"""(?:Statement|PreparedStatement).*execute(?:Query|Update)?\s*\([^)]*\+""",
+            "message": "Potential SQL injection via string concatenation in Statement.execute (Java)",
             "severity": SeverityLevel.CRITICAL,
             "cwe": "CWE-89",
             "priority": 185.0,
@@ -95,6 +137,27 @@ _CUSTOM_PATTERNS: dict[str, list[dict[str, Any]]] = {
             "severity": SeverityLevel.HIGH,
             "cwe": "CWE-95",
             "priority": 155.0,
+        },
+        {
+            "regex": r"""\bProcess\.Start\s*\(""",
+            "message": "Process.Start() may be vulnerable to command injection (C#)",
+            "severity": SeverityLevel.HIGH,
+            "cwe": "CWE-78",
+            "priority": 150.0,
+        },
+        {
+            "regex": r"""\bexec\.Command\s*\(""",
+            "message": "exec.Command() may be vulnerable to command injection (Go)",
+            "severity": SeverityLevel.HIGH,
+            "cwe": "CWE-78",
+            "priority": 150.0,
+        },
+        {
+            "regex": r"""\bRuntime\.getRuntime\s*\(\s*\)\.exec\s*\(""",
+            "message": "Runtime.exec() may be vulnerable to command injection (Java)",
+            "severity": SeverityLevel.HIGH,
+            "cwe": "CWE-78",
+            "priority": 150.0,
         },
     ],
     "deserialization": [
@@ -295,9 +358,16 @@ class SecurityScanner(BaseScanner):
         """Scan source files with regex-based security patterns."""
         findings: list[Finding] = []
 
-        for py_file in self.find_python_files(repo_path):
+        cfg_langs = (
+            self.config.scanners.security_patterns.languages
+            if self.config
+            else ["py", "go", "cs", "js", "ts", "java"]
+        )
+        extensions = [ext if ext.startswith(".") else f".{ext}" for ext in cfg_langs]
+
+        for src_file in self.find_files(repo_path, extensions):
             try:
-                source = py_file.read_text(encoding="utf-8", errors="ignore")
+                source = src_file.read_text(encoding="utf-8", errors="ignore")
                 lines = source.splitlines()
             except OSError:
                 continue
@@ -313,7 +383,7 @@ class SecurityScanner(BaseScanner):
                                 Finding(
                                     type=FindingType.SECURITY,
                                     severity=pat_def["severity"],
-                                    file=str(py_file),
+                                    file=str(src_file),
                                     line=line_num,
                                     description=pat_def["message"],
                                     suggestion=f"CWE: {pat_def['cwe']}",
@@ -323,6 +393,7 @@ class SecurityScanner(BaseScanner):
                                         "source": "custom_pattern",
                                         "category": category,
                                         "cwe": pat_def["cwe"],
+                                        "language": src_file.suffix.lstrip("."),
                                         "exploit_scenario": _EXPLOIT_SCENARIOS.get(
                                             category, ""
                                         ),

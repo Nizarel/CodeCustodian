@@ -20,8 +20,15 @@ from codecustodian.scanner.base import BaseScanner
 
 logger = get_logger("scanner.todo_comments")
 
+# Default extensions to scan (user-configurable via `languages` config field).
+_DEFAULT_EXTENSIONS = [".py", ".go", ".cs", ".js", ".ts", ".java"]
+
+# Unified comment pattern —  matches:
+#   Python/Shell:   #  TODO: ...
+#   Go/C#/JS/TS:    // TODO: ...
+#   Block comment:  /* TODO: ... */  (single-line only)
 _TODO_PATTERN = re.compile(
-    r"#\s*(TODO|FIXME|HACK|XXX|NOTE)\b[:\s]*(.*)",
+    r"(?:#|//|/\*[*\s]*)\s*(TODO|FIXME|HACK|XXX|NOTE)\b[:\s]*(.*?)(?:\*/)?$",
     re.IGNORECASE,
 )
 
@@ -42,29 +49,33 @@ class TodoCommentScanner(BaseScanner):
         max_age = 90
         patterns = ["TODO", "FIXME", "HACK", "XXX"]
         auto_issue = False
+        extensions = _DEFAULT_EXTENSIONS
 
         if self.config:
             cfg = self.config.scanners.todo_comments
             max_age = cfg.max_age_days
             patterns = cfg.patterns
             auto_issue = cfg.auto_issue
+            if cfg.languages:
+                extensions = [ext if ext.startswith(".") else f".{ext}" for ext in cfg.languages]
 
+        # Unified comment prefix pattern covering #, //, /* ... */
         pattern = re.compile(
-            rf"#\s*({'|'.join(re.escape(p) for p in patterns)})\b[:\s]*(.*)",
+            rf"(?:#|//|/\*[*\s]*)\s*({'|'.join(re.escape(p) for p in patterns)})\b[:\s]*(.*?)(?:\*/)?$",
             re.IGNORECASE,
         )
 
         # Try to initialise a GitPython Repo for blame lookups
         blame_repo = self._get_git_repo(repo_path)
 
-        for py_file in self.find_python_files(repo_path):
+        for src_file in self.find_files(repo_path, extensions):
             try:
-                lines = py_file.read_text(encoding="utf-8", errors="ignore").splitlines()
+                lines = src_file.read_text(encoding="utf-8", errors="ignore").splitlines()
             except OSError:
                 continue
 
             # Pre-fetch blame data for this file (once per file)
-            blame_map = self._build_blame_map(blame_repo, py_file, repo_path)
+            blame_map = self._build_blame_map(blame_repo, src_file, repo_path)
 
             for line_num, line in enumerate(lines, start=1):
                 match = pattern.search(line)
@@ -88,6 +99,7 @@ class TodoCommentScanner(BaseScanner):
                     meta: dict[str, Any] = {
                         "tag": tag,
                         "message": message,
+                        "language": src_file.suffix.lstrip("."),
                     }
                     if author:
                         meta["author"] = author
@@ -104,7 +116,7 @@ class TodoCommentScanner(BaseScanner):
                         Finding(
                             type=FindingType.TODO_COMMENT,
                             severity=severity,
-                            file=str(py_file),
+                            file=str(src_file),
                             line=line_num,
                             description=f"{tag}: {message}" if message else tag,
                             suggestion=f"Resolve or convert to issue: {message}",

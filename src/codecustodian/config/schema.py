@@ -40,6 +40,10 @@ class TodoScannerConfig(BaseModel):
     )
     auto_issue: bool = False
     notify_authors: bool = False
+    languages: list[str] = Field(
+        default_factory=lambda: ["py", "go", "cs", "js", "ts", "java"],
+        description="File extensions to scan (without leading dot).",
+    )
 
 
 class CodeSmellScannerConfig(BaseModel):
@@ -61,6 +65,10 @@ class SecurityScannerConfig(BaseModel):
     detect_weak_crypto: bool = True
     detect_sql_injection: bool = True
     detect_command_injection: bool = True
+    languages: list[str] = Field(
+        default_factory=lambda: ["py", "go", "cs", "js", "ts", "java"],
+        description="File extensions to scan (without leading dot).",
+    )
 
 
 class TypeCoverageScannerConfig(BaseModel):

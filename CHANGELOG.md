@@ -6,6 +6,39 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
 
+## [0.11.0] — 2026-02-23
+
+### Added — Multi-Language Scanner Support
+
+#### Language Coverage (FR-SCAN-110)
+- `TodoCommentScanner` and `SecurityScanner` now scan Go, C#, JavaScript, TypeScript,
+  Java, and Python (previously Python-only)
+- New `BaseScanner.find_files(extensions)` method for multi-extension file discovery
+  with `.gitignore` and config-driven exclusion (backward-compatible alongside `find_python_files`)
+- Unified comment regex covers `#` (Python/Shell), `//` (Go/C#/JS/TS/Java),
+  and `/* */` block comments in a single pass
+- `language` field added to `Finding.metadata` for all TODO and security findings
+
+#### New Security Patterns
+- **C#**: `Process.Start()` command injection, `SqlCommand` string-concat SQL injection,
+  `new MD5/SHA1Managed` weak crypto
+- **Go**: `exec.Command()` command injection, `db.Query/Exec` string-concat SQL injection,
+  `"crypto/md5"` / `"crypto/sha1"` import detection
+- **Java**: `Runtime.getRuntime().exec()` command injection,
+  `Statement.executeQuery/executeUpdate` string-concat SQL injection,
+  `MessageDigest.getInstance("MD5"/"SHA-1")` weak crypto
+
+#### Configuration
+- `TodoScannerConfig.languages` and `SecurityScannerConfig.languages` fields added
+  (default: `["py","go","cs","js","ts","java"]`) — user-configurable via `.codecustodian.yml`
+
+#### Tests & Fixtures
+- 16 new tests across `TestFindFiles`, `TestTodoScannerMultiLang`, `TestSecurityScannerMultiLang`
+- New fixture files: `tests/fixtures/sample_repo/main.go`, `Service.cs`, `UserRepository.java`
+- **625 tests passing**, zero regressions
+
+---
+
 ## [0.10.0] — 2026-02-21
 
 ### Added — Phase 10: CLI Commands, Integration Tests & Coverage Closure
