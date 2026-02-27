@@ -137,5 +137,12 @@ def get_default_registry(config: CodeCustodianConfig | None = None) -> ScannerRe
     except ImportError:
         pass
 
+    try:
+        from codecustodian.scanner.dependency_upgrades import DependencyUpgradeScanner
+
+        registry.register(DependencyUpgradeScanner)
+    except ImportError:
+        pass
+
     logger.info("Default registry loaded: %d scanners", len(registry))
     return registry

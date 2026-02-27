@@ -1,0 +1,35 @@
+{
+  "version": "1.0",
+  "packages": [
+    {
+      "name": "pydantic",
+      "recommended_min": "2.8.0",
+      "severity": "medium",
+      "reason": "Recent 2.x releases include validation and performance fixes."
+    },
+    {
+      "name": "httpx",
+      "recommended_min": "0.27.0",
+      "severity": "medium",
+      "reason": "Older versions have known compatibility and behavior issues."
+    },
+    {
+      "name": "pygithub",
+      "recommended_min": "2.3.0",
+      "severity": "high",
+      "reason": "Upgrade for API compatibility and security hardening updates."
+    },
+    {
+      "name": "fastmcp",
+      "recommended_min": "2.14.0",
+      "severity": "medium",
+      "reason": "Use current FastMCP major line for protocol compatibility."
+    },
+    {
+      "name": "requests",
+      "recommended_min": "2.32.0",
+      "severity": "medium",
+      "reason": "Newer releases include important fixes and TLS stack improvements."
+    }
+  ]
+}

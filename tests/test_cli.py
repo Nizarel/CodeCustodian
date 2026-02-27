@@ -68,6 +68,25 @@ def test_scan_outputs_json(cli_runner) -> None:
     assert any(item["type"] == "security" for item in payload)
 
 
+def test_scan_outputs_sarif(cli_runner) -> None:
+    result = cli_runner.invoke(
+        app,
+        [
+            "scan",
+            "--repo-path",
+            "tests/fixtures/sample_repo",
+            "--output-format",
+            "sarif",
+        ],
+    )
+    assert result.exit_code == 0
+    payload = _load_json_from_output(result.stdout)
+    assert payload["version"] == "2.1.0"
+    assert payload["runs"]
+    assert payload["runs"][0]["tool"]["driver"]["name"] == "CodeCustodian"
+    assert payload["runs"][0]["results"]
+
+
 def test_run_outputs_json(cli_runner, monkeypatch) -> None:
     class _DummyResult:
         def model_dump_json(self, **_kwargs):
@@ -137,6 +156,27 @@ def test_findings_filter_type_json(cli_runner) -> None:
     assert all(item["type"] == "security" for item in payload)
 
 
+def test_findings_filter_type_sarif(cli_runner) -> None:
+    result = cli_runner.invoke(
+        app,
+        [
+            "findings",
+            "--repo-path",
+            "tests/fixtures/sample_repo",
+            "--type",
+            "security",
+            "--output-format",
+            "sarif",
+        ],
+    )
+    assert result.exit_code == 0
+    payload = _load_json_from_output(result.stdout)
+    run = payload["runs"][0]
+    assert run["tool"]["driver"]["rules"]
+    assert run["results"]
+    assert all(item["ruleId"] == "security" for item in run["results"])
+
+
 def test_create_prs_outputs_summary(cli_runner, monkeypatch) -> None:
     class _DummyResult:
         findings = [1, 2]
@@ -162,6 +202,125 @@ def test_create_prs_outputs_summary(cli_runner, monkeypatch) -> None:
     payload = _load_json_from_output(result.stdout)
     assert payload["prs_created"] == 1
     assert payload["findings"] == 2
+
+
+def test_heal_outputs_detected_signals_as_json(cli_runner, tmp_path: Path) -> None:
+    log_file = tmp_path / "ci.log"
+    log_file.write_text(
+        "Ruff check failed with F401\n"
+        "mypy src/codecustodian\n"
+        "error: Incompatible return value type\n",
+        encoding="utf-8",
+    )
+
+    result = cli_runner.invoke(
+        app,
+        ["heal", "--failure-log", str(log_file), "--output-format", "json"],
+    )
+    assert result.exit_code == 0
+    payload = _load_json_from_output(result.stdout)
+    assert payload["status"] == "signals-detected"
+    keys = {item["key"] for item in payload["signals"]}
+    assert "ruff" in keys
+    assert "mypy" in keys
+    assert payload["patch_candidates"]
+    patch_ids = {item["id"] for item in payload["patch_candidates"]}
+    assert "mypy-incompatible-return" in patch_ids
+
+
+def test_heal_fails_for_missing_log_file(cli_runner) -> None:
+    result = cli_runner.invoke(
+        app,
+        ["heal", "--failure-log", "missing-ci.log", "--output-format", "json"],
+    )
+    assert result.exit_code != 0
+    assert "Failure log file not found" in result.stdout
+
+
+def test_review_pr_outputs_json(cli_runner) -> None:
+    result = cli_runner.invoke(
+        app,
+        [
+            "review-pr",
+            "--repo-path",
+            "tests/fixtures/sample_repo",
+            "--output-format",
+            "json",
+        ],
+    )
+    assert result.exit_code == 0
+    payload = _load_json_from_output(result.stdout)
+    assert "status" in payload
+    assert "risk_level" in payload
+    assert "total_findings" in payload
+    assert "suggested_labels" in payload
+
+
+def test_review_pr_marks_security_as_blocking_with_label(cli_runner) -> None:
+    result = cli_runner.invoke(
+        app,
+        [
+            "review-pr",
+            "--repo-path",
+            "tests/fixtures/sample_repo",
+            "--output-format",
+            "json",
+            "--block-on",
+            "critical,high",
+        ],
+    )
+    assert result.exit_code == 0
+    payload = _load_json_from_output(result.stdout)
+    assert payload["blocking_issues"] >= 1
+    assert "needs-fix" in payload["suggested_labels"]
+    assert "security-risk" in payload["suggested_labels"]
+
+
+def test_review_pr_includes_healing_plan(cli_runner, tmp_path: Path) -> None:
+    healing_plan = tmp_path / "healing-plan.json"
+    healing_plan.write_text(
+        json.dumps(
+            {
+                "status": "signals-detected",
+                "signals": [{"key": "ruff", "title": "Ruff lint failure"}],
+                "recommended_commands": ["ruff check src tests --fix"],
+                "patch_candidates": [{"id": "ruff-f401-remove-unused-import"}],
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    result = cli_runner.invoke(
+        app,
+        [
+            "review-pr",
+            "--repo-path",
+            "tests/fixtures/sample_repo",
+            "--output-format",
+            "json",
+            "--healing-plan-file",
+            str(healing_plan),
+        ],
+    )
+    assert result.exit_code == 0
+    payload = _load_json_from_output(result.stdout)
+    assert "healing_plan" in payload
+    assert payload["healing_plan"]["status"] == "signals-detected"
+
+
+def test_review_pr_outputs_table(cli_runner) -> None:
+    result = cli_runner.invoke(
+        app,
+        [
+            "review-pr",
+            "--repo-path",
+            "tests/fixtures/sample_repo",
+            "--output-format",
+            "table",
+        ],
+    )
+    assert result.exit_code == 0
+    assert "PR Review Status" in result.stdout
 
 
 def test_status_command_renders_with_mocked_services(cli_runner, monkeypatch) -> None:

@@ -4,6 +4,7 @@ from codecustodian.scanner.base import BaseScanner, is_excluded
 from codecustodian.scanner.code_smells import CodeSmellScanner
 from codecustodian.scanner.deduplication import DeduplicationEngine
 from codecustodian.scanner.deprecated_api import DeprecatedAPIScanner
+from codecustodian.scanner.dependency_upgrades import DependencyUpgradeScanner
 from codecustodian.scanner.registry import ScannerRegistry, get_default_registry
 from codecustodian.scanner.security import SecurityScanner
 from codecustodian.scanner.todo_comments import TodoCommentScanner
@@ -14,6 +15,7 @@ __all__ = [
     "CodeSmellScanner",
     "DeduplicationEngine",
     "DeprecatedAPIScanner",
+    "DependencyUpgradeScanner",
     "ScannerRegistry",
     "SecurityScanner",
     "TodoCommentScanner",

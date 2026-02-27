@@ -46,6 +46,9 @@ def _apply_scan_type_filter(cfg: Any, scan_type: str) -> None:
         "security": "security_patterns",
         "type_coverage": "type_coverage",
         "types": "type_coverage",
+        "dependency_upgrades": "dependency_upgrades",
+        "dependency_upgrade": "dependency_upgrades",
+        "dependencies": "dependency_upgrades",
     }
     target = scanner_map.get(normalized)
     if target is None:
@@ -57,6 +60,7 @@ def _apply_scan_type_filter(cfg: Any, scan_type: str) -> None:
         "code_smells",
         "security_patterns",
         "type_coverage",
+        "dependency_upgrades",
     ]
     for field_name in scanner_fields:
         getattr(cfg.scanners, field_name).enabled = field_name == target
@@ -74,7 +78,7 @@ def _finding_to_row(finding: Finding) -> dict[str, Any]:
     }
 
 
-def _print_findings(findings: list[Finding], output_format: str) -> None:
+def _print_findings(findings: list[Finding], output_format: str, repo_root: str | None = None) -> None:
     fmt = output_format.lower()
     rows = [_finding_to_row(f) for f in findings]
 
@@ -97,6 +101,12 @@ def _print_findings(findings: list[Finding], output_format: str) -> None:
         writer.writeheader()
         writer.writerows(rows)
         typer.echo(buffer.getvalue().rstrip("\n"))
+        return
+
+    if fmt == "sarif":
+        from codecustodian.cli.sarif_formatter import findings_to_sarif
+
+        typer.echo(findings_to_sarif(findings, repo_root=repo_root))
         return
 
     table = Table(title="Scan Findings")
@@ -149,6 +159,81 @@ def _filter_findings(
         needle = file_pattern.strip().lower()
         filtered = [f for f in filtered if needle in f.file.lower()]
     return filtered
+
+
+def _build_pr_review_summary(
+    findings: list[Finding],
+    healing_plan: dict[str, Any] | None = None,
+    block_on: set[str] | None = None,
+) -> dict[str, Any]:
+    """Build a structured PR review payload from findings and optional healing data."""
+    block_levels = block_on or {"critical", "high"}
+
+    by_severity: dict[str, int] = {}
+    by_type: dict[str, int] = {}
+    for finding in findings:
+        sev = finding.severity.value
+        by_severity[sev] = by_severity.get(sev, 0) + 1
+        typ = finding.type.value
+        by_type[typ] = by_type.get(typ, 0) + 1
+
+    if by_severity.get("critical", 0) > 0:
+        risk_level = "critical"
+    elif by_severity.get("high", 0) > 0:
+        risk_level = "high"
+    elif by_severity.get("medium", 0) > 0:
+        risk_level = "medium"
+    elif findings:
+        risk_level = "low"
+    else:
+        risk_level = "none"
+
+    blocking_count = sum(by_severity.get(level, 0) for level in block_levels)
+    status = "changes-requested" if blocking_count > 0 else "approved-with-notes"
+
+    suggested_labels: list[str] = []
+    if blocking_count > 0:
+        suggested_labels.append("needs-fix")
+    if by_type.get("security", 0) > 0:
+        suggested_labels.append("security-risk")
+    if by_type.get("type_coverage", 0) > 0:
+        suggested_labels.append("type-issues")
+    if by_type.get("dependency_upgrade", 0) > 0:
+        suggested_labels.append("dependency-upgrade")
+
+    top_findings = sorted(findings, key=lambda f: f.priority_score, reverse=True)[:10]
+
+    summary: dict[str, Any] = {
+        "status": status,
+        "risk_level": risk_level,
+        "blocking_issues": blocking_count,
+        "total_findings": len(findings),
+        "by_severity": by_severity,
+        "by_type": by_type,
+        "suggested_labels": suggested_labels,
+        "top_findings": [
+            {
+                "type": finding.type.value,
+                "severity": finding.severity.value,
+                "file": finding.file,
+                "line": finding.line,
+                "description": finding.description,
+                "suggestion": finding.suggestion,
+                "priority_score": finding.priority_score,
+            }
+            for finding in top_findings
+        ],
+    }
+
+    if healing_plan:
+        summary["healing_plan"] = {
+            "status": healing_plan.get("status", "unknown"),
+            "signals": healing_plan.get("signals", []),
+            "recommended_commands": healing_plan.get("recommended_commands", []),
+            "patch_candidates": healing_plan.get("patch_candidates", []),
+        }
+
+    return summary
 
 
 @app.command()
@@ -328,11 +413,12 @@ def validate(
                 cfg.scanners.code_smells,
                 cfg.scanners.security_patterns,
                 cfg.scanners.type_coverage,
+                cfg.scanners.dependency_upgrades,
             ]
             if scanner_cfg.enabled
         )
         console.print("[green]✓ Configuration is valid[/]")
-        console.print(f"  Scanners enabled: {enabled_count}/5")
+        console.print(f"  Scanners enabled: {enabled_count}/6")
         console.print(f"  Max PRs: {cfg.behavior.max_prs_per_run}")
         console.print(f"  Confidence threshold: {cfg.behavior.confidence_threshold}")
         console.print(f"  Proposal threshold: {cfg.behavior.proposal_mode_threshold}")
@@ -400,17 +486,17 @@ def scan(
     output_format: str = typer.Option(
         "table",
         "--output-format",
-        help="Output format: table, json, or csv",
+        help="Output format: table, json, csv, or sarif",
     ),
 ) -> None:
     """Run scanners without creating PRs."""
     output_format = output_format.lower()
-    if output_format not in {"table", "json", "csv"}:
-        raise typer.BadParameter("--output-format must be one of: table, json, csv")
+    if output_format not in {"table", "json", "csv", "sarif"}:
+        raise typer.BadParameter("--output-format must be one of: table, json, csv, sarif")
 
     findings = _scan_findings(repo_path, config, scanner)
 
-    _print_findings(findings, output_format)
+    _print_findings(findings, output_format, repo_root=repo_path)
     if output_format == "table":
         console.print(f"\n[bold]Total findings:[/] {len(findings)}")
 
@@ -536,15 +622,17 @@ def findings(
     severity: Optional[str] = typer.Option(None, "--severity", help="Filter by severity"),
     status: Optional[str] = typer.Option(None, "--status", help="Filter by status (open/resolved)"),
     file: Optional[str] = typer.Option(None, "--file", help="Filter by file path substring"),
-    output_format: str = typer.Option("table", "--output-format", help="Output format: table, json, csv"),
+    output_format: str = typer.Option(
+        "table", "--output-format", help="Output format: table, json, csv, sarif"
+    ),
 ) -> None:
     """List findings with filtering support."""
     if status and status.lower() not in {"open", "resolved"}:
         raise typer.BadParameter("--status must be 'open' or 'resolved'")
 
     output_format = output_format.lower()
-    if output_format not in {"table", "json", "csv"}:
-        raise typer.BadParameter("--output-format must be one of: table, json, csv")
+    if output_format not in {"table", "json", "csv", "sarif"}:
+        raise typer.BadParameter("--output-format must be one of: table, json, csv, sarif")
 
     all_findings = _scan_findings(repo_path, config, "all")
     filtered = _filter_findings(all_findings, type, severity, file)
@@ -557,7 +645,7 @@ def findings(
             if finding.metadata.get("resolved", False) is (not expected_open)
         ]
 
-    _print_findings(filtered, output_format)
+    _print_findings(filtered, output_format, repo_root=repo_path)
     if output_format == "table":
         console.print(f"\n[bold]Filtered findings:[/] {len(filtered)}")
 
@@ -590,6 +678,132 @@ def create_prs(
         "dry_run": dry_run,
     }
     typer.echo(json.dumps(summary, indent=2))
+
+
+@app.command()
+def heal(
+    failure_log: str = typer.Option(..., "--failure-log", help="Path to CI failure log file"),
+    output_format: str = typer.Option(
+        "json", "--output-format", help="Output format: json or table"
+    ),
+) -> None:
+    """Analyze CI failures and produce an actionable remediation plan."""
+    from codecustodian.cli.ci_healer import build_healing_plan
+
+    log_path = Path(failure_log)
+    if not log_path.exists():
+        raise typer.BadParameter(f"Failure log file not found: {failure_log}")
+
+    log_text = log_path.read_text(encoding="utf-8", errors="replace")
+    plan = build_healing_plan(log_text)
+
+    fmt = output_format.lower()
+    if fmt not in {"json", "table"}:
+        raise typer.BadParameter("--output-format must be 'json' or 'table'")
+
+    if fmt == "json":
+        typer.echo(json.dumps(plan, indent=2))
+        return
+
+    console.print(f"[bold]Healing status:[/] {plan['status']}")
+    console.print(plan["summary"])
+
+    signals = plan.get("signals", [])
+    if signals:
+        table = Table(title="Detected CI Failure Signals")
+        table.add_column("Signal")
+        table.add_column("Confidence", justify="right")
+        table.add_column("Evidence")
+        for signal in signals:
+            table.add_row(
+                signal["title"],
+                f"{signal['confidence']:.2f}",
+                signal.get("evidence", ""),
+            )
+        console.print(table)
+
+    cmd_table = Table(title="Recommended Commands")
+    cmd_table.add_column("Command")
+    for command in plan.get("recommended_commands", []):
+        cmd_table.add_row(command)
+    console.print(cmd_table)
+
+    patch_candidates = plan.get("patch_candidates", [])
+    if patch_candidates:
+        patch_table = Table(title="Patch Candidates")
+        patch_table.add_column("Title")
+        patch_table.add_column("Target")
+        patch_table.add_column("Hint")
+        for candidate in patch_candidates:
+            target = f"{candidate.get('target_file', '')}:{candidate.get('target_line', '')}"
+            patch_table.add_row(
+                str(candidate.get("title", "")),
+                target,
+                str(candidate.get("patch_hint", "")),
+            )
+        console.print(patch_table)
+
+
+@app.command(name="review-pr")
+def review_pr(
+    repo_path: str = typer.Option(".", "--repo-path", "-r", help="Repository path"),
+    config: str = typer.Option(
+        ".codecustodian.yml", "--config", "-c", help="Configuration file path"
+    ),
+    output_format: str = typer.Option(
+        "json", "--output-format", help="Output format: json or table"
+    ),
+    healing_plan_file: Optional[str] = typer.Option(
+        None,
+        "--healing-plan-file",
+        help="Optional healing plan JSON file to enrich review output",
+    ),
+    block_on: str = typer.Option(
+        "critical,high",
+        "--block-on",
+        help="Comma-separated severities that should block approval",
+    ),
+) -> None:
+    """Generate a PR review summary from scan findings and optional healing plan."""
+    fmt = output_format.lower()
+    if fmt not in {"json", "table"}:
+        raise typer.BadParameter("--output-format must be 'json' or 'table'")
+
+    findings_list = _scan_findings(repo_path, config, "all")
+
+    healing_payload: dict[str, Any] | None = None
+    if healing_plan_file:
+        plan_path = Path(healing_plan_file)
+        if not plan_path.exists():
+            raise typer.BadParameter(f"Healing plan file not found: {healing_plan_file}")
+        healing_payload = json.loads(plan_path.read_text(encoding="utf-8", errors="replace"))
+
+    block_levels = {
+        level.strip().lower()
+        for level in block_on.split(",")
+        if level.strip()
+    }
+    valid_levels = {"critical", "high", "medium", "low", "info"}
+    if not block_levels.issubset(valid_levels):
+        raise typer.BadParameter("--block-on must only contain: critical, high, medium, low, info")
+
+    review = _build_pr_review_summary(findings_list, healing_payload, block_levels)
+
+    if fmt == "json":
+        typer.echo(json.dumps(review, indent=2))
+        return
+
+    console.print(f"[bold]PR Review Status:[/] {review['status']}")
+    console.print(f"Risk level: {review['risk_level']}")
+    console.print(f"Blocking issues: {review['blocking_issues']}")
+    console.print(f"Total findings: {review['total_findings']}")
+
+    sev_table = Table(title="Findings by Severity")
+    sev_table.add_column("Severity")
+    sev_table.add_column("Count", justify="right")
+    for sev, count in sorted(review["by_severity"].items()):
+        sev_table.add_row(sev, str(count))
+    console.print(sev_table)
 
 
 @app.command()

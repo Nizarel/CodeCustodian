@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import ast
 import json
+import re
 from collections import Counter, defaultdict
 from importlib import metadata as importlib_metadata
 from pathlib import Path
@@ -52,6 +53,7 @@ class DeprecatedAPIScanner(BaseScanner):
     def __init__(self, config: Any = None) -> None:
         super().__init__(config)
         self._rules = self._load_rules()
+        self._js_ts_rules = self._load_js_ts_rules()
 
     # ── Public API ────────────────────────────────────────────────────
 
@@ -67,6 +69,14 @@ class DeprecatedAPIScanner(BaseScanner):
                 findings.extend(self._check_file(py_file, tree))
             except SyntaxError:
                 logger.debug("Skipping %s — syntax error", py_file)
+
+        # Multi-language extension: JavaScript / TypeScript deprecation checks
+        for src_file in self.find_files(repo_path, [".js", ".jsx", ".ts", ".tsx"]):
+            try:
+                source = src_file.read_text(encoding="utf-8", errors="ignore")
+            except OSError:
+                continue
+            findings.extend(self._check_js_ts_file(src_file, source))
 
         # ── Usage frequency enrichment (FR-SCAN-013) ──────────────
         freq: Counter[str] = Counter()
@@ -108,10 +118,13 @@ class DeprecatedAPIScanner(BaseScanner):
                     rule = self._rules[full_name]
                     urgency = self._calculate_urgency(rule)
                     base_priority = rule.get("priority", 100.0) * urgency
+                    severity_raw = str(rule.get("severity", "high")).lower()
+                    if severity_raw not in {"critical", "high", "medium", "low", "info"}:
+                        severity_raw = "high"
                     findings.append(
                         Finding(
                             type=FindingType.DEPRECATED_API,
-                            severity=SeverityLevel(rule.get("severity", "high")),
+                            severity=SeverityLevel(severity_raw),
                             file=str(file_path),
                             line=node.lineno,
                             column=node.col_offset,
@@ -134,6 +147,108 @@ class DeprecatedAPIScanner(BaseScanner):
                     )
 
         return findings
+
+    def _check_js_ts_file(self, file_path: Path, source: str) -> list[Finding]:
+        """Detect deprecated JS/TS APIs via tree-sitter (when installed) or regex fallback."""
+        findings: list[Finding] = []
+
+        calls, parser_source = self._extract_js_ts_calls(source, file_path.suffix.lower())
+
+        for rule in self._js_ts_rules.values():
+            dep_name = rule["name"]
+            if dep_name not in calls:
+                continue
+
+            match_line = self._first_matching_line(source, dep_name)
+            severity_raw = str(rule.get("severity", "high")).lower()
+            if severity_raw not in {"critical", "high", "medium", "low", "info"}:
+                severity_raw = "high"
+
+            findings.append(
+                Finding(
+                    type=FindingType.DEPRECATED_API,
+                    severity=SeverityLevel(severity_raw),
+                    file=str(file_path),
+                    line=match_line,
+                    description=rule.get("message", f"{dep_name} is deprecated"),
+                    suggestion=rule.get("replacement", ""),
+                    priority_score=min(200.0, float(rule.get("priority", 120.0))),
+                    scanner_name=self.name,
+                    metadata={
+                        "deprecated_name": dep_name,
+                        "deprecated_since": rule.get("deprecated_since", ""),
+                        "language": file_path.suffix.lstrip(".").lower(),
+                        "parser": parser_source,
+                    },
+                )
+            )
+
+        return findings
+
+    def _extract_js_ts_calls(self, source: str, suffix: str) -> tuple[set[str], str]:
+        """Extract call names from JS/TS source.
+
+        Returns:
+            (calls, parser_source) where parser_source is `tree-sitter` or `regex`.
+        """
+        calls = set()
+
+        # Try tree-sitter first.
+        try:
+            from tree_sitter import Language, Parser  # type: ignore[import-untyped]
+
+            if suffix in {".ts", ".tsx"}:
+                import tree_sitter_typescript as tsts  # type: ignore[import-untyped]
+
+                lang = Language(tsts.language_typescript())
+            else:
+                import tree_sitter_javascript as tsjs  # type: ignore[import-untyped]
+
+                lang = Language(tsjs.language())
+
+            parser = Parser(lang)
+            tree = parser.parse(bytes(source, "utf8"))
+            blob = source.encode("utf8")
+
+            stack = [tree.root_node]
+            while stack:
+                node = stack.pop()
+                if node.type == "call_expression":
+                    fn = node.child_by_field_name("function")
+                    if fn is not None:
+                        text = blob[fn.start_byte:fn.end_byte].decode("utf8", errors="ignore")
+                        calls.add(text.replace("?.", ".").strip())
+                elif node.type == "new_expression":
+                    ctor = node.child_by_field_name("constructor")
+                    if ctor is not None:
+                        text = blob[ctor.start_byte:ctor.end_byte].decode("utf8", errors="ignore")
+                        calls.add(f"new {text.strip()}")
+
+                stack.extend(list(node.children))
+
+            if calls:
+                return calls, "tree-sitter"
+        except Exception:
+            pass
+
+        # Regex fallback keeps feature available when tree-sitter is not installed.
+        for name in re.findall(r"\b([A-Za-z_$][\w$]*(?:\.[A-Za-z_$][\w$]*)*)\s*\(", source):
+            calls.add(name.replace("?.", "."))
+        for ctor in re.findall(r"\bnew\s+([A-Za-z_$][\w$]*)\s*\(", source):
+            calls.add(f"new {ctor}")
+
+        return calls, "regex"
+
+    @staticmethod
+    def _first_matching_line(source: str, dep_name: str) -> int:
+        """Best-effort line locator for a deprecated API match."""
+        needle = dep_name
+        if dep_name.startswith("new "):
+            needle = dep_name
+        for idx, line in enumerate(source.splitlines(), start=1):
+            if needle in line:
+                return idx
+        return 1
 
     # ── Import alias resolution (FR-SCAN-012 / 4.2.3) ────────────────
 
@@ -230,13 +345,54 @@ class DeprecatedAPIScanner(BaseScanner):
         rules_file = _DATA_DIR / "deprecations.json"
         if not rules_file.exists():
             logger.warning("Deprecation rules file not found: %s", rules_file)
+            indexed: dict[str, dict[str, Any]] = {}
+        else:
+            with open(rules_file) as f:
+                raw = json.load(f)
+            # Index by full dotted name for O(1) lookup
+            indexed = {}
+            for entry in raw.get("deprecations", []):
+                indexed[entry["name"]] = entry
+
+        # Merge user-defined rules from config (`custom_patterns`) as DSL-like entries.
+        custom_rules = []
+        if self.config:
+            custom_rules = self.config.scanners.deprecated_apis.custom_patterns
+
+        for rule in custom_rules:
+            name = str(rule.get("name", "")).strip()
+            if not name:
+                continue
+            indexed[name] = {
+                "name": name,
+                "message": str(rule.get("message", f"{name} is deprecated")).strip(),
+                "replacement": str(rule.get("replacement", "")).strip(),
+                "severity": str(rule.get("severity", "high")).strip().lower(),
+                "deprecated_since": str(rule.get("deprecated_since", "")).strip(),
+                "removal_version": str(rule.get("removal_version", "")).strip(),
+                "priority": float(rule.get("priority", 110.0)),
+                "migration_guide_url": str(rule.get("migration_guide_url", "")).strip(),
+                "custom_rule": True,
+            }
+
+        return indexed
+
+    def _load_js_ts_rules(self) -> dict[str, dict[str, Any]]:
+        """Load JavaScript/TypeScript deprecation rules from JSON data file."""
+        rules_file = _DATA_DIR / "deprecations_js_ts.json"
+        if not rules_file.exists():
             return {}
+
         with open(rules_file) as f:
             raw = json.load(f)
-        # Index by full dotted name for O(1) lookup
+
         indexed: dict[str, dict[str, Any]] = {}
         for entry in raw.get("deprecations", []):
-            indexed[entry["name"]] = entry
+            name = str(entry.get("name", "")).strip()
+            if not name:
+                continue
+            indexed[name] = entry
+
         return indexed
 
 

@@ -1,0 +1,201 @@
+name: PR Review Bot
+
+on:
+  pull_request:
+    branches: [master, main]
+    types: [opened, synchronize, reopened]
+  workflow_run:
+    workflows: ["CI", "Security Scan"]
+    types: [completed]
+
+permissions:
+  contents: read
+  pull-requests: write
+  issues: write
+
+jobs:
+  review:
+    if: ${{ github.event_name == 'pull_request' || github.event.workflow_run.conclusion == 'failure' }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: pip install ".[dev]"
+
+      - name: Build optional healing plan from failed workflow context
+        if: ${{ github.event_name == 'workflow_run' }}
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          RUN_ID: ${{ github.event.workflow_run.id }}
+          REPO: ${{ github.repository }}
+        run: |
+          gh api \
+            repos/$REPO/actions/runs/$RUN_ID/jobs \
+            --jq '.jobs[] | select(.conclusion == "failure") | .name + "\n" + (.steps[] | select(.conclusion == "failure") | (.name + ": " + (.conclusion // "")))' \
+            > ci_failure.log
+          python -m codecustodian heal --failure-log ci_failure.log --output-format json > healing-plan.json
+
+      - name: Build PR review summary
+        run: |
+          if [ -f healing-plan.json ]; then
+            python -m codecustodian review-pr --repo-path . --output-format json --healing-plan-file healing-plan.json > pr-review.json
+          else
+            python -m codecustodian review-pr --repo-path . --output-format json > pr-review.json
+          fi
+
+      - name: Resolve PR number
+        id: pr
+        uses: actions/github-script@v8
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            if (context.eventName === 'pull_request') {
+              core.setOutput('number', String(context.payload.pull_request.number));
+              return;
+            }
+
+            const prs = context.payload.workflow_run.pull_requests || [];
+            if (!prs.length) {
+              core.setOutput('number', '');
+              return;
+            }
+            core.setOutput('number', String(prs[0].number));
+
+      - name: Upsert PR review comment
+        if: ${{ steps.pr.outputs.number != '' }}
+        uses: actions/github-script@v8
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const fs = require('fs');
+            const marker = '<!-- codecustodian-pr-review -->';
+            const review = JSON.parse(fs.readFileSync('pr-review.json', 'utf8'));
+            const prNumber = Number('${{ steps.pr.outputs.number }}');
+
+            const bySeverity = Object.entries(review.by_severity || {})
+              .map(([k, v]) => `- ${k}: ${v}`)
+              .join('\n');
+
+            const topFindings = (review.top_findings || [])
+              .slice(0, 5)
+              .map((f) => `- **${f.severity.toUpperCase()}** ${f.type} at ${f.file}:${f.line}\n  - ${f.description}`)
+              .join('\n');
+
+            const commands = ((review.healing_plan || {}).recommended_commands || [])
+              .map((cmd) => `- \`${cmd}\``)
+              .join('\n');
+
+            const body = [
+              marker,
+              '## CodeCustodian PR Review',
+              '',
+              `Status: **${review.status}**`,
+              `Risk level: **${review.risk_level}**`,
+              `Blocking issues: **${review.blocking_issues}**`,
+              `Total findings: **${review.total_findings}**`,
+              '',
+              '### Findings by Severity',
+              bySeverity || '- none',
+              '',
+              '### Top Findings',
+              topFindings || '- none',
+              '',
+              '### Recommended Commands',
+              commands || '- none',
+            ].join('\n');
+
+            const comments = await github.rest.issues.listComments({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: prNumber,
+              per_page: 100,
+            });
+
+            const existing = comments.data.find((c) =>
+              typeof c.body === 'string' && c.body.includes(marker)
+            );
+
+            if (existing) {
+              await github.rest.issues.updateComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: existing.id,
+                body,
+              });
+              return;
+            }
+
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: prNumber,
+              body,
+            });
+
+      - name: Sync PR labels from review summary
+        if: ${{ steps.pr.outputs.number != '' }}
+        uses: actions/github-script@v8
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const fs = require('fs');
+            const review = JSON.parse(fs.readFileSync('pr-review.json', 'utf8'));
+            const prNumber = Number('${{ steps.pr.outputs.number }}');
+
+            const managedLabels = ['needs-fix', 'security-risk', 'type-issues', 'dependency-upgrade'];
+            const desired = new Set(review.suggested_labels || []);
+
+            for (const label of desired) {
+              try {
+                await github.rest.issues.addLabels({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  issue_number: prNumber,
+                  labels: [label],
+                });
+              } catch (error) {
+                core.info(`Could not add label '${label}': ${error.message}`);
+              }
+            }
+
+            for (const label of managedLabels) {
+              if (desired.has(label)) {
+                continue;
+              }
+              try {
+                await github.rest.issues.removeLabel({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  issue_number: prNumber,
+                  name: label,
+                });
+              } catch (_error) {
+                // Ignore missing label or permission edge-cases.
+              }
+            }
+
+      - name: Enforce blocking findings gate
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+
+          review = json.loads(Path('pr-review.json').read_text(encoding='utf-8'))
+          blocking = int(review.get('blocking_issues', 0))
+          if blocking > 0:
+              raise SystemExit(
+                  f"Blocking findings gate failed: {blocking} issue(s) at configured block severities."
+              )
+          print('Blocking findings gate passed.')
+          PY
+
+      - name: Upload review artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: pr-review
+          path: pr-review.json

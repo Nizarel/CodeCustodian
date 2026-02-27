@@ -77,6 +77,31 @@ class TypeCoverageScannerConfig(BaseModel):
     enabled: bool = True
     target_coverage: int = 80
     strict_mode: bool = False
+    ai_suggest_types: bool = Field(
+        default=False,
+        description="Enable GitHub Copilot SDK type suggestions for missing annotations",
+    )
+    ai_max_suggestions_per_scan: int = Field(
+        default=5,
+        ge=0,
+        description="Maximum number of AI type suggestions requested per scan",
+    )
+
+
+class DependencyUpgradeScannerConfig(BaseModel):
+    """Configuration for dependency upgrade intelligence scanner."""
+
+    enabled: bool = True
+    tracked_files: list[str] = Field(
+        default_factory=lambda: [
+            "requirements.txt",
+            "requirements-dev.txt",
+            "requirements-test.txt",
+            "pyproject.toml",
+            "uv.lock",
+            "poetry.lock",
+        ]
+    )
 
 
 class ScannersConfig(BaseModel):
@@ -92,6 +117,9 @@ class ScannersConfig(BaseModel):
     )
     type_coverage: TypeCoverageScannerConfig = Field(
         default_factory=TypeCoverageScannerConfig
+    )
+    dependency_upgrades: DependencyUpgradeScannerConfig = Field(
+        default_factory=DependencyUpgradeScannerConfig
     )
 
 

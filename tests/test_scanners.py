@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import tempfile
 import textwrap
 from pathlib import Path
@@ -67,6 +68,7 @@ class TestScannerRegistry:
         assert "todo_comments" in listing
         assert "code_smells" in listing
         assert "type_coverage" in listing
+        assert "dependency_upgrades" in listing
 
     def test_list_catalog(self):
         registry = ScannerRegistry()
@@ -514,13 +516,78 @@ class TestTypeCoverageScanner:
             func_findings = [f for f in findings if f.metadata.get("function_name") == "_private"]
             assert len(func_findings) == 0
 
-    def test_suggest_types_returns_none(self):
-        """Phase 3 stub should return None."""
+    def test_suggest_types_stub_returns_none(self):
+        """Fallback stub should return None."""
         from codecustodian.scanner.type_coverage import TypeCoverageScanner
 
         import ast
         node = ast.parse("def foo(): pass").body[0]
         assert TypeCoverageScanner._suggest_types(node) is None
+
+    def test_ai_suggestion_uses_copilot_when_enabled(self, monkeypatch):
+        from codecustodian.config.schema import CodeCustodianConfig
+        from codecustodian.scanner.type_coverage import TypeCoverageScanner
+
+        class _DummyClient:
+            def __init__(self, _config):
+                pass
+
+            async def start(self):
+                return None
+
+            async def stop(self):
+                return None
+
+            def select_model(self, _finding):
+                return "gpt-4o-mini"
+
+            async def create_session(self, **_kwargs):
+                return object()
+
+            async def send_and_wait(self, _session, _prompt, **_kwargs):
+                return "def add(a: int, b: int) -> int"
+
+        monkeypatch.setattr(
+            "codecustodian.planner.copilot_client.CopilotPlannerClient",
+            _DummyClient,
+        )
+
+        config = CodeCustodianConfig()
+        config.scanners.type_coverage.ai_suggest_types = True
+        scanner = TypeCoverageScanner(config=config)
+
+        import ast
+
+        source = "def add(a, b):\n    return a + b\n"
+        node = ast.parse(source).body[0]
+        suggestion = scanner._suggest_types_with_copilot(
+            node=node,
+            file_source=source,
+            file_path="demo.py",
+        )
+        assert suggestion == "def add(a: int, b: int) -> int"
+
+    def test_ai_suggestion_skips_inside_running_loop(self):
+        from codecustodian.config.schema import CodeCustodianConfig
+        from codecustodian.scanner.type_coverage import TypeCoverageScanner
+
+        config = CodeCustodianConfig()
+        config.scanners.type_coverage.ai_suggest_types = True
+        scanner = TypeCoverageScanner(config=config)
+
+        import ast
+
+        source = "def add(a, b):\n    return a + b\n"
+        node = ast.parse(source).body[0]
+
+        async def _invoke_inside_loop():
+            return scanner._suggest_types_with_copilot(
+                node=node,
+                file_source=source,
+                file_path="demo.py",
+            )
+
+        assert asyncio.run(_invoke_inside_loop()) is None
 
 
 # ═══════════════════════════════════════════════════════════════════════════
@@ -591,6 +658,72 @@ class TestDeprecatedApiScanner:
 
             findings = scanner.scan(tmpdir)
             assert len(findings) == 0
+
+    def test_custom_rule_from_config_detected(self):
+        from codecustodian.config.schema import CodeCustodianConfig
+        from codecustodian.scanner.deprecated_api import DeprecatedAPIScanner
+
+        config = CodeCustodianConfig()
+        config.scanners.deprecated_apis.custom_patterns = [
+            {
+                "name": "legacy.do_work",
+                "message": "legacy.do_work is deprecated",
+                "replacement": "modern.do_work",
+                "severity": "medium",
+                "priority": 130,
+            }
+        ]
+        scanner = DeprecatedAPIScanner(config=config)
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            py_file = Path(tmpdir) / "legacy_use.py"
+            py_file.write_text(textwrap.dedent("""\
+                import legacy
+                legacy.do_work()
+            """))
+
+            findings = scanner.scan(tmpdir)
+
+        assert len(findings) >= 1
+        target = [f for f in findings if f.metadata.get("deprecated_name") == "legacy.do_work"]
+        assert target
+        assert target[0].severity == SeverityLevel.MEDIUM
+        assert "modern.do_work" in target[0].suggestion
+
+    def test_detects_js_deprecated_fs_exists(self):
+        from codecustodian.scanner.deprecated_api import DeprecatedAPIScanner
+
+        scanner = DeprecatedAPIScanner()
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            js_file = Path(tmpdir) / "legacy.js"
+            js_file.write_text(textwrap.dedent("""\
+                const fs = require('fs');
+                fs.exists('/tmp/file.txt', function(exists) {
+                  console.log(exists);
+                });
+            """))
+
+            findings = scanner.scan(tmpdir)
+
+        js_findings = [f for f in findings if f.metadata.get("deprecated_name") == "fs.exists"]
+        assert js_findings
+        assert js_findings[0].metadata.get("language") == "js"
+
+    def test_detects_js_deprecated_new_buffer(self):
+        from codecustodian.scanner.deprecated_api import DeprecatedAPIScanner
+
+        scanner = DeprecatedAPIScanner()
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            js_file = Path(tmpdir) / "buffer.js"
+            js_file.write_text("const b = new Buffer('abc');\n")
+
+            findings = scanner.scan(tmpdir)
+
+        js_findings = [f for f in findings if f.metadata.get("deprecated_name") == "new Buffer"]
+        assert js_findings
+        assert "Buffer.from" in js_findings[0].suggestion
 
 
 # ═══════════════════════════════════════════════════════════════════════════
@@ -710,6 +843,158 @@ class TestSecurityScanner:
             findings = scanner.scan(tmpdir)
             secret_findings = [f for f in findings if f.metadata.get("category") == "hardcoded_secrets"]
             assert len(secret_findings) == 0
+
+    def test_reachability_marks_vulnerable_function_reachable(self):
+        from codecustodian.scanner.security import SecurityScanner
+
+        scanner = SecurityScanner()
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            py_file = Path(tmpdir) / "app.py"
+            py_file.write_text(textwrap.dedent("""\
+                def unsafe(user_input):
+                    return eval(user_input)
+
+                def handler(payload):
+                    return unsafe(payload)
+            """))
+
+            findings = scanner.scan(tmpdir)
+            cmd_findings = [f for f in findings if f.metadata.get("category") == "command_injection"]
+            assert cmd_findings
+            assert cmd_findings[0].metadata.get("reachable") is True
+            assert cmd_findings[0].metadata.get("enclosing_function") == "unsafe"
+            assert "handler" in cmd_findings[0].metadata.get("call_chain", [])
+
+    def test_reachability_marks_orphan_vulnerability_not_reachable(self):
+        from codecustodian.scanner.security import SecurityScanner
+
+        scanner = SecurityScanner()
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            py_file = Path(tmpdir) / "orphan.py"
+            py_file.write_text(textwrap.dedent("""\
+                def helper():
+                    return 1
+
+                def unsafe(user_input):
+                    return eval(user_input)
+            """))
+
+            findings = scanner.scan(tmpdir)
+            cmd_findings = [f for f in findings if f.metadata.get("category") == "command_injection"]
+            assert cmd_findings
+            assert cmd_findings[0].metadata.get("reachable") is False
+            assert cmd_findings[0].metadata.get("enclosing_function") == "unsafe"
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# DependencyUpgradeScanner
+# ═══════════════════════════════════════════════════════════════════════════
+
+
+class TestDependencyUpgradeScanner:
+    def test_detects_outdated_pinned_requirement(self):
+        from codecustodian.scanner.dependency_upgrades import DependencyUpgradeScanner
+
+        scanner = DependencyUpgradeScanner()
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            req = Path(tmpdir) / "requirements.txt"
+            req.write_text("pydantic==2.1.0\n", encoding="utf-8")
+
+            findings = scanner.scan(tmpdir)
+
+        assert findings
+        assert findings[0].type == FindingType.DEPENDENCY_UPGRADE
+        assert findings[0].metadata.get("package") == "pydantic"
+        assert ">=" in findings[0].suggestion
+
+    def test_detects_outdated_pin_in_pyproject(self):
+        from codecustodian.scanner.dependency_upgrades import DependencyUpgradeScanner
+
+        scanner = DependencyUpgradeScanner()
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            pyproject = Path(tmpdir) / "pyproject.toml"
+            pyproject.write_text(
+                textwrap.dedent(
+                    """\
+                    [project]
+                    dependencies = [
+                      "httpx==0.24.0"
+                    ]
+                    """
+                ),
+                encoding="utf-8",
+            )
+
+            findings = scanner.scan(tmpdir)
+
+        assert findings
+        packages = {f.metadata.get("package") for f in findings}
+        assert "httpx" in packages
+
+    def test_ignores_untracked_packages(self):
+        from codecustodian.scanner.dependency_upgrades import DependencyUpgradeScanner
+
+        scanner = DependencyUpgradeScanner()
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            req = Path(tmpdir) / "requirements.txt"
+            req.write_text("custom-internal-lib==1.0.0\n", encoding="utf-8")
+
+            findings = scanner.scan(tmpdir)
+
+        assert findings == []
+
+    def test_detects_outdated_dependency_in_uv_lock(self):
+        from codecustodian.scanner.dependency_upgrades import DependencyUpgradeScanner
+
+        scanner = DependencyUpgradeScanner()
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            lock = Path(tmpdir) / "uv.lock"
+            lock.write_text(
+                textwrap.dedent(
+                    """\
+                    version = 1
+
+                    [[package]]
+                    name = "requests"
+                    version = "2.25.0"
+                    """
+                ),
+                encoding="utf-8",
+            )
+
+            findings = scanner.scan(tmpdir)
+
+        assert findings
+        assert any(f.metadata.get("package") == "requests" for f in findings)
+
+    def test_detects_outdated_dependency_in_poetry_lock(self):
+        from codecustodian.scanner.dependency_upgrades import DependencyUpgradeScanner
+
+        scanner = DependencyUpgradeScanner()
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            lock = Path(tmpdir) / "poetry.lock"
+            lock.write_text(
+                textwrap.dedent(
+                    """\
+                    [[package]]
+                    name = "PyGithub"
+                    version = "2.1.0"
+                    """
+                ),
+                encoding="utf-8",
+            )
+
+            findings = scanner.scan(tmpdir)
+
+        assert findings
+        assert any(f.metadata.get("package") == "pygithub" for f in findings)
 
 
 # ═══════════════════════════════════════════════════════════════════════════

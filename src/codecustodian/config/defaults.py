@@ -53,6 +53,16 @@ scanners:
     enabled: true
     target_coverage: 80
 
+  dependency_upgrades:
+    enabled: true
+    tracked_files:
+      - requirements.txt
+      - requirements-dev.txt
+      - requirements-test.txt
+      - pyproject.toml
+      - uv.lock
+      - poetry.lock
+
 behavior:
   max_prs_per_run: 5
   require_human_review: true

@@ -11,9 +11,11 @@ Each finding includes an **exploit scenario** and **compliance impact**
 
 from __future__ import annotations
 
+import ast
 import json
 import re
 import subprocess
+from collections import deque
 from pathlib import Path
 from typing import Any
 
@@ -274,7 +276,139 @@ class SecurityScanner(BaseScanner):
         enabled_categories = self._get_enabled_categories()
         findings.extend(self._scan_custom_patterns(repo_path, enabled_categories))
 
+        # Reachability enrichment for Python findings (entrypoint -> vulnerable function)
+        self._enrich_reachability(repo_path, findings)
+
         return sorted(findings, key=lambda f: f.priority_score, reverse=True)
+
+    # ── Reachability enrichment ──────────────────────────────────────
+
+    def _enrich_reachability(self, repo_path: str | Path, findings: list[Finding]) -> None:
+        """Annotate findings with simple reachability metadata.
+
+        The analysis builds a lightweight call graph across Python files and marks
+        whether the function containing a finding is reachable from inferred
+        application entrypoints.
+        """
+        py_files = self.find_python_files(repo_path)
+        if not py_files:
+            return
+
+        functions: dict[str, dict[str, Any]] = {}
+        for py_file in py_files:
+            try:
+                source = py_file.read_text(encoding="utf-8", errors="ignore")
+                tree = ast.parse(source, filename=str(py_file))
+            except SyntaxError:
+                continue
+
+            for node in ast.walk(tree):
+                if not isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
+                    continue
+
+                name = node.name
+                start = node.lineno
+                end = getattr(node, "end_lineno", None) or node.lineno
+                calls: set[str] = set()
+                for child in ast.walk(node):
+                    if not isinstance(child, ast.Call):
+                        continue
+                    if isinstance(child.func, ast.Name):
+                        calls.add(child.func.id)
+                    elif isinstance(child.func, ast.Attribute):
+                        calls.add(child.func.attr)
+
+                is_entry = self._is_entrypoint_function(node)
+                functions[name] = {
+                    "file": str(py_file),
+                    "start": start,
+                    "end": end,
+                    "calls": calls,
+                    "is_entry": is_entry,
+                }
+
+        if not functions:
+            return
+
+        entrypoints = {name for name, data in functions.items() if data["is_entry"]}
+        reachable: set[str] = set(entrypoints)
+        queue: deque[str] = deque(entrypoints)
+        parent: dict[str, str] = {}
+
+        while queue:
+            current = queue.popleft()
+            for callee in functions.get(current, {}).get("calls", set()):
+                if callee in functions and callee not in reachable:
+                    reachable.add(callee)
+                    parent[callee] = current
+                    queue.append(callee)
+
+        for finding in findings:
+            if not str(finding.file).endswith(".py"):
+                continue
+
+            fn_name = self._find_enclosing_function(functions, finding.file, finding.line)
+            if not fn_name:
+                continue
+
+            is_reachable = fn_name in reachable
+            finding.metadata["reachable"] = is_reachable
+            finding.metadata["enclosing_function"] = fn_name
+            if is_reachable:
+                finding.metadata["call_chain"] = self._build_call_chain(parent, fn_name)
+                finding.priority_score = min(200.0, finding.priority_score * 1.1)
+
+    @staticmethod
+    def _is_entrypoint_function(node: ast.FunctionDef | ast.AsyncFunctionDef) -> bool:
+        """Heuristic entrypoint detection for web handlers and common app roots."""
+        name = node.name.lower()
+        if name in {"main", "handler", "handle_request", "run"}:
+            return True
+
+        for deco in node.decorator_list:
+            if isinstance(deco, ast.Name) and deco.id.lower() in {
+                "route",
+                "get",
+                "post",
+                "put",
+                "patch",
+                "delete",
+            }:
+                return True
+            if isinstance(deco, ast.Attribute) and deco.attr.lower() in {
+                "route",
+                "get",
+                "post",
+                "put",
+                "patch",
+                "delete",
+            }:
+                return True
+
+        return False
+
+    @staticmethod
+    def _find_enclosing_function(
+        functions: dict[str, dict[str, Any]],
+        file_path: str,
+        line: int,
+    ) -> str | None:
+        for name, data in functions.items():
+            if data["file"] != str(file_path):
+                continue
+            if data["start"] <= line <= data["end"]:
+                return name
+        return None
+
+    @staticmethod
+    def _build_call_chain(parent: dict[str, str], leaf: str) -> list[str]:
+        chain = [leaf]
+        cur = leaf
+        while cur in parent:
+            cur = parent[cur]
+            chain.append(cur)
+        chain.reverse()
+        return chain
 
     # ── Config wiring ─────────────────────────────────────────────────
 

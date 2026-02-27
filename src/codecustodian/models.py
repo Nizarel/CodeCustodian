@@ -42,6 +42,7 @@ class FindingType(str, Enum):
     CODE_SMELL = "code_smell"
     SECURITY = "security"
     TYPE_COVERAGE = "type_coverage"
+    DEPENDENCY_UPGRADE = "dependency_upgrade"
 
 
 class ChangeType(str, Enum):

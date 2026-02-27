@@ -1,0 +1,29 @@
+{
+  "version": "1.0",
+  "deprecations": [
+    {
+      "name": "fs.exists",
+      "message": "fs.exists() is deprecated in Node.js",
+      "replacement": "Use fs.access() / fs.stat() / fs.existsSync() depending on async requirements",
+      "severity": "high",
+      "priority": 145.0,
+      "deprecated_since": "v1.0.0"
+    },
+    {
+      "name": "new Buffer",
+      "message": "new Buffer() is deprecated due to security and usability issues",
+      "replacement": "Use Buffer.from(), Buffer.alloc(), or Buffer.allocUnsafe()",
+      "severity": "high",
+      "priority": 155.0,
+      "deprecated_since": "v6.0.0"
+    },
+    {
+      "name": "util.print",
+      "message": "util.print() is deprecated",
+      "replacement": "Use console.log()",
+      "severity": "medium",
+      "priority": 120.0,
+      "deprecated_since": "v0.11.3"
+    }
+  ]
+}
