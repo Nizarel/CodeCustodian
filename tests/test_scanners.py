@@ -539,7 +539,7 @@ class TestTypeCoverageScanner:
                 return None
 
             def select_model(self, _finding):
-                return "gpt-4o-mini"
+                return "gpt-5-mini"
 
             async def create_session(self, **_kwargs):
                 return object()

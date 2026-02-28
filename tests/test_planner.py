@@ -136,9 +136,9 @@ def _mock_copilot_client() -> MagicMock:
     client.stop = AsyncMock()
     client.list_models = AsyncMock(
         return_value=[
-            SimpleNamespace(id="gpt-4o-mini"),
-            SimpleNamespace(id="gpt-4o"),
-            SimpleNamespace(id="o4-mini"),
+            SimpleNamespace(id="gpt-5-mini"),
+            SimpleNamespace(id="gpt-5.2-codex"),
+            SimpleNamespace(id="gpt-5.1-codex"),
         ]
     )
     session = MagicMock()
@@ -659,6 +659,21 @@ class TestCopilotPlannerClient:
         assert client._client is None
 
     @pytest.mark.asyncio
+    async def test_stop_handles_exception_group(self):
+        config = _make_config()
+        client = CopilotPlannerClient(config)
+        mock_sdk = _mock_copilot_client()
+        mock_sdk.stop = AsyncMock(
+            side_effect=ExceptionGroup("stop errors", [RuntimeError("destroy failed")])
+        )
+        client._client = mock_sdk
+
+        await client.stop()
+
+        mock_sdk.stop.assert_awaited_once()
+        assert client._client is None
+
+    @pytest.mark.asyncio
     async def test_list_available_models(self):
         config = _make_config()
         client = CopilotPlannerClient(config)
@@ -679,44 +694,44 @@ class TestCopilotPlannerClient:
         client = CopilotPlannerClient(config)
         finding = _make_finding(severity=SeverityLevel.CRITICAL)
         model = client.select_model(finding)
-        assert model == "gpt-4o"
+        assert model == "gpt-5.2-codex"
 
     def test_select_model_auto_low(self):
         config = _make_config()
         client = CopilotPlannerClient(config)
         finding = _make_finding(severity=SeverityLevel.LOW)
         model = client.select_model(finding)
-        assert model == "gpt-4o-mini"
+        assert model == "gpt-5-mini"
 
     def test_select_model_fast(self):
         config = _make_config(model_selection="fast")
         client = CopilotPlannerClient(config)
         model = client.select_model(_make_finding())
-        assert model == "gpt-4o-mini"
+        assert model == "gpt-5-mini"
 
     def test_select_model_balanced(self):
         config = _make_config(model_selection="balanced")
         client = CopilotPlannerClient(config)
         model = client.select_model(_make_finding())
-        assert model == "gpt-4o"
+        assert model == "gpt-5.1-codex"
 
     def test_select_model_reasoning(self):
         config = _make_config(model_selection="reasoning")
         client = CopilotPlannerClient(config)
         model = client.select_model(_make_finding())
-        assert model == "o4-mini"
+        assert model == "gpt-5.2-codex"
 
     def test_select_model_validates_available(self):
         config = _make_config()
         client = CopilotPlannerClient(config)
         # Simulate available models list
         client._available_models = [
-            SimpleNamespace(id="gpt-4o"),
-            SimpleNamespace(id="gpt-4o-mini"),
+            SimpleNamespace(id="gpt-5.2-codex"),
+            SimpleNamespace(id="gpt-5-mini"),
         ]
         finding = _make_finding(severity=SeverityLevel.LOW)
         model = client.select_model(finding)
-        assert model == "gpt-4o-mini"
+        assert model == "gpt-5-mini"
 
     @pytest.mark.asyncio
     async def test_create_session_with_tools(self):
@@ -726,14 +741,15 @@ class TestCopilotPlannerClient:
         client._client = mock_sdk
 
         session = await client.create_session(
-            model="gpt-4o",
+            model="gpt-5.1-codex",
             tools=["tool1", "tool2"],
             system_prompt="Test prompt",
         )
         mock_sdk.create_session.assert_awaited_once()
         call_args = mock_sdk.create_session.call_args[0][0]
-        assert call_args["model"] == "gpt-4o"
+        assert call_args["model"] == "gpt-5.1-codex"
         assert call_args["tools"] == ["tool1", "tool2"]
+        assert callable(call_args["on_permission_request"])
         assert call_args["system_message"]["mode"] == "append"
         assert call_args["infinite_sessions"]["enabled"] is False
 
@@ -749,7 +765,7 @@ class TestCopilotPlannerClient:
         mock_sdk = _mock_copilot_client()
         client._client = mock_sdk
 
-        await client.create_session(model="gpt-4o", system_prompt="test")
+        await client.create_session(model="gpt-5.1-codex", system_prompt="test")
         call_args = mock_sdk.create_session.call_args[0][0]
         assert call_args["provider"]["type"] == "azure"
         assert "myresource" in call_args["provider"]["base_url"]
@@ -762,7 +778,7 @@ class TestCopilotPlannerClient:
         mock_sdk = _mock_copilot_client()
         client._client = mock_sdk
 
-        await client.create_session(model="o3", system_prompt="test")
+        await client.create_session(model="gpt-5.2-codex", system_prompt="test")
         call_args = mock_sdk.create_session.call_args[0][0]
         assert call_args["reasoning_effort"] == "high"
 

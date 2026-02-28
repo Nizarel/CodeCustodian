@@ -40,7 +40,7 @@ class TestFindingType:
         assert FindingType.SECURITY == "security"
 
     def test_all_members(self):
-        assert len(FindingType) == 5
+        assert len(FindingType) == 6
 
 
 class TestFinding:

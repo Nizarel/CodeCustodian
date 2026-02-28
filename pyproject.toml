@@ -18,7 +18,7 @@ classifiers = [
 
 dependencies = [
     # ── GitHub Copilot SDK (AI Planning) ──
-    "github-copilot-sdk>=0.1.23",
+    "github-copilot-sdk>=0.1.29",
 
     # ── MCP Server (FastMCP v2) ──
     "fastmcp>=2.14.0,<3",

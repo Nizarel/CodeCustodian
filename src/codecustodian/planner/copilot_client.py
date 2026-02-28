@@ -1,6 +1,6 @@
 """GitHub Copilot SDK client wrapper.
 
-Wraps ``github-copilot-sdk`` (``copilot`` package, v0.1.23+) for
+Wraps ``github-copilot-sdk`` (``copilot`` package, v0.1.29+) for
 multi-turn AI planning sessions with tool calling, model routing,
 streaming responses, cost tracking, and session hooks.
 
@@ -16,13 +16,14 @@ from __future__ import annotations
 import asyncio
 import os
 from dataclasses import dataclass, field
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, cast
 
 from codecustodian.exceptions import BudgetExceededError, PlannerError
 from codecustodian.logging import get_logger
 
 if TYPE_CHECKING:
     from codecustodian.config.schema import CopilotConfig
+    from copilot.types import CopilotClientOptions
 
 logger = get_logger("planner.copilot_client")
 
@@ -108,14 +109,23 @@ class CopilotPlannerClient:
             client_opts["use_logged_in_user"] = True
             logger.info("No github_token — falling back to gh CLI auth")
 
-        self._client = CopilotClient(client_opts)
+        self._client = CopilotClient(cast("CopilotClientOptions", client_opts))
         await self._client.start()
         logger.info("Copilot SDK client started")
 
     async def stop(self) -> None:
-        """Stop the Copilot SDK client gracefully."""
+        """Stop the Copilot SDK client gracefully.
+
+        SDK v0.1.29 changed ``CopilotClient.stop()`` to raise
+        ``ExceptionGroup[StopError]`` when cleanup has partial failures.
+        We log and continue shutdown so pipeline cleanup remains resilient.
+        """
         if self._client is not None:
-            await self._client.stop()
+            try:
+                await self._client.stop()
+            except ExceptionGroup as exc_group:
+                for stop_err in exc_group.exceptions:
+                    logger.warning("Copilot SDK stop cleanup error: %s", stop_err)
             self._client = None
             logger.info(
                 "Copilot SDK client stopped — total cost=$%.4f, tokens=%d/%d",
@@ -130,11 +140,10 @@ class CopilotPlannerClient:
         """Query available models from the SDK and cache the result."""
         self._ensure_client()
         if self._available_models is None:
-            self._available_models = await self._client.list_models()
-            logger.info(
-                "Discovered %d available models", len(self._available_models)
-            )
-        return self._available_models
+            models = await self._client.list_models()
+            self._available_models = models
+            logger.info("Discovered %d available models", len(models))
+        return self._available_models if self._available_models is not None else []
 
     def select_model(self, finding: Any) -> str:
         """Route to the appropriate model based on strategy + finding.
@@ -150,23 +159,30 @@ class CopilotPlannerClient:
         """
         strategy = self.config.model_selection
 
-        # Fixed strategies
+        # Fixed strategies — models queried via list_models() 2026-02
         preferred: dict[str, list[str]] = {
-            "fast": ["gpt-4o-mini", "gpt-4.1-mini", "gpt-4o"],
-            "balanced": ["gpt-4o", "gpt-4.1", "gpt-4o-mini"],
-            "reasoning": ["o4-mini", "o3", "o1", "gpt-4o"],
+            "fast": ["gpt-5-mini", "gpt-4.1", "gpt-5.1-codex-mini"],
+            "balanced": ["gpt-5.1-codex", "gpt-5.1", "claude-sonnet-4"],
+            "reasoning": [
+                "gpt-5.2-codex", "gpt-5.1-codex-max",
+                "gpt-5.2", "gpt-5.1-codex",
+            ],
         }
 
         if strategy != "auto":
-            candidates = preferred.get(strategy, ["gpt-4o"])
+            candidates = preferred.get(strategy, ["gpt-5.1"])
             return self._pick_available(candidates)
 
         # Auto-route by severity
         severity = getattr(finding, "severity", None)
         sev_value = severity.value if severity else "medium"
         if sev_value in ("critical", "high"):
-            return self._pick_available(["gpt-4o", "gpt-4.1", "o4-mini"])
-        return self._pick_available(["gpt-4o-mini", "gpt-4.1-mini", "gpt-4o"])
+            return self._pick_available(
+                ["gpt-5.2-codex", "gpt-5.1-codex", "gpt-5.1"]
+            )
+        return self._pick_available(
+            ["gpt-5-mini", "gpt-5.1-codex-mini", "gpt-4.1"]
+        )
 
     def _pick_available(self, candidates: list[str]) -> str:
         """Return the first candidate in the available models list.
@@ -197,7 +213,7 @@ class CopilotPlannerClient:
         """Create a multi-turn Copilot session for refactoring planning.
 
         Args:
-            model: Model identifier (e.g. ``"gpt-4o"``).
+            model: Model identifier (e.g. ``"gpt-5.1-codex"``).
             tools: List of ``@define_tool``-decorated tool objects.
             system_prompt: System prompt text (appended to SDK defaults).
 
@@ -205,11 +221,14 @@ class CopilotPlannerClient:
             A ``CopilotSession`` object.
         """
         self._ensure_client()
+        from copilot import PermissionHandler  # type: ignore[import-untyped]
 
         session_config: dict[str, Any] = {
             "model": model,
             "streaming": self.config.streaming,
             "tools": tools or [],
+            # Required by SDK v0.1.28+: permissions are deny-by-default.
+            "on_permission_request": PermissionHandler.approve_all,
             "system_message": {
                 "mode": "append",
                 "content": system_prompt,
@@ -232,9 +251,10 @@ class CopilotPlannerClient:
                 "azure": {"api_version": prov.api_version},
             }
 
-        # Reasoning effort for capable models
+        # Reasoning effort for capable models (all GPT-5.x support it)
         if self.config.reasoning_effort and model in {
-            "o1", "o1-preview", "o3", "o4-mini", "gpt-5",
+            "gpt-5.2-codex", "gpt-5.2", "gpt-5.1-codex-max",
+            "gpt-5.1-codex", "gpt-5.1", "gpt-5.1-codex-mini", "gpt-5-mini",
         }:
             session_config["reasoning_effort"] = self.config.reasoning_effort
 

@@ -7,6 +7,12 @@ on:
   workflow_run:
     workflows: ["CI", "Security Scan"]
     types: [completed]
+  workflow_dispatch:
+    inputs:
+      block_on_severities:
+        description: "Comma-separated severities that should block (e.g. critical,high)"
+        required: false
+        default: "critical,high"
 
 permissions:
   contents: read
@@ -17,6 +23,8 @@ jobs:
   review:
     if: ${{ github.event_name == 'pull_request' || github.event.workflow_run.conclusion == 'failure' }}
     runs-on: ubuntu-latest
+    env:
+      BLOCK_ON_SEVERITIES: ${{ github.event_name == 'workflow_dispatch' && inputs.block_on_severities || 'critical,high' }}
     steps:
       - uses: actions/checkout@v4
 
@@ -43,9 +51,9 @@ jobs:
       - name: Build PR review summary
         run: |
           if [ -f healing-plan.json ]; then
-            python -m codecustodian review-pr --repo-path . --output-format json --healing-plan-file healing-plan.json > pr-review.json
+            python -m codecustodian review-pr --repo-path . --output-format json --block-on "$BLOCK_ON_SEVERITIES" --healing-plan-file healing-plan.json > pr-review.json
           else
-            python -m codecustodian review-pr --repo-path . --output-format json > pr-review.json
+            python -m codecustodian review-pr --repo-path . --output-format json --block-on "$BLOCK_ON_SEVERITIES" > pr-review.json
           fi
 
       - name: Resolve PR number

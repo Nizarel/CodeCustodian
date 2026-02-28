@@ -536,11 +536,11 @@ class CopilotPlanner:
     def _select_model(self, finding: Finding) -> str:
         """Route to appropriate model based on complexity."""
         if finding.complexity == "simple":
-            return "gpt-4o-mini"  # Fast, cheap
+            return "gpt-5-mini"        # Fast, free tier
         elif finding.complexity == "moderate":
-            return "gpt-4o"       # Balanced
+            return "gpt-5.1-codex"     # Balanced
         else:
-            return "o1-preview"   # Deep reasoning
+            return "gpt-5.2-codex"     # Deep reasoning
     
     def _calculate_confidence(self, plan: RefactoringPlan, context: Context) -> int:
         """
@@ -1108,9 +1108,9 @@ advanced:
     model_selection: auto  # auto | fast | balanced | reasoning
     
     model_override:
-      simple: gpt-4o-mini
-      moderate: gpt-4o
-      complex: o1-preview
+      simple: gpt-5-mini
+      moderate: gpt-5.1-codex
+      complex: gpt-5.2-codex
     
     temperature: 0.1
     max_tokens: 4096

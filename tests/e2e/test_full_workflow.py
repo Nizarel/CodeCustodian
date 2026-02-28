@@ -850,8 +850,8 @@ class TestMCPServerLocal:
         assert expected == tool_names, f"Missing tools: {expected - tool_names}"
 
     @pytest.mark.e2e
-    def test_mcp_list_scanners_returns_five(self) -> None:
-        """list_scanners tool returns all 5 scanner descriptors."""
+    def test_mcp_list_scanners_returns_six(self) -> None:
+        """list_scanners tool returns all 6 scanner descriptors."""
         from fastmcp import Client
         from codecustodian.mcp.server import mcp
 
@@ -866,7 +866,7 @@ class TestMCPServerLocal:
             data = data["result"]
         names = {s["name"] for s in data} if isinstance(data, list) else set()
         expected = {"deprecated_apis", "security_patterns", "code_smells",
-                    "todo_comments", "type_coverage"}
+                    "todo_comments", "type_coverage", "dependency_upgrades"}
         assert expected == names, f"Missing scanners: {expected - names}"
 
     @pytest.mark.e2e

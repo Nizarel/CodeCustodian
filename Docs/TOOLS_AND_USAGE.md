@@ -176,6 +176,40 @@ InquirerPy-powered menu with options: Show high-priority findings, Create PRs, V
 codecustodian version
 ```
 
+### `codecustodian heal` — CI Self-Healing
+
+Analyze CI failure logs and suggest or apply fixes automatically.
+
+```bash
+codecustodian heal \
+  --log-file ci-output.log \
+  --auto-fix \
+  --create-pr
+```
+
+| Option | Default | Description |
+|--------|---------|-------------|
+| `--log-file` | — | Path to CI log file |
+| `--auto-fix` | `false` | Apply suggested fixes automatically |
+| `--create-pr` | `false` | Create a PR with the fix |
+
+### `codecustodian review-pr` — PR Review Bot
+
+Run automated review on a pull request with severity gating and labels.
+
+```bash
+codecustodian review-pr \
+  --pr-number 42 \
+  --severity-gate high \
+  --add-labels
+```
+
+| Option | Default | Description |
+|--------|---------|-------------|
+| `--pr-number` | — | PR number to review |
+| `--severity-gate` | `high` | Block PR if findings at or above this severity |
+| `--add-labels` | `false` | Add severity labels to the PR |
+
 ---
 
 ## MCP Server
@@ -267,6 +301,7 @@ List available scanners with marketplace metadata.
 | `code_smells` | Complexity and maintainability issues |
 | `security_patterns` | Security vulnerabilities (Bandit + custom) |
 | `type_coverage` | Functions missing type annotations |
+| `dependency_upgrades` | Outdated or unpinned dependencies |
 
 ---
 

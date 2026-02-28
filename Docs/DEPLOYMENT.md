@@ -20,21 +20,7 @@ codecustodian --help
 codecustodian-mcp
 ```
 
-### CLI Commands
-
-| Command | Description |
-|---------|-------------|
-| `codecustodian run` | Full pipeline (scan → plan → execute → verify → PR) |
-| `codecustodian init` | Bootstrap `.codecustodian.yml` + GitHub Actions workflow |
-| `codecustodian validate` | Validate configuration file |
-| `codecustodian scan` | Run scanners (table/json/csv output) |
-| `codecustodian findings` | List and filter findings |
-| `codecustodian create-prs` | Create PRs for top-N findings |
-| `codecustodian onboard` | Onboard a repository or organization |
-| `codecustodian status` | Show findings + budget + SLA summary |
-| `codecustodian report` | Generate ROI report (json/csv) |
-| `codecustodian interactive` | InquirerPy-powered menu |
-| `codecustodian version` | Print version |
+> **Full CLI reference:** See [TOOLS_AND_USAGE.md](TOOLS_AND_USAGE.md#cli-commands)
 
 ### Running Tests
 

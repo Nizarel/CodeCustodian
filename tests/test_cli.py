@@ -276,6 +276,41 @@ def test_review_pr_marks_security_as_blocking_with_label(cli_runner) -> None:
     assert "security-risk" in payload["suggested_labels"]
 
 
+def test_review_pr_custom_block_on_critical_only(cli_runner) -> None:
+    result = cli_runner.invoke(
+        app,
+        [
+            "review-pr",
+            "--repo-path",
+            "tests/fixtures/sample_repo",
+            "--output-format",
+            "json",
+            "--block-on",
+            "critical",
+        ],
+    )
+    assert result.exit_code == 0
+    payload = _load_json_from_output(result.stdout)
+    assert payload["blocking_issues"] == payload["by_severity"].get("critical", 0)
+
+
+def test_review_pr_rejects_invalid_block_on_value(cli_runner) -> None:
+    result = cli_runner.invoke(
+        app,
+        [
+            "review-pr",
+            "--repo-path",
+            "tests/fixtures/sample_repo",
+            "--output-format",
+            "json",
+            "--block-on",
+            "urgent",
+        ],
+    )
+    assert result.exit_code != 0
+    assert "--block-on must only contain" in result.stdout
+
+
 def test_review_pr_includes_healing_plan(cli_runner, tmp_path: Path) -> None:
     healing_plan = tmp_path / "healing-plan.json"
     healing_plan.write_text(

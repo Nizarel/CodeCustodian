@@ -221,7 +221,7 @@ class AzureOpenAIProviderConfig(BaseModel):
 class CopilotConfig(BaseModel):
     """GitHub Copilot SDK configuration.
 
-    Fields align with the real ``github-copilot-sdk`` v0.1.23 API surface:
+    Fields align with the real ``github-copilot-sdk`` v0.1.29 API surface:
     ``CopilotClient`` options, ``SessionConfig``, and ``ProviderConfig``.
     """
 
