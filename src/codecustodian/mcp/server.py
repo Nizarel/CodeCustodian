@@ -33,7 +33,7 @@ mcp = FastMCP(
     name="CodeCustodian",
     instructions="Autonomous AI agent for technical debt management",
     version=__version__,
-    on_duplicate_tools="error",
+    on_duplicate="error",
 )
 
 # Wire modular registrations

@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import asyncio
 import csv
+import difflib
 import json
 import tempfile
 from io import StringIO
@@ -17,6 +18,7 @@ import typer
 from rich.console import Console
 from rich.panel import Panel
 from rich.progress import Progress, SpinnerColumn, TextColumn, BarColumn, TaskProgressColumn
+from rich.syntax import Syntax
 from rich.table import Table
 
 from codecustodian import __version__
@@ -50,6 +52,8 @@ def _apply_scan_type_filter(cfg: Any, scan_type: str) -> None:
         "dependency_upgrades": "dependency_upgrades",
         "dependency_upgrade": "dependency_upgrades",
         "dependencies": "dependency_upgrades",
+        "architectural_drift": "architectural_drift",
+        "architecture": "architectural_drift",
     }
     target = scanner_map.get(normalized)
     if target is None:
@@ -215,6 +219,106 @@ def _print_scan_summary(findings: list[Finding]) -> None:
         "\n".join(lines),
         title="✅ Scan Complete",
         border_style="green",
+        padding=(1, 2),
+    ))
+
+
+def _print_diff_preview(plans: list) -> None:
+    """Render unified diffs for each plan's file changes."""
+    from codecustodian.models import RefactoringPlan
+
+    if not plans:
+        return
+
+    console.print(Panel("[bold cyan]Diff Preview (dry-run)[/]", border_style="cyan"))
+
+    for plan in plans:
+        if not isinstance(plan, RefactoringPlan):
+            continue
+        for change in plan.changes:
+            old_lines = change.old_content.splitlines(keepends=True) if change.old_content else []
+            new_lines = change.new_content.splitlines(keepends=True) if change.new_content else []
+            diff = list(difflib.unified_diff(
+                old_lines,
+                new_lines,
+                fromfile=f"a/{change.file_path}",
+                tofile=f"b/{change.file_path}",
+                lineterm="",
+            ))
+            if not diff:
+                continue
+            diff_text = "\n".join(diff)
+            console.print(
+                Panel(
+                    Syntax(diff_text, "diff", theme="monokai"),
+                    title=f"📝 {change.file_path} ({change.description or change.change_type.value})",
+                    border_style="cyan",
+                    padding=(0, 1),
+                )
+            )
+
+
+def _print_finding_detail(finding: Finding, repo_root: str | None = None) -> None:
+    """Print a detailed Rich panel for a single finding."""
+    from codecustodian.models import SeverityLevel
+
+    sev_colors = {
+        "critical": "bold red",
+        "high": "red",
+        "medium": "yellow",
+        "low": "dim",
+        "info": "blue",
+    }
+    sev = finding.severity.value
+    sev_style = sev_colors.get(sev, "white")
+
+    lines: list[str] = [
+        f"[bold]ID:[/] {finding.id}",
+        f"[bold]Type:[/] {finding.type.value}",
+        f"[bold]Severity:[/] [{sev_style}]{sev.upper()}[/]",
+        f"[bold]File:[/] {finding.file}:{finding.line}",
+        f"[bold]Priority:[/] {finding.priority_score:.1f}",
+        f"[bold]Business Impact:[/] {finding.business_impact_score:.1f}",
+    ]
+    if finding.scanner_name:
+        lines.append(f"[bold]Scanner:[/] {finding.scanner_name}")
+    lines.append(f"\n[bold]Description:[/]\n  {finding.description}")
+    if finding.suggestion:
+        lines.append(f"\n[bold]Suggestion:[/]\n  [green]{finding.suggestion}[/]")
+
+    # Show code context if file exists
+    if repo_root:
+        file_path = Path(repo_root) / finding.file
+        if file_path.exists():
+            try:
+                all_lines = file_path.read_text(encoding="utf-8", errors="replace").splitlines()
+                start = max(0, finding.line - 4)
+                end = min(len(all_lines), (finding.end_line or finding.line) + 3)
+                snippet = "\n".join(all_lines[start:end])
+                lines.append(f"\n[bold]Code Context:[/] (lines {start + 1}–{end})")
+                lines.append("")
+                console.print(
+                    Panel(
+                        Syntax(snippet, "python", line_numbers=True, start_line=start + 1,
+                               highlight_lines={finding.line}),
+                        border_style="dim",
+                        padding=(0, 1),
+                    )
+                )
+            except Exception:
+                pass
+
+    if finding.metadata:
+        interesting = {k: v for k, v in finding.metadata.items() if k not in ("dedup_key",)}
+        if interesting:
+            lines.append(f"\n[bold]Metadata:[/]")
+            for k, v in interesting.items():
+                lines.append(f"  {k}: {v}")
+
+    console.print(Panel(
+        "\n".join(lines),
+        title=f"🔍 Finding Detail",
+        border_style="blue",
         padding=(1, 2),
     ))
 
@@ -406,6 +510,10 @@ def run(
             )
         if result.errors:
             console.print(f"  [red]Errors:      {len(result.errors)}[/]")
+
+        # Diff preview in dry-run mode
+        if dry_run and result.plans:
+            _print_diff_preview(result.plans)
 
 
 @app.command()
@@ -657,15 +765,15 @@ def status(
 @app.command()
 def report(
     period: Optional[str] = typer.Option(None, "--period", help="Period in YYYY-MM"),
-    format: str = typer.Option("json", "--format", help="Report format: json or csv"),
+    format: str = typer.Option("json", "--format", help="Report format: json, csv, or html"),
     output: Optional[str] = typer.Option(None, "--output", help="Output file path"),
 ) -> None:
-    """Generate ROI report in JSON or CSV."""
+    """Generate ROI report in JSON, CSV, or HTML."""
     from codecustodian.enterprise.roi_calculator import ROICalculator
 
     fmt = format.lower()
-    if fmt not in {"json", "csv"}:
-        raise typer.BadParameter("--format must be 'json' or 'csv'")
+    if fmt not in {"json", "csv", "html"}:
+        raise typer.BadParameter("--format must be 'json', 'csv', or 'html'")
 
     calculator = ROICalculator()
     report_data = calculator.generate_report(period=period)
@@ -677,6 +785,13 @@ def report(
             console.print(f"[green]✓ Wrote report to {output}[/]")
         else:
             typer.echo(payload)
+        return
+
+    if fmt == "html":
+        html = calculator.export_html(report_data)
+        out_path = Path(output) if output else Path(f"roi-report-{report_data.period}.html")
+        out_path.write_text(html, encoding="utf-8")
+        console.print(f"[green]✓ Wrote HTML report to {out_path}[/]")
         return
 
     if output:
@@ -726,6 +841,26 @@ def findings(
     _print_findings(filtered, output_format, repo_root=repo_path)
     if output_format == "table":
         console.print(f"\n[bold]Filtered findings:[/] {len(filtered)}")
+
+
+@app.command()
+def finding(
+    finding_id: str = typer.Argument(help="Finding ID or substring to match"),
+    repo_path: str = typer.Option(".", "--repo-path", "-r", help="Repository path"),
+    config: str = typer.Option(
+        ".codecustodian.yml", "--config", "-c", help="Configuration file path"
+    ),
+) -> None:
+    """Show detailed view of a single finding with code context."""
+    all_findings = _scan_findings(repo_path, config, "all")
+    needle = finding_id.strip().lower()
+    matched = [f for f in all_findings if needle in f.id.lower()]
+    if not matched:
+        console.print(f"[red]No finding matching '{finding_id}' found.[/]")
+        raise typer.Exit(1)
+    if len(matched) > 1:
+        console.print(f"[yellow]Multiple matches ({len(matched)}). Showing first.[/]")
+    _print_finding_detail(matched[0], repo_root=repo_path)
 
 
 @app.command(name="create-prs")

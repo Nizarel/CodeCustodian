@@ -368,6 +368,9 @@ class TestSafetyCheckRunner:
         with tempfile.TemporaryDirectory() as tmpdir:
             test_file = Path(tmpdir) / "test.py"
             test_file.write_text("x = 1\n")
+            # Add extra modules so blast radius stays under 30%
+            for i in range(5):
+                (Path(tmpdir) / f"mod{i}.py").write_text(f"v{i} = {i}\n")
 
             plan = _make_plan(
                 changes=[
@@ -384,7 +387,7 @@ class TestSafetyCheckRunner:
             result = _run(runner.run_all_checks(plan))
 
             assert result.passed
-            assert len(result.checks) == 6
+            assert len(result.checks) == 7
             assert result.action == "proceed"
 
     def test_syntax_check_fails(self):

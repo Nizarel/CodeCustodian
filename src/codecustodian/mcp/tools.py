@@ -1,7 +1,8 @@
 """MCP tool definitions for the CodeCustodian server.
 
-Eight tools exposed via FastMCP covering the full pipeline:
-scan → plan → apply → verify → PR, plus read-only analytics.
+Nine tools exposed via FastMCP covering the full pipeline:
+scan → plan → apply → verify → PR, plus read-only analytics
+and blast-radius impact analysis.
 
 All tools use ``Context`` for progress reporting and logging, and carry
 ``ToolAnnotations`` to communicate intent to MCP clients.
@@ -510,3 +511,44 @@ def register_tools(mcp: FastMCP) -> None:  # noqa: C901 — intentionally long
             )
 
         return result
+
+    # ── 9. get_blast_radius ────────────────────────────────────────────
+
+    @mcp.tool(annotations=ToolAnnotations(readOnlyHint=True))
+    async def get_blast_radius(
+        plan_id: str,
+        repo_path: str = ".",
+        ctx: Context = None,  # type: ignore[assignment]
+    ) -> dict:
+        """Analyse the blast radius of a cached refactoring plan.
+
+        Builds an import-based dependency graph, then uses BFS to
+        determine which modules are directly and transitively affected.
+        Returns a risk score (0–1) and risk level.
+
+        Args:
+            plan_id: ID of a cached plan from ``plan_refactoring``.
+            repo_path: Path to repository root.
+        """
+        from codecustodian.intelligence.blast_radius import BlastRadiusAnalyzer
+        from codecustodian.mcp.cache import scan_cache
+
+        plan = await scan_cache.get_plan(plan_id)
+        if plan is None:
+            return {"error": f"Plan '{plan_id}' not found in cache. Run plan_refactoring first."}
+
+        if ctx:
+            await ctx.info("Building dependency graph…")
+
+        try:
+            analyzer = BlastRadiusAnalyzer(repo_path)
+            report = analyzer.analyze(plan)
+        except Exception as exc:
+            return {"error": f"Blast radius analysis failed: {exc}"}
+
+        if ctx:
+            await ctx.info(
+                f"Blast radius: {report.radius_score:.0%} — risk {report.risk_level}"
+            )
+
+        return report.model_dump(mode="json")

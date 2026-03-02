@@ -88,6 +88,7 @@ class TestMCPServerStructure:
             "create_pull_request",
             "calculate_roi",
             "get_business_impact",
+            "get_blast_radius",
         }
         assert expected == names
 
@@ -149,6 +150,7 @@ class TestToolAnnotations:
             "verify_changes",
             "calculate_roi",
             "get_business_impact",
+            "get_blast_radius",
         }
         for t in tools:
             if t.name in readonly_names:

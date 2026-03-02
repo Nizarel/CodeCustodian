@@ -10,6 +10,7 @@ Checks:
 4. Concurrent Change Detection — git SHA mismatch → abort
 5. Dangerous Function Detection — block ``eval``/``exec`` style calls
 6. Secrets Detection — block hardcoded secrets
+7. Blast Radius — abort when > 30% of codebase affected
 """
 
 from __future__ import annotations
@@ -109,6 +110,7 @@ class SafetyCheckRunner:
         checks.append(await self.check_concurrent_changes(plan))
         checks.append(await self.check_dangerous_functions(plan))
         checks.append(await self.check_secrets(plan))
+        checks.append(await self.check_blast_radius(plan))
 
         any_failed = any(c.failed for c in checks)
         result = SafetyResult(
@@ -393,3 +395,45 @@ class SafetyCheckRunner:
             passed=True,
             message="No hardcoded secrets detected",
         )
+
+    # ── Check 7: Blast Radius ──────────────────────────────────────────
+
+    async def check_blast_radius(
+        self, plan: RefactoringPlan, threshold: float = 0.3
+    ) -> SafetyCheckResult:
+        """Abort when a proposed change affects > 30% of the codebase."""
+        try:
+            from codecustodian.intelligence.blast_radius import BlastRadiusAnalyzer
+
+            analyzer = BlastRadiusAnalyzer(self.repo_path)
+            report = analyzer.analyze(plan)
+
+            if report.radius_score > threshold:
+                return SafetyCheckResult(
+                    name="blast_radius",
+                    passed=False,
+                    message=(
+                        f"Blast radius {report.radius_score:.0%} exceeds {threshold:.0%} threshold. "
+                        f"Directly affected: {len(report.directly_affected)} modules, "
+                        f"transitively affected: {len(report.transitively_affected)} modules. "
+                        "Downgrade to proposal mode."
+                    ),
+                )
+
+            return SafetyCheckResult(
+                name="blast_radius",
+                passed=True,
+                message=(
+                    f"Blast radius {report.radius_score:.0%} — "
+                    f"{len(report.directly_affected)} direct, "
+                    f"{len(report.transitively_affected)} transitive"
+                ),
+            )
+        except Exception as exc:
+            # Non-blocking: if analysis fails, pass with a warning
+            return SafetyCheckResult(
+                name="blast_radius",
+                passed=True,
+                message=f"Blast radius analysis skipped: {exc}",
+                severity="warning",
+            )
