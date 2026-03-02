@@ -1,6 +1,6 @@
 # CodeCustodian — Competitive Features & SDK Integration Guide
 
-**Version:** 2.0 | **Date:** February 27, 2026  
+**Version:** 3.0 | **Date:** March 1, 2026  
 **Purpose:** Comprehensive feature inventory, competitive landscape analysis, and SDK integration mapping for every CodeCustodian capability — current and planned.
 
 ---
@@ -438,6 +438,236 @@ Developers can ask: *"Scan this file for tech debt"*, *"What deprecated APIs am 
 
 **Business value:** Transforms the dependency scanner from a curated checklist into a live intelligence system. Solves the "version bump + code migration" problem that no other tool handles.
 
+### 4.5 Autonomous SRE (Production-to-Code Feedback Loop)
+
+**Status:** Approved — Phase 12  
+**Feasibility:** Yes | **Effort:** High | **Strategy Alignment:** Enterprise + Azure (55 pts)
+
+**Gap this closes:** CodeCustodian currently reacts to code smells at scan time. Production issues — CPU spikes, 500 errors, latency regressions caused by recently merged PRs — are invisible to the pipeline. No competitor connects APM alerts back to automated code fixes.
+
+**What to build:**
+- A secure webhook endpoint on the Azure Container App (`POST /webhook/incident`) that receives alerts from Azure Monitor Action Groups.
+- An `IncidentToFinding` converter that parses Azure Monitor alert payloads (stack traces, metric anomalies, log patterns) and synthesizes a `Finding` with `severity=CRITICAL` and `is_production_incident=True`.
+- Root cause analysis via the **GitHub Copilot SDK**: ingest the production stack trace, use `get_git_history` to isolate the offending commit, and plan a hotfix.
+- Expert routing via **Work IQ** `search_people` + `get_sprint_status` to assign the hotfix PR to the most appropriate available engineer.
+- Auto-bypass approval gates for CRITICAL production incidents with configurable policy.
+- Automatic rollback option: if the Copilot SDK identifies the exact commit and a clean revert is safe, push a revert PR immediately.
+
+**SDK integration:**
+- **GitHub Copilot SDK:** Multi-turn session — Turn 1 ingests stack trace + recent git diff, Turn 2 generates hotfix plan, Turn 3 validates against blast radius.
+- **Azure Monitor:** Webhook receiver + metric correlation for root cause identification.
+- **Work IQ MCP:** Expert routing + incident awareness via `get_sprint_status`.
+- **MCP server:** New `trigger_incident_response` tool for programmatic invocation.
+
+**Business value:** Reduces Mean Time to Resolution (MTTR) from hours to minutes. Moves CodeCustodian from "Tech Debt Management" to "Autonomous Site Reliability Engineering" — a category-defining upgrade.
+
+### 4.6 Predictive Tech Debt Forecasting + Executive Dashboard
+
+**Status:** Approved — Phase 12  
+**Feasibility:** Yes | **Effort:** Medium–High | **Strategy Alignment:** Enterprise Value (30 pts)
+
+**Gap this closes:** The current `BusinessImpactScorer` evaluates existing findings but doesn't predict future debt accumulation. Engineering managers lack data-driven forecasting to allocate tech-debt budgets. Every competitor (SonarQube, Snyk, Moderne) is reactive — none predict where debt will appear.
+
+**What to build:**
+- A `PredictiveDebtForecaster` module in `intelligence/` that analyzes historical trends: git churn rates over 6–12 months, complexity growth trajectories (Radon scores per sprint), test coverage decay, and PR merge patterns.
+- Monthly snapshots stored in TinyDB: `DebtSnapshot(date, finding_count, by_type, by_severity, churn_rate, complexity_avg)`.
+- Exponential smoothing + linear regression to forecast finding counts and severity distribution at 30/60/90-day horizons.
+- Risk heatmaps: per-directory predicted debt scores surfaced via the existing `dashboard://{team}/summary` MCP resource.
+- An **Executive Dashboard** in Azure Monitor with: a live ROI ticker (`savings_usd` counter), a codebase heatmap (red = high-churn + high-debt files), severity trend charts, and one-click campaign approval buttons for large migration plans.
+- Proactive scheduling: auto-boost finding priority when the forecast predicts a critical threshold breach within 2 sprints.
+
+**SDK integration:**
+- **Azure Monitor:** Custom metrics for forecast data (`predicted_findings_30d`, `debt_velocity`), ARM-template dashboard widgets.
+- **MCP server:** Enhanced `dashboard://{team}/summary` resource includes forecast data. New `get_debt_forecast` tool.
+- **GitHub Copilot SDK:** Forecast context injected into planner system prompt so the AI can prioritize "about-to-break" code over already-broken code.
+- **Work IQ MCP:** Sprint timeline awareness for optimal intervention scheduling.
+
+**Business value:** Empowers CTOs to justify AI budgets with data-driven risk forecasting. Teams using predictive dashboards have reclaimed up to 42% of developer time in two quarters. This is the difference between a tool and a strategic platform.
+
+### 4.7 Blast Radius Analysis for Every Change
+
+**Status:** Approved — Phase 12  
+**Feasibility:** Yes | **Effort:** Medium | **Strategy Alignment:** Security & Governance (15 pts)
+
+**Gap this closes:** The executor checks for concurrent changes (git SHA) and runs safety checks, but doesn't model the downstream impact of a proposed refactoring. Augment Code shows interactive blast radius overlays — CodeCustodian should quantify impact before execution.
+
+**What to build:**
+- A `BlastRadiusAnalyzer` in `intelligence/` that builds a reverse-dependency graph from AST-parsed imports across the repo.
+- Before executing any plan, traverse the graph to compute: every function, class, and test directly affected; every transitive downstream consumer; a normalized `radius_score` (0.0–1.0 = % of codebase affected).
+- Safety policy: if `radius_score > 0.3` (30%+ of codebase), automatically downgrade to proposal mode regardless of confidence score.
+- Include blast radius data in the PR description: directly affected files, indirectly affected modules, estimated risk level, suggested broader test scope.
+- Feed blast radius data into the **Copilot SDK** planner so the AI generates safer, more minimal refactoring plans when the blast radius is large.
+
+**SDK integration:**
+- **GitHub Copilot SDK:** Blast radius context added to Turn 1 system prompt — "This change affects 23% of the codebase, prioritize minimal edits."
+- **MCP server:** New `get_blast_radius` tool for pre-change impact queries from VS Code.
+- **Safety checks:** New 7th safety check in `executor/safety_checks.py`.
+
+**Business value:** Transforms CodeCustodian from "makes changes and hopes they're safe" to "quantifies exactly what every change touches before touching it." Critical for enterprise trust.
+
+### 4.8 AI Test Synthesis
+
+**Status:** Approved — Phase 13  
+**Feasibility:** Yes | **Effort:** Medium–High | **Strategy Alignment:** Operational Readiness (15 pts)
+
+**Gap this closes:** The #1 blocker for autonomous refactoring is untested code. When `find_test_coverage` returns zero tests, confidence drops to < 5 and the plan is downgraded to proposal-only. No competitor generates tests first, then refactors.
+
+**What to build:**
+- Extend the Planner's multi-turn session with an optional Turn 4: "Generate tests for the original code before refactoring."
+- The Copilot SDK receives the function source + call sites + existing test patterns in the repo, and generates a focused test file (`tests/test_generated_{module}.py`).
+- TDD validation: run generated tests against the original code (must pass), then run against the refactored code (must still pass). If tests fail on the original code, discard them and lower confidence.
+- Include generated tests as `FileChange` entries in the `RefactoringPlan` so they're committed alongside the refactoring.
+- Configuration: `behavior.enable_test_synthesis: true` (opt-in), `behavior.test_synthesis_max_per_run: 3`.
+
+**SDK integration:**
+- **GitHub Copilot SDK:** Turn 4 session with system prompt "You are a pytest test author. Generate focused, deterministic tests." Uses `get_function_definition` + `find_test_coverage` tools.
+- **Verifier:** Extended to run generated tests in isolation before accepting them.
+- **MCP server:** Enhanced `plan_refactoring` tool includes test synthesis when enabled.
+
+**Business value:** Unlocks autonomous refactoring for untested code — the 60%+ of enterprise codebases with < 50% coverage. Solves the cold-start problem.
+
+### 4.9 Architectural Drift Detection Scanner
+
+**Status:** Approved — Phase 12  
+**Feasibility:** Yes | **Effort:** Medium | **Strategy Alignment:** Enterprise Value (30 pts)
+
+**Gap this closes:** CodeCustodian has six scanner categories focused on code-level issues. None detect architectural problems — when the actual implementation diverges from intended design. SonarQube doesn't detect drift. Moderne doesn't. This is a category-defining feature.
+
+**What to build:**
+- A 7th scanner: `ArchitecturalDriftScanner` extending `BaseScanner`. Detects: circular dependencies between modules, layer boundary violations (e.g., a controller importing directly from the database layer), forbidden import patterns, and module size violations.
+- Expected architecture defined in `.codecustodian.yml` under a new `architecture:` section: `layers` (directory → layer mapping), `forbidden_imports` (from_layer → to_layer rules), `critical_components`, `max_module_size`.
+- Auto-baseline generation via `codecustodian init-architecture` — analyzes the repo's current import structure and proposes layer rules.
+- AI-generated remediation plans for structural violations via the **Copilot SDK** — "Move this import through the service layer" instead of just flagging.
+
+**SDK integration:**
+- **GitHub Copilot SDK:** Structural violation context fed to planner for architectural fix planning.
+- **MCP server:** Scanner automatically included in `scan_repository` results. New `architecture://baseline` resource.
+- **Configuration:** New `architecture:` section in config schema.
+
+**Business value:** Architectural degradation is the most expensive form of tech debt — it compounds silently until entire systems need rewriting. Detecting drift early saves orders of magnitude more than fixing code smells.
+
+### 4.10 Agentic Migrations — Framework & Language Version Upgrades
+
+**Status:** Approved — Phase 13  
+**Feasibility:** Yes | **Effort:** High | **Strategy Alignment:** Enterprise Value (30 pts)
+
+**Gap this closes:** CodeCustodian handles individual deprecated API replacements and dependency bumps. It doesn't handle large-scale framework migrations (Django 4→5, Flask→FastAPI, Python 3.10→3.13). Moderne handles this with deterministic recipes in Java/Kotlin/C# — CodeCustodian can do it with AI reasoning across any framework.
+
+**What to build:**
+- A `MigrationEngine` in `intelligence/migrations.py` that orchestrates multi-step, multi-file framework upgrades.
+- Migration workflow: (1) Analyze entire codebase for migration-relevant patterns, (2) Fetch the framework's official migration guide via URL, (3) Generate a comprehensive `MigrationPlan` spanning all affected files, (4) Execute changes file-by-file with incremental verification after each batch, (5) Create a single comprehensive PR or staged PRs (configurable via `behavior.migration_pr_strategy: single | staged`).
+- Framework-specific migration playbooks in `.codecustodian.yml` under `migrations:` — custom rules for common upgrades.
+- Staged migration support: break a major upgrade into smaller, reviewable chunks (e.g., 10 PRs instead of 1 massive PR), respecting `max_files_per_pr`.
+
+**SDK integration:**
+- **GitHub Copilot SDK:** Multi-turn sessions per migration stage. Turn 1 reads the migration guide, Turn 2 identifies breaking changes in the codebase, Turn 3 generates file-by-file migration plan.
+- **MCP server:** New `plan_migration` tool for IDE-triggered migrations.
+- **Verifier:** Full test suite run after each stage with rollback on failure.
+
+**Business value:** Framework migrations are the most time-consuming form of tech debt. AI-powered migrations reduce migration time by 50%+ compared to manual efforts.
+
+### 4.11 ChatOps Experience (Work IQ + Teams/Slack)
+
+**Status:** Approved — Phase 13  
+**Feasibility:** Yes | **Effort:** Medium | **Strategy Alignment:** Azure + Work IQ (40 pts)
+
+**Gap this closes:** CodeCustodian creates PRs and issues, but all interaction happens in GitHub. Developers communicate in Teams/Slack. No competitor brings autonomous tech-debt UX to where engineers work.
+
+**What to build:**
+- A `ChatOpsConnector` in `integrations/` supporting Microsoft Teams (via `botbuilder` SDK / Adaptive Cards) and Slack (via `SlackBolt`).
+- **Actionable Adaptive Cards:** When CodeCustodian creates a PR or drafts a hotfix (Autonomous SRE), it sends an interactive card to the Work IQ-identified expert: finding summary, confidence score, test results, with inline buttons — `[View PR]`, `[Approve & Merge]`, `[Reject]`.
+- **Sprint-Aware Notifications:** If Work IQ's `get_sprint_status` indicates crunch time (capacity > 90%, days_remaining < 3), queue tech-debt PRs silently and deliver a weekly summary digest instead of per-PR notifications.
+- **Slash Commands:** `/codecustodian scan`, `/codecustodian status`, `/codecustodian approve <plan_id>` — thin wrappers over existing MCP tools.
+- **Approval Integration:** Button clicks update `ApprovalWorkflowManager` state, closing the human-in-the-loop without leaving the chat platform.
+
+**SDK integration:**
+- **Work IQ MCP:** `search_people` for notification routing, `get_sprint_status` for notification throttling.
+- **Azure Bot Service:** Teams bot registration + Adaptive Card templates.
+- **MCP tools:** ChatOps commands delegate to `scan_repository`, `plan_refactoring`, `apply_refactoring` via the existing MCP tool layer.
+
+**Business value:** Brings CodeCustodian UX to where developers live. Adaptive Cards with inline approvals reduce PR response time from hours to minutes.
+
+### 4.12 Zero-Friction Onboarding Enhancement
+
+**Status:** Approved — Phase 12  
+**Feasibility:** Yes | **Effort:** Low | **Strategy Alignment:** Operational Readiness (15 pts)
+
+**Gap this closes:** The existing `OnboardingManager` + `ProjectAnalyzer` require manual template selection. The `init` command should auto-detect everything and generate a tailored `.codecustodian.yml` without documentation.
+
+**What to build:**
+- Enhance `codecustodian init` to auto-detect: languages (Python, JS/TS, Java), package managers (pip, poetry, uv, npm), test frameworks (pytest, unittest, jest), CI/CD platform (GitHub Actions, Azure Pipelines), and existing linter configs (ruff, mypy, eslint).
+- Auto-select the best policy template based on detection results: `security_first` (if security concerns detected), `deprecations_first` (high deprecated API density), `full_scan` (default).
+- Auto-populate `approval.sensitive_paths` by scanning for `auth/`, `payment/`, `security/`, `api/` directories.
+- Generate a ready-to-commit GitHub Actions workflow file alongside the config.
+- Post-onboarding health check: validate config, verify token access, run a quick scan, report readiness.
+
+**SDK integration:**
+- **MCP server:** Enhanced `onboard_repo` prompt template with auto-detected context.
+- **GitHub Copilot SDK:** Optional AI-assisted config review — "Based on your repo structure, I recommend enabling the security scanner with severity=high."
+
+**Business value:** Reduces onboarding from "read docs + configure" to "run one command." Critical for enterprise adoption at scale.
+
+### 4.13 Codebase Knowledge Graph (GraphRAG)
+
+**Status:** Approved — Phase 14 (Enabler for Blast Radius + Drift Detection)  
+**Feasibility:** Yes (Partial) | **Effort:** High | **Strategy Alignment:** Enterprise Value (30 pts)
+
+**Gap this closes:** CodeCustodian uses per-file AST analysis and `get_call_sites` for local call chain tracing. It lacks a persistent, queryable model of the entire codebase structure. Sourcegraph Cody and Axon are building knowledge graphs — CodeCustodian should too.
+
+**What to build:**
+- A `CodebaseGraphBuilder` in `intelligence/codebase_graph.py` that indexes all functions, classes, imports, call chains, and type references as nodes and edges in a lightweight in-memory graph (using `networkx` — no external database required for repos < 10K files).
+- **GraphRAG retrieval:** When the Copilot SDK planner needs context, traverse the graph to pull the complete "blast radius" subgraph instead of calling `get_function_definition` and `search_references` one-at-a-time.
+- Multi-hop dependency queries: "show all code paths from this API endpoint to this vulnerable function."
+- Incremental updates: rebuild only changed files on each scan (diff-based via git).
+- Persistence: serialize graph to JSON for caching between runs.
+
+**SDK integration:**
+- **GitHub Copilot SDK:** New `query_code_graph` `@define_tool` function — returns richer, multi-hop context in a single tool call, replacing sequential `get_call_sites` + `search_references` calls.
+- **MCP server:** New `query_code_graph` tool for developer queries from VS Code: "What breaks if I change this function?"
+- **Blast Radius Analyzer:** Uses the graph for O(1) traversal instead of on-demand AST parsing.
+- **Architectural Drift Scanner:** Validates actual import graph against declared architecture rules.
+
+**Business value:** Knowledge graphs transform code from linear text into a queryable network. Dramatically improves planner accuracy and enables Blast Radius + Drift Detection at scale.
+
+### 4.14 AI Slop Detector
+
+**Status:** Approved — Phase 14 (Low Priority)  
+**Feasibility:** Yes | **Effort:** Medium | **Strategy Alignment:** Enterprise Value (30 pts)
+
+**Gap this closes:** GitClear reports code churn doubled since AI coding assistant adoption. AI-generated code often exhibits: generic variable names, copy-paste proliferation, orphaned functions, over-commenting, and inconsistent style. No competitor detects this.
+
+**What to build:**
+- A new `AICodeQualityScanner` extending `BaseScanner`. Detects:
+  - Generic naming ratio (variables named `data`, `result`, `temp`, `var1` etc.) above threshold.
+  - Copy-paste proliferation: code duplication patterns within the same module (token-based similarity).
+  - Orphaned functions: functions with zero call sites (dead code).
+  - Comment-to-code ratio anomalies: unusually high commenting vs. project baseline.
+  - Style inconsistency: deviation from the repo's established patterns (naming convention, import ordering).
+- Configurable thresholds in `.codecustodian.yml` under `scanners.ai_code_quality`.
+- Opt-in by default (`enabled: false`) due to higher false-positive risk.
+
+**SDK integration:**
+- **GitHub Copilot SDK:** Findings fed to planner for AI-powered cleanup suggestions — rename variables, extract duplicated code, remove dead functions.
+- **MCP server:** Included in `scan_repository` results when enabled.
+
+**Business value:** Addresses the 2026 "AI slop" crisis. As teams adopt AI coding assistants, code quality monitoring becomes essential. First-mover advantage in a rapidly growing concern.
+
+---
+
+## 4.15 Deferred Features (Not Approved)
+
+### Multi-Agent Swarm / Multi-Agent Pipeline
+
+**Status:** Deferred — Not aligned with current architecture  
+**Feasibility:** No (for current phase) | **Effort:** Very High (100–150h) | **Risk:** High
+
+**Rationale for deferral:**
+- Requires fundamental architectural refactoring — the pipeline is currently linear and single-threaded.
+- Needs a distributed task queue (Celery/RQ/Redis), worker pool management, conflict resolution for concurrent file edits, and distributed cost tracking.
+- The Copilot SDK session model is per-process; session pooling across workers adds significant complexity.
+- Unclear ROI for typical use cases — most tech-debt findings are localized (1–3 files). Multi-agent overhead only justified for massive cross-repo migrations which are rare.
+- **Recommendation:** Revisit when Agentic Migrations (4.10) is mature and the sequential pipeline becomes a measurable bottleneck. The simpler staged PR approach in 4.10 covers 90% of large migration use cases without distributed coordination.
+
 ---
 
 ## 5. SDK & Integration Map
@@ -541,6 +771,14 @@ Developers can ask: *"Scan this file for tech debt"*, *"What deprecated APIs am 
 | **Multi-language** | ⚠️ Python + JS/TS partial | ✅ 30+ | N/A | N/A | ✅ All | ✅ Java/Kotlin/C# | ✅ JS/TS/Py/Java | ✅ All |
 | **Reachability analysis** | 🔜 Planned | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ SaaS |
 | **Org-wide scanning** | 🔜 Planned | ✅ | ✅ | ✅ | ❌ | ✅ Core feature | ❌ | ✅ |
+| **Autonomous SRE** | 🔜 Approved | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
+| **Predictive debt forecast** | 🔜 Approved | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
+| **Blast radius analysis** | 🔜 Approved | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
+| **AI test synthesis** | 🔜 Approved | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
+| **Architectural drift** | 🔜 Approved | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
+| **Agentic migrations** | 🔜 Approved | ❌ | ❌ | ❌ | ❌ | ✅ Recipe | ❌ | ❌ |
+| **ChatOps (Teams/Slack)** | 🔜 Approved | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
+| **Knowledge graph** | 🔜 Approved | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
 
 ---
 
@@ -571,14 +809,46 @@ Developers can ask: *"Scan this file for tech debt"*, *"What deprecated APIs am 
 | 9 | Org-Wide Scanning | Medium | High | PyGithub + MultiTenantManager + MCP |
 | 10 | Live PyPI Checking | Medium | High | httpx + Copilot SDK changelog parsing |
 
+### Phase 12 — Strategic Extensions (Business-Approved, High Priority)
+
+| # | Feature | Effort | Impact | SDK Integration |
+|---|---|---|---|---|
+| 11 | Autonomous SRE (Prod-to-Code Loop) | High | Game-Changer | Azure Monitor webhook + Copilot SDK hotfix + Work IQ routing |
+| 12 | Predictive Debt Forecasting + Dashboard | Medium–High | Very High | TinyDB time-series + Azure Monitor dashboard + MCP resource |
+| 13 | Blast Radius Analysis | Medium | High | AST import graph + Copilot SDK context + Safety Check #7 |
+| 14 | Architectural Drift Detection Scanner | Medium | High | New `BaseScanner` subclass + config DSL + Copilot SDK remediation |
+| 15 | Zero-Friction Onboarding Enhancement | Low | High | `ProjectAnalyzer` extension + auto-config + health check |
+
+### Phase 13 — Advanced Intelligence (Business-Approved, Medium Priority)
+
+| # | Feature | Effort | Impact | SDK Integration |
+|---|---|---|---|---|
+| 16 | AI Test Synthesis | Medium–High | Very High | Copilot SDK Turn 4 test generation + TDD validation |
+| 17 | Agentic Migrations (Framework Upgrades) | High | Very High | Multi-turn Copilot SDK + staged execution + migration playbooks |
+| 18 | ChatOps (Teams/Slack Adaptive Cards) | Medium | High | Azure Bot Service + Work IQ routing + MCP tool delegation |
+
+### Phase 14 — Platform Enablers (Business-Approved, Lower Priority)
+
+| # | Feature | Effort | Impact | SDK Integration |
+|---|---|---|---|---|
+| 19 | Codebase Knowledge Graph (GraphRAG) | High | High | `networkx` graph + Copilot SDK `query_code_graph` tool + MCP |
+| 20 | AI Slop Detector | Medium | Medium | New `BaseScanner` subclass + naming/duplication/dead-code analysis |
+
+### Deferred (Not Approved)
+
+| # | Feature | Effort | Reason Deferred |
+|---|---|---|---|
+| — | Multi-Agent Swarm / Pipeline | Very High | Requires fundamental architecture refactoring; unclear ROI for typical use cases |
+
 ### Feature Readiness Summary
 
 ```
-Done:        8 of 10 features ████████░░ 80%
-In Progress: 0 of 10 features ░░░░░░░░░░  0%
-Planned:     2 of 10 features ██░░░░░░░░ 20%
+Done:        8 of 20 features ████████░░░░░░░░░░░░ 40%
+Planned:     2 of 20 features ██░░░░░░░░░░░░░░░░░░ 10%
+Approved:   10 of 20 features ██████████░░░░░░░░░░ 50%
+Deferred:    1 feature
 ```
 
 ---
 
-*This document is generated from the CodeCustodian codebase as of February 27, 2026.*
+*This document is generated from the CodeCustodian codebase as of March 1, 2026.*

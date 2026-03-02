@@ -25,6 +25,7 @@
 16. [Security Architecture](#16-security-architecture)
 17. [Observability Architecture](#17-observability-architecture)
 18. [SDK Integration Map](#18-sdk-integration-map)
+19. [Planned Architecture Extensions](#19-planned-architecture-extensions)
 
 ---
 
@@ -1573,6 +1574,715 @@ graph TB
 
 ---
 
+## 19. Planned Architecture Extensions
+
+> Business-approved features organized by implementation phase. Each
+> extension lists the architecture layers affected, new modules required,
+> SDK integration points, and data model additions.
+
+### 19.1 Feasibility Triage Summary
+
+| # | Feature | Feasible | Effort | Phase | Layers Affected |
+|---|---------|:--------:|--------|-------|-----------------|
+| 1 | Autonomous SRE (Prod→Code Loop) | **Yes** | High | 12 | Pipeline, Verifier, Integrations (Azure Monitor), MCP |
+| 2 | Predictive Debt Forecasting + Dashboard | **Yes** | Medium–High | 12 | Intelligence, Enterprise (SLA), MCP, Azure Monitor |
+| 3 | Blast Radius Analysis | **Yes** | Medium | 12 | Intelligence, Executor (Safety), Planner, MCP |
+| 4 | Architectural Drift Detection | **Yes** | Medium | 12 | Scanner, Config, MCP |
+| 5 | Zero-Friction Onboarding Enhancement | **Yes** | Low | 12 | Onboarding, CLI, Config |
+| 6 | AI Test Synthesis | **Yes** | Medium–High | 13 | Planner, Verifier, Executor |
+| 7 | Agentic Migrations | **Yes** | High | 13 | Intelligence, Planner, Pipeline, MCP |
+| 8 | ChatOps (Teams/Slack) | **Yes** | Medium | 13 | Integrations, Enterprise (Approval), MCP |
+| 9 | Codebase Knowledge Graph (GraphRAG) | **Yes** (partial) | High | 14 | Intelligence, Planner (Tools), MCP |
+| 10 | AI Slop Detector | **Yes** | Medium | 14 | Scanner, Config |
+| 11 | Multi-Agent Swarm / Pipeline | **No** (deferred) | Very High | — | Requires fundamental pipeline refactoring |
+
+---
+
+### 19.2 Autonomous SRE — Production-to-Code Feedback Loop
+
+**Phase:** 12 | **Effort:** High | **New modules:** 3
+
+#### Architecture
+
+```mermaid
+sequenceDiagram
+    participant AzMon as Azure Monitor<br/>Action Group
+    participant Webhook as /webhook/incident<br/>(Container App)
+    participant Converter as IncidentToFinding
+    participant Pipeline
+    participant Planner as Copilot SDK<br/>Planner
+    participant WorkIQ as Work IQ MCP
+    participant GitHub
+
+    AzMon->>Webhook: POST alert payload<br/>(stack trace, metric anomaly)
+    Webhook->>Converter: parse_alert(payload)
+    Converter->>Converter: synthesize Finding<br/>(severity=CRITICAL, is_production_incident=True)
+    Converter->>Pipeline: inject_finding(finding)
+
+    Pipeline->>Planner: plan_refactoring(finding, incident_context)
+    Note over Planner: Turn 1: Ingest stack trace + git diff
+    Note over Planner: Turn 2: Generate hotfix plan
+    Note over Planner: Turn 3: Validate blast radius
+    Planner-->>Pipeline: RefactoringPlan (hotfix)
+
+    Pipeline->>WorkIQ: get_expert_for_finding(finding)
+    WorkIQ-->>Pipeline: ExpertResult (on-call engineer)
+
+    Pipeline->>Pipeline: execute → verify → create PR
+    Pipeline->>GitHub: create_pull_request(plan, reviewer=expert)
+    Pipeline->>GitHub: assign + label "production-hotfix"
+```
+
+#### New Modules
+
+| Module | Location | Purpose |
+|--------|----------|---------|
+| `IncidentWebhookHandler` | `mcp/incident_webhook.py` | FastAPI endpoint receiving Azure Monitor webhooks with HMAC validation |
+| `IncidentToFinding` | `intelligence/incident_converter.py` | Parses alert payloads (stack traces, metric anomalies) → `Finding` with `is_production_incident=True` |
+| `IncidentResponsePolicy` | `enterprise/incident_policy.py` | Configurable auto-bypass of approval gates for CRITICAL incidents, rate limiting |
+
+#### Data Model Additions
+
+```python
+class IncidentAlert(BaseModel):
+    """Parsed Azure Monitor alert payload."""
+    alert_id: str
+    severity: SeverityLevel  # mapped from Azure severity
+    stack_trace: str | None
+    metric_name: str | None
+    metric_value: float | None
+    affected_resource: str
+    timestamp: datetime
+    recent_deployments: list[str]  # git SHAs from recent PRs
+
+class IncidentResponseResult(BaseModel):
+    """Outcome of autonomous incident response."""
+    alert_id: str
+    finding_id: str
+    root_cause_commit: str | None
+    hotfix_plan_id: str | None
+    pr_number: int | None
+    response_time_seconds: float
+    action_taken: str  # "hotfix_pr" | "revert_pr" | "proposal_only" | "escalated"
+```
+
+#### Configuration
+
+```yaml
+autonomous_sre:
+  enabled: false  # opt-in
+  webhook_secret: "${INCIDENT_WEBHOOK_SECRET}"  # HMAC validation
+  auto_bypass_approval: true  # skip approval for CRITICAL incidents
+  max_hotfixes_per_hour: 3  # rate limit
+  revert_if_clean: true  # auto-revert if single commit is isolated
+  notify_channel: "teams"  # teams | slack | none
+```
+
+#### SDK Integration Points
+
+- **Azure Monitor:** Webhook receiver for Action Group alerts
+- **Copilot SDK:** Incident-specific system prompt with stack trace + git diff context
+- **Work IQ:** `search_people` for on-call expert routing, `get_sprint_status` for incident awareness
+- **MCP:** New `trigger_incident_response` tool for programmatic invocation
+
+---
+
+### 19.3 Predictive Tech Debt Forecasting + Executive Dashboard
+
+**Phase:** 12 | **Effort:** Medium–High | **New modules:** 2
+
+#### Architecture
+
+```mermaid
+graph TB
+    subgraph "Data Collection (per pipeline run)"
+        P[Pipeline] --> SS[Snapshot Recorder]
+        SS --> DB[(TinyDB<br/>debt_snapshots)]
+    end
+
+    subgraph "Forecasting Engine"
+        DB --> FE[PredictiveDebtForecaster]
+        FE --> ES[Exponential Smoothing]
+        FE --> LR[Linear Regression]
+        FE --> HM[Risk Heatmap Generator]
+    end
+
+    subgraph "Outputs"
+        ES --> F30[30-day forecast]
+        LR --> F90[90-day forecast]
+        HM --> DASH[Executive Dashboard]
+        F30 --> MCP[MCP Resource<br/>dashboard://{team}/summary]
+        F90 --> MCP
+        DASH --> AZMON[Azure Monitor<br/>ARM Dashboard]
+    end
+
+    subgraph "Feedback Loop"
+        F30 --> PRI[Priority Booster]
+        PRI --> P
+    end
+
+    style FE fill:#0078d4,color:#fff
+```
+
+#### New Modules
+
+| Module | Location | Purpose |
+|--------|----------|---------|
+| `PredictiveDebtForecaster` | `intelligence/forecasting.py` | Time-series analysis: exponential smoothing + linear regression on historical debt snapshots |
+| `ExecutiveDashboardGenerator` | `intelligence/executive_dashboard.py` | Generates ARM-template dashboard JSON with ROI ticker, heatmaps, trend charts |
+
+#### Data Model Additions
+
+```python
+class DebtSnapshot(BaseModel):
+    """Point-in-time debt measurement stored after each pipeline run."""
+    date: datetime
+    repo_path: str
+    finding_count: int
+    by_type: dict[str, int]  # FindingType → count
+    by_severity: dict[str, int]  # SeverityLevel → count
+    churn_rate: float  # commits/week in scanned files
+    complexity_avg: float  # mean Radon score
+    coverage_pct: float  # test coverage %
+
+class DebtForecast(BaseModel):
+    """Predicted debt at a future date."""
+    forecast_date: datetime
+    predicted_findings: int
+    predicted_by_severity: dict[str, int]
+    confidence_interval: tuple[int, int]  # (low, high)
+    trend: str  # "accelerating" | "stable" | "improving"
+    hotspot_directories: list[str]  # top-5 predicted debt accumulation dirs
+```
+
+#### MCP Enhancements
+
+- Enhanced `dashboard://{team}/summary` resource includes `forecast_30d`, `forecast_90d`, `hotspot_dirs`
+- New `get_debt_forecast` tool: returns `DebtForecast` for a given repo + horizon
+- New Azure Monitor custom metrics: `predicted_findings_30d`, `debt_velocity`, `forecast_confidence`
+
+---
+
+### 19.4 Blast Radius Analysis
+
+**Phase:** 12 | **Effort:** Medium | **New modules:** 1
+
+#### Architecture
+
+```mermaid
+graph TB
+    subgraph "Pre-Execution Analysis"
+        PLAN[RefactoringPlan] --> BRA[BlastRadiusAnalyzer]
+        BRA --> IG[Import Graph Builder<br/>AST + networkx]
+        IG --> BFS[BFS Reverse Traversal]
+        BFS --> BR[BlastRadiusReport]
+    end
+
+    subgraph "Safety Integration"
+        BR --> SC7["Safety Check #7<br/>Blast Radius Gate"]
+        SC7 -->|radius > 0.3| PROP[Downgrade to Proposal]
+        SC7 -->|radius ≤ 0.3| EXEC[Proceed to Execution]
+    end
+
+    subgraph "Output"
+        BR --> PR[PR Description<br/>Impact Section]
+        BR --> SDK[Copilot SDK Context<br/>Turn 1 system prompt]
+    end
+
+    style BRA fill:#d32f2f,color:#fff
+```
+
+#### New Module
+
+| Module | Location | Purpose |
+|--------|----------|---------|
+| `BlastRadiusAnalyzer` | `intelligence/blast_radius.py` | Builds import graph from AST, computes reverse-dependency BFS, outputs `BlastRadiusReport` |
+
+#### Data Model Additions
+
+```python
+class BlastRadiusReport(BaseModel):
+    """Impact analysis for a set of changed files."""
+    changed_files: list[str]
+    directly_affected: list[str]  # files importing changed files
+    transitively_affected: list[str]  # 2+ hops away
+    affected_tests: list[str]  # test files in the blast radius
+    radius_score: float  # 0.0–1.0 (% of repo affected)
+    risk_level: RiskLevel  # LOW | MEDIUM | HIGH
+    recommendation: str  # "safe to proceed" | "proposal mode recommended"
+```
+
+#### Safety Check Extension
+
+The executor's `SafetyChecks` gains a 7th check:
+
+| Check | Detection Method | Action on Failure |
+|-------|-----------------|-------------------|
+| Blast radius | Import graph BFS, `radius_score > threshold` | Downgrade to proposal mode |
+
+Default threshold: `0.3` (30% of codebase). Configurable via `behavior.blast_radius_threshold`.
+
+---
+
+### 19.5 Architectural Drift Detection Scanner
+
+**Phase:** 12 | **Effort:** Medium | **New modules:** 1
+
+#### Architecture
+
+```mermaid
+classDiagram
+    BaseScanner <|-- ArchitecturalDriftScanner
+
+    class ArchitecturalDriftScanner {
+        +name: "architectural_drift"
+        +scan(repo_path) List~Finding~
+        -_build_import_graph(repo_path) dict
+        -_check_layer_violations(graph, rules) List~Finding~
+        -_check_circular_deps(graph) List~Finding~
+        -_check_module_size(repo_path, limits) List~Finding~
+    }
+
+    class ArchitectureConfig {
+        +layers: dict[str, list[str]]
+        +forbidden_imports: list[tuple[str, str]]
+        +critical_components: list[str]
+        +max_module_size: int
+    }
+
+    ArchitecturalDriftScanner ..> ArchitectureConfig
+```
+
+#### Configuration Extension
+
+```yaml
+architecture:
+  layers:
+    api: ["handlers/", "routes/", "views/"]
+    business: ["services/", "domain/"]
+    data: ["repositories/", "db/", "models/"]
+  forbidden_imports:
+    - [api, data]  # API layer cannot import data layer directly
+    - [data, api]  # Data layer cannot import API layer
+  critical_components:
+    - "auth/authentication.py"
+    - "payments/processor.py"
+  max_module_size: 500  # lines per module
+```
+
+#### New CLI Command
+
+```bash
+codecustodian init-architecture --repo-path .
+# Analyzes current repo structure, infers layer rules, generates architecture: section
+```
+
+---
+
+### 19.6 Zero-Friction Onboarding Enhancement
+
+**Phase:** 12 | **Effort:** Low | **Modified modules:** 2
+
+#### Enhanced `init` Flow
+
+```mermaid
+graph LR
+    INIT["codecustodian init"] --> PA[ProjectAnalyzer<br/>detect languages,<br/>package managers,<br/>test frameworks,<br/>CI platform,<br/>linter configs]
+    PA --> TS[Template Selector<br/>security_first |<br/>deprecations_first |<br/>full_scan]
+    TS --> CG[Config Generator<br/>.codecustodian.yml]
+    CG --> SP[Sensitive Path<br/>Auto-Populator]
+    SP --> WF[Workflow Generator<br/>.github/workflows/]
+    WF --> HC[Health Check<br/>validate config,<br/>test token,<br/>quick scan]
+    HC --> DONE[Ready ✅]
+```
+
+#### Auto-Detection Matrix
+
+| Detected | How | Config Impact |
+|----------|-----|---------------|
+| Python | `*.py` files, `pyproject.toml` | Enable all Python scanners |
+| JS/TS | `*.js`/`*.ts`, `package.json` | Enable JS/TS deprecation scanner |
+| pytest | `conftest.py`, `pytest.ini` | Set `testing.framework: pytest` |
+| ruff | `ruff.toml`, `pyproject.toml [tool.ruff]` | Set `linting.ruff: true` |
+| GitHub Actions | `.github/workflows/` | Generate CC workflow alongside existing |
+| Azure Pipelines | `azure-pipelines.yml` | Generate pipeline task |
+
+---
+
+### 19.7 AI Test Synthesis
+
+**Phase:** 13 | **Effort:** Medium–High | **Modified modules:** 2
+
+#### Extended Multi-Turn Session
+
+```mermaid
+sequenceDiagram
+    participant Planner
+    participant SDK as Copilot SDK Session
+
+    Note over Planner,SDK: Turns 1–3 (existing)
+    Planner->>SDK: Turn 1 — Context gathering
+    SDK-->>Planner: Code context
+    Planner->>SDK: Turn 2 — Plan generation
+    SDK-->>Planner: RefactoringPlan JSON
+    Planner->>SDK: Turn 3 — Alternatives
+    SDK-->>Planner: Alternative solutions
+
+    Note over Planner,SDK: Turn 4 (NEW — Test Synthesis)
+    alt enable_test_synthesis = true AND no existing tests
+        Planner->>SDK: "Generate focused pytest tests for the<br/>original code. Tests must pass against<br/>the unmodified code."
+        SDK-->>Planner: Generated test code (Python)
+
+        Planner->>Planner: ast.parse(test_code) — syntax check
+        Planner->>Planner: Run tests against original code
+        alt Tests pass on original
+            Planner->>Planner: Add test FileChange to plan
+        else Tests fail on original
+            Planner->>Planner: Discard tests, lower confidence −1
+        end
+    end
+```
+
+#### TDD Validation Policy
+
+1. Generated tests **must pass** against original (unmodified) code
+2. Generated tests **must pass** against refactored code
+3. If step 1 fails → discard tests, lower confidence by 1
+4. If step 2 fails → rollback refactoring, emit ProposalResult
+
+#### Configuration
+
+```yaml
+behavior:
+  enable_test_synthesis: false  # opt-in
+  test_synthesis_max_per_run: 3  # limit AI cost
+```
+
+---
+
+### 19.8 Agentic Migrations — Framework Version Upgrades
+
+**Phase:** 13 | **Effort:** High | **New modules:** 1
+
+#### Architecture
+
+```mermaid
+graph TB
+    subgraph "Migration Engine"
+        ME[MigrationEngine]
+        MG[Migration Guide<br/>Fetcher (URL)]
+        MA[Migration Analyzer<br/>pattern detection]
+        MP[Migration Planner<br/>multi-file plan]
+        SE[Staged Executor<br/>batch-by-batch]
+    end
+
+    subgraph "Per Stage"
+        SE --> EX[Executor<br/>atomic apply]
+        EX --> VF[Verifier<br/>full test suite]
+        VF -->|pass| NX[Next Stage]
+        VF -->|fail| RB[Rollback Stage]
+    end
+
+    subgraph "Output"
+        NX --> PR[Single PR<br/>or Staged PRs]
+    end
+
+    ME --> MG --> MA --> MP --> SE
+
+    style ME fill:#0078d4,color:#fff
+```
+
+#### New Module
+
+| Module | Location | Purpose |
+|--------|----------|---------|
+| `MigrationEngine` | `intelligence/migrations.py` | Orchestrates multi-stage framework upgrades: analyze → fetch guide → plan → staged execute → verify → PR |
+
+#### Data Model Additions
+
+```python
+class MigrationPlan(BaseModel):
+    """Multi-stage framework migration plan."""
+    framework: str           # e.g., "django"
+    from_version: str        # e.g., "4.2"
+    to_version: str          # e.g., "5.0"
+    migration_guide_url: str
+    stages: list[RefactoringPlan]  # ordered stages
+    breaking_changes: list[str]    # API removals, behavior changes
+    estimated_complexity: str      # "simple" | "complex" | "expert-only"
+    pr_strategy: str               # "single" | "staged"
+```
+
+#### Configuration
+
+```yaml
+migrations:
+  pr_strategy: staged  # single | staged
+  max_files_per_stage: 10
+  playbooks:
+    django-4to5:
+      guide_url: "https://docs.djangoproject.com/en/5.0/releases/5.0/"
+      patterns:
+        - pattern: "from django.conf.urls import url"
+          replacement: "from django.urls import re_path"
+```
+
+---
+
+### 19.9 ChatOps Experience (Work IQ + Teams/Slack)
+
+**Phase:** 13 | **Effort:** Medium | **New modules:** 2
+
+#### Architecture
+
+```mermaid
+graph TB
+    subgraph "ChatOps Layer"
+        TC[Teams Connector<br/>botbuilder SDK]
+        SC[Slack Connector<br/>SlackBolt]
+        AC[Adaptive Card<br/>Templates]
+    end
+
+    subgraph "Event Sources"
+        PR[PR Created]
+        INC[Incident Detected]
+        SUM[Weekly Summary]
+    end
+
+    subgraph "Routing"
+        WIQ[Work IQ MCP<br/>search_people]
+        SPR[Sprint Status<br/>get_sprint_status]
+    end
+
+    subgraph "Actions"
+        APR[Approve / Reject<br/>via button click]
+        CMD[Slash Commands<br/>/codecustodian scan]
+    end
+
+    PR --> WIQ --> TC
+    PR --> WIQ --> SC
+    INC --> TC
+    INC --> SC
+    SPR -->|crunch time| SUM
+    TC --> APR --> APP[ApprovalWorkflowManager]
+    TC --> CMD --> MCP[MCP Tools]
+
+    style TC fill:#0078d4,color:#fff
+```
+
+#### New Modules
+
+| Module | Location | Purpose |
+|--------|----------|---------|
+| `TeamsConnector` | `integrations/teams_chatops.py` | Azure Bot Service registration, Adaptive Card rendering, button handlers |
+| `SlackConnector` | `integrations/slack_chatops.py` | SlackBolt app, interactive components, slash command handlers |
+
+#### Adaptive Card Template (Teams)
+
+```json
+{
+  "type": "AdaptiveCard",
+  "body": [
+    {"type": "TextBlock", "text": "🛡️ CodeCustodian Alert", "weight": "bolder"},
+    {"type": "TextBlock", "text": "${finding_summary}"},
+    {"type": "FactSet", "facts": [
+      {"title": "Confidence", "value": "${confidence}/10"},
+      {"title": "Tests", "value": "${tests_passed ? '✅ Passed' : '❌ Failed'}"},
+      {"title": "Blast Radius", "value": "${radius_score}%"}
+    ]}
+  ],
+  "actions": [
+    {"type": "Action.OpenUrl", "title": "👀 View PR", "url": "${pr_url}"},
+    {"type": "Action.Submit", "title": "✅ Approve", "data": {"action": "approve", "plan_id": "${plan_id}"}},
+    {"type": "Action.Submit", "title": "🛑 Reject", "data": {"action": "reject", "plan_id": "${plan_id}"}}
+  ]
+}
+```
+
+#### Sprint-Aware Notification Policy
+
+| Sprint State | Behavior |
+|---|---|
+| Normal (capacity < 80%) | Send per-PR notifications immediately |
+| Crunch (capacity > 90% or days_remaining < 3) | Queue silently, deliver weekly digest |
+| Code freeze | Block all non-critical PR creation |
+| Active incident | Only send incident-related notifications |
+
+---
+
+### 19.10 Codebase Knowledge Graph (GraphRAG)
+
+**Phase:** 14 | **Effort:** High | **New modules:** 1
+
+#### Architecture
+
+```mermaid
+graph TB
+    subgraph "Graph Builder"
+        AST[AST Parser<br/>per .py file]
+        IG[Import Resolver]
+        CG[Call Graph Builder]
+        TG[Type Reference Mapper]
+        AST --> NODES[Nodes: Function, Class,<br/>Module, Variable]
+        IG --> EDGES1[Edges: imports]
+        CG --> EDGES2[Edges: calls]
+        TG --> EDGES3[Edges: type_of,<br/>inherits]
+    end
+
+    subgraph "Graph Storage"
+        NX[networkx DiGraph<br/>in-memory]
+        JSON[JSON serialization<br/>for persistence]
+    end
+
+    subgraph "Consumers"
+        SDK["@define_tool<br/>query_code_graph"]
+        BRA[BlastRadiusAnalyzer]
+        ADS[ArchitecturalDriftScanner]
+        MCP[MCP Tool<br/>query_code_graph]
+    end
+
+    NODES --> NX
+    EDGES1 --> NX
+    EDGES2 --> NX
+    EDGES3 --> NX
+    NX --> JSON
+    NX --> SDK
+    NX --> BRA
+    NX --> ADS
+    NX --> MCP
+
+    style NX fill:#0078d4,color:#fff
+```
+
+#### New Module
+
+| Module | Location | Purpose |
+|--------|----------|---------|
+| `CodebaseGraphBuilder` | `intelligence/codebase_graph.py` | Builds `networkx.DiGraph` from AST analysis; supports incremental updates, BFS traversal, subgraph extraction |
+
+#### Graph Node & Edge Types
+
+| Node Type | Attributes | Example |
+|-----------|-----------|---------|
+| `Module` | `path`, `loc`, `complexity` | `src/codecustodian/pipeline.py` |
+| `Function` | `name`, `module`, `line`, `params`, `return_type` | `Pipeline.run` |
+| `Class` | `name`, `module`, `line`, `bases` | `Pipeline` |
+| `Import` | `source`, `target`, `alias` | `pipeline → scanner.base` |
+
+| Edge Type | From → To | Meaning |
+|-----------|-----------|---------|
+| `imports` | Module → Module | File-level import dependency |
+| `calls` | Function → Function | Direct function call |
+| `inherits` | Class → Class | Class inheritance |
+| `defines` | Module → Function/Class | Module contains definition |
+
+#### New Planner Tool
+
+```python
+@define_tool(description="Query the codebase knowledge graph for structural dependencies")
+def query_code_graph(
+    node_name: str,
+    query_type: str,  # "callers" | "callees" | "imports" | "dependents" | "blast_radius"
+    max_depth: int = 3,
+    repo_path: str = "."
+) -> str:
+    """Returns structural context from the knowledge graph."""
+```
+
+---
+
+### 19.11 AI Slop Detector
+
+**Phase:** 14 | **Effort:** Medium | **New modules:** 1
+
+#### Scanner Design
+
+```mermaid
+classDiagram
+    BaseScanner <|-- AICodeQualityScanner
+
+    class AICodeQualityScanner {
+        +name: "ai_code_quality"
+        +scan(repo_path) List~Finding~
+        -_check_generic_naming(ast_tree) float
+        -_check_duplication(content) float
+        -_check_orphaned_functions(graph) list[str]
+        -_check_comment_ratio(content) float
+        -_check_style_consistency(content, baseline) float
+    }
+```
+
+#### Detection Metrics
+
+| Metric | Method | Threshold (default) | Finding Severity |
+|--------|--------|---------------------|-----------------|
+| Generic naming ratio | AST variable name analysis | > 0.3 (30%) | MEDIUM |
+| Code duplication | Token-based n-gram similarity | > 0.2 (20% duplicated) | MEDIUM |
+| Orphaned functions | Zero inbound calls in knowledge graph | Any | LOW |
+| Comment-to-code ratio | Line counting | > 0.4 (40% comments) | LOW |
+| Style inconsistency | Naming convention deviation from project baseline | > 0.25 | INFO |
+
+#### Configuration
+
+```yaml
+scanners:
+  ai_code_quality:
+    enabled: false  # opt-in due to false-positive risk
+    generic_naming_threshold: 0.3
+    duplication_threshold: 0.2
+    comment_ratio_threshold: 0.4
+    style_consistency_threshold: 0.25
+```
+
+---
+
+### 19.12 Deferred — Multi-Agent Swarm / Pipeline
+
+**Status:** Not approved for implementation.
+
+**Rationale:**
+1. The pipeline is linear and single-threaded by design — refactoring to
+   distributed execution requires a task queue (Celery/RQ), worker pools,
+   and conflict resolution for concurrent file edits.
+2. The Copilot SDK session model is per-process; session pooling across
+   workers adds significant complexity with no SDK support today.
+3. Most tech-debt findings are localized (1–3 files). The overhead of
+   multi-agent coordination is not justified for typical use cases.
+4. The simpler staged PR approach in Agentic Migrations (§19.8) covers
+   90% of large migration use cases without distributed coordination.
+
+**Revisit criteria:** When Agentic Migrations is mature AND sequential
+pipeline execution becomes a measured bottleneck (> 30 min per run).
+
+---
+
+### 19.13 Implementation Roadmap
+
+```mermaid
+gantt
+    title Planned Architecture Extensions
+    dateFormat  YYYY-MM-DD
+    axisFormat  %b %Y
+
+    section Phase 12 (High Priority)
+    Zero-Friction Onboarding     :done, p12a, 2026-03-01, 14d
+    Blast Radius Analysis        :active, p12b, 2026-03-01, 21d
+    Architectural Drift Scanner  :p12c, after p12b, 21d
+    Predictive Forecasting       :p12d, after p12a, 28d
+    Autonomous SRE               :p12e, after p12c, 35d
+
+    section Phase 13 (Medium Priority)
+    AI Test Synthesis            :p13a, after p12e, 28d
+    Agentic Migrations           :p13b, after p13a, 35d
+    ChatOps (Teams/Slack)        :p13c, after p12d, 28d
+
+    section Phase 14 (Lower Priority)
+    Knowledge Graph (GraphRAG)   :p14a, after p13b, 42d
+    AI Slop Detector             :p14b, after p14a, 21d
+```
+
+---
+
 ## Appendix A: File ↔ Feature Mapping
 
 | Feature | Primary Files | SDK Dependencies |
@@ -1606,6 +2316,16 @@ graph TB
 | Dependency upgrades | `scanner/dependency_upgrades.py` | — |
 | Onboarding | `onboarding/` | — |
 | Azure deployment | `infra/*.bicep`, `Dockerfile` | Bicep, Container Apps |
+| **Autonomous SRE** *(planned)* | `mcp/incident_webhook.py`, `intelligence/incident_converter.py`, `enterprise/incident_policy.py` | Azure Monitor, Copilot SDK, Work IQ |
+| **Predictive Forecasting** *(planned)* | `intelligence/forecasting.py`, `intelligence/executive_dashboard.py` | TinyDB, Azure Monitor |
+| **Blast Radius Analysis** *(planned)* | `intelligence/blast_radius.py`, `executor/safety_checks.py` | networkx |
+| **Architectural Drift** *(planned)* | `scanner/architectural_drift.py` | AST |
+| **Zero-Friction Onboarding** *(planned)* | `onboarding/project_analyzer.py`, `onboarding/template_selector.py` | — |
+| **AI Test Synthesis** *(planned)* | `planner/planner.py` (Turn 4), `planner/copilot_client.py` | Copilot SDK |
+| **Agentic Migrations** *(planned)* | `intelligence/migrations.py` | Copilot SDK |
+| **ChatOps** *(planned)* | `integrations/teams_chatops.py`, `integrations/slack_chatops.py` | botbuilder-core, slack-bolt |
+| **Knowledge Graph** *(planned)* | `intelligence/codebase_graph.py`, `planner/tools.py` | networkx |
+| **AI Slop Detector** *(planned)* | `scanner/ai_code_quality.py` | AST |
 
 ---
 
@@ -1646,4 +2366,34 @@ budget:
 
 work_iq:
   enabled: true
+
+# --- Planned extensions (Phase 12–14) ---
+autonomous_sre:
+  enabled: false
+  webhook_secret: "${INCIDENT_WEBHOOK_SECRET}"
+  auto_bypass_approval: true
+  max_hotfixes_per_hour: 3
+
+architecture:
+  layers:
+    api: ["handlers/", "routes/"]
+    business: ["services/", "domain/"]
+    data: ["repositories/", "db/"]
+  forbidden_imports:
+    - [api, data]
+  max_module_size: 500
+
+migrations:
+  pr_strategy: staged
+  max_files_per_stage: 10
+
+chatops:
+  connector: teams  # teams | slack
+  crunch_time_digest: true
+
+scanners:
+  ai_code_quality:
+    enabled: false
+    generic_naming_threshold: 0.3
+    duplication_threshold: 0.2
 ```

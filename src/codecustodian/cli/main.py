@@ -16,6 +16,7 @@ from typing import Any, Optional
 import typer
 from rich.console import Console
 from rich.panel import Panel
+from rich.progress import Progress, SpinnerColumn, TextColumn, BarColumn, TaskProgressColumn
 from rich.table import Table
 
 from codecustodian import __version__
@@ -109,16 +110,26 @@ def _print_findings(findings: list[Finding], output_format: str, repo_root: str 
         typer.echo(findings_to_sarif(findings, repo_root=repo_root))
         return
 
+    _SEVERITY_STYLES = {
+        "critical": "bold red",
+        "high": "red",
+        "medium": "yellow",
+        "low": "dim",
+        "info": "blue",
+    }
+
     table = Table(title="Scan Findings")
     table.add_column("Type", style="cyan")
-    table.add_column("Severity", style="magenta")
+    table.add_column("Severity")
     table.add_column("File", style="green")
     table.add_column("Line", justify="right")
     table.add_column("Description", style="white")
     for finding in findings:
+        sev = finding.severity.value
+        sev_style = _SEVERITY_STYLES.get(sev, "white")
         table.add_row(
             finding.type.value,
-            finding.severity.value,
+            f"[{sev_style}]{sev}[/]",
             finding.file,
             str(finding.line),
             finding.description,
@@ -135,10 +146,77 @@ def _scan_findings(repo_path: str, config_path: str, scanner_filter: str = "all"
     _apply_scan_type_filter(cfg, scanner_filter)
 
     registry = get_default_registry(cfg)
+    enabled = list(registry.get_enabled())
     findings: list[Finding] = []
-    for scanner_instance in registry.get_enabled():
-        findings.extend(scanner_instance.scan(repo_path))
+
+    with Progress(
+        SpinnerColumn(),
+        TextColumn("[bold blue]{task.description}"),
+        BarColumn(),
+        TaskProgressColumn(),
+        console=console,
+        transient=True,
+    ) as progress:
+        task = progress.add_task("Scanning...", total=len(enabled))
+        for scanner_instance in enabled:
+            progress.update(task, description=f"Running {scanner_instance.name}...")
+            findings.extend(scanner_instance.scan(repo_path))
+            progress.advance(task)
+
     return findings
+
+
+def _print_scan_summary(findings: list[Finding]) -> None:
+    """Print a rich summary panel with severity breakdown and bar chart."""
+    total = len(findings)
+    if total == 0:
+        console.print(Panel("[green]No findings detected.[/]", title="Scan Complete", border_style="green"))
+        return
+
+    by_severity: dict[str, int] = {}
+    unique_files: set[str] = set()
+    for f in findings:
+        sev = f.severity.value
+        by_severity[sev] = by_severity.get(sev, 0) + 1
+        unique_files.add(f.file)
+
+    severity_meta = [
+        ("critical", "bold red", "🔴"),
+        ("high", "red", "🟠"),
+        ("medium", "yellow", "🟡"),
+        ("low", "dim", "⚪"),
+        ("info", "blue", "🔵"),
+    ]
+
+    lines: list[str] = [f"[bold]{total} findings[/bold] across {len(unique_files)} files\n"]
+    for sev, style, icon in severity_meta:
+        count = by_severity.get(sev, 0)
+        if count == 0:
+            continue
+        pct = count / total
+        bar_len = int(pct * 20)
+        bar = "█" * bar_len + "░" * (20 - bar_len)
+        lines.append(f"  {icon} [{style}]{sev.upper():<9}[/] {count:>3}  {bar}  {pct:.0%}")
+
+    # Estimated savings (industry avg: critical=4h, high=2h, medium=1h, low=0.5h)
+    manual_hours = (
+        by_severity.get("critical", 0) * 4
+        + by_severity.get("high", 0) * 2
+        + by_severity.get("medium", 0) * 1
+        + by_severity.get("low", 0) * 0.5
+    )
+    if manual_hours > 0:
+        savings = manual_hours * 85
+        lines.append(f"\n  💰 Est. manual effort: {manual_hours:.0f}h  │  Savings: [bold green]${savings:,.0f}[/]")
+
+    lines.append(f"\n  [dim]Next → codecustodian run --dry-run[/]")
+
+    console.print(Panel(
+        "\n".join(lines),
+        title="✅ Scan Complete",
+        border_style="green",
+        padding=(1, 2),
+    ))
 
 
 def _filter_findings(
@@ -498,7 +576,7 @@ def scan(
 
     _print_findings(findings, output_format, repo_root=repo_path)
     if output_format == "table":
-        console.print(f"\n[bold]Total findings:[/] {len(findings)}")
+        _print_scan_summary(findings)
 
 
 @app.command()
