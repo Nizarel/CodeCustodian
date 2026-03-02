@@ -16,7 +16,7 @@ from __future__ import annotations
 
 import json
 from calendar import monthrange
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
@@ -35,7 +35,7 @@ class CostEntry(BaseModel):
     """A single cost record."""
 
     timestamp: str = Field(
-        default_factory=lambda: datetime.now(timezone.utc).isoformat()
+        default_factory=lambda: datetime.now(UTC).isoformat()
     )
     run_id: str = ""
     operation: str = ""          # plan | execute | verify | scan
@@ -50,7 +50,7 @@ class BudgetAlert(BaseModel):
     """Alert emitted when a threshold is crossed."""
 
     timestamp: str = Field(
-        default_factory=lambda: datetime.now(timezone.utc).isoformat()
+        default_factory=lambda: datetime.now(UTC).isoformat()
     )
     threshold_pct: int
     current_cost: float
@@ -109,7 +109,7 @@ class BudgetManager:
         self.data_dir = Path(data_dir)
         self.data_dir.mkdir(parents=True, exist_ok=True)
 
-        self._period = datetime.now(timezone.utc).strftime("%Y-%m")
+        self._period = datetime.now(UTC).strftime("%Y-%m")
         self._log_file = self.data_dir / f"costs-{self._period}.jsonl"
         self._alerts_fired: set[int] = set()
 
@@ -319,7 +319,7 @@ class BudgetManager:
 
     def _project_end_of_month(self) -> float:
         """Estimate end-of-month spend using simple daily burn-rate projection."""
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         days_elapsed = max(now.day, 1)
         days_in_month = monthrange(now.year, now.month)[1]
         daily_burn = self._total_spent / days_elapsed

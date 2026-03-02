@@ -32,10 +32,10 @@ from codecustodian.planner.prompts import (
 from codecustodian.planner.tools import get_all_tools
 
 __all__ = [
+    "SYSTEM_PROMPT",
     "AlternativeGenerator",
     "CopilotPlannerClient",
     "Planner",
-    "SYSTEM_PROMPT",
     "ToolAuditEntry",
     "UsageAccumulator",
     "build_alternatives_prompt",

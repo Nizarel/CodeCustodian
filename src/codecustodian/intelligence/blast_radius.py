@@ -143,9 +143,8 @@ class BlastRadiusAnalyzer:
             if isinstance(node, ast.Import):
                 for alias in node.names:
                     imports.add(alias.name.split(".")[0])
-            elif isinstance(node, ast.ImportFrom):
-                if node.module and node.level == 0:
-                    imports.add(node.module.split(".")[0])
+            elif isinstance(node, ast.ImportFrom) and node.module and node.level == 0:
+                imports.add(node.module.split(".")[0])
         return imports
 
     def _path_to_module(self, rel_path: str) -> str:

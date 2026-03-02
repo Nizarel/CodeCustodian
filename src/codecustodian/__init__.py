@@ -20,14 +20,14 @@ from codecustodian.exceptions import (
 )
 
 __all__ = [
-    "__version__",
-    "CodeCustodianError",
-    "ScannerError",
-    "PlannerError",
-    "ExecutorError",
-    "VerifierError",
-    "GitHubAPIError",
+    "ApprovalRequiredError",
     "AzureIntegrationError",
     "BudgetExceededError",
-    "ApprovalRequiredError",
+    "CodeCustodianError",
+    "ExecutorError",
+    "GitHubAPIError",
+    "PlannerError",
+    "ScannerError",
+    "VerifierError",
+    "__version__",
 ]

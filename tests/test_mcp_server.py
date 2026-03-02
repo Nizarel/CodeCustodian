@@ -6,7 +6,6 @@ network needed.
 
 from __future__ import annotations
 
-import asyncio
 import json
 from unittest.mock import AsyncMock, MagicMock, patch
 
@@ -15,15 +14,10 @@ import pytest
 from codecustodian.mcp.cache import ScanCache
 from codecustodian.mcp.server import mcp
 from codecustodian.models import (
-    CodeContext,
-    ExecutionResult,
-    FileChange,
     Finding,
     FindingType,
-    PullRequestInfo,
     RefactoringPlan,
     SeverityLevel,
-    VerificationResult,
 )
 
 # ---------------------------------------------------------------------------
@@ -381,6 +375,7 @@ class TestApplyRefactoringTool:
     @pytest.mark.asyncio
     async def test_apply_success(self):
         from pathlib import Path
+
         from fastmcp import Client
 
         plan = _make_plan()

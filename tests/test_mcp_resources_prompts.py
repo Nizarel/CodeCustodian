@@ -6,14 +6,13 @@ Uses FastMCP's in-memory ``Client(mcp)`` pattern.
 from __future__ import annotations
 
 import json
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
 import pytest
 
 from codecustodian.mcp.cache import ScanCache, _Entry
 from codecustodian.mcp.server import mcp
 from codecustodian.models import Finding, FindingType, RefactoringPlan, SeverityLevel
-
 
 # ---------------------------------------------------------------------------
 # Helpers

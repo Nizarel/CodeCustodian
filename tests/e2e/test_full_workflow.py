@@ -21,14 +21,12 @@ from __future__ import annotations
 
 import asyncio
 import json
-import os
 import tempfile
 from pathlib import Path
 
 import pytest
 
 from codecustodian.cli.main import app
-
 
 # ── Constants ─────────────────────────────────────────────────────────────
 
@@ -570,7 +568,7 @@ class TestEnterpriseFeaturesE2E:
                         finding_id="f001", confidence_score=8.0)
 
         # Read back and validate hash
-        log_file = list((tmp_path / "audit").glob("audit-*.jsonl"))[0]
+        log_file = next(iter((tmp_path / "audit").glob("audit-*.jsonl")))
         line = log_file.read_text().strip().splitlines()[0]
         entry_data = json.loads(line)
         entry = AuditEntry(**entry_data)
@@ -791,7 +789,10 @@ class TestFeedbackIntelligenceE2E:
     @pytest.mark.e2e
     def test_historical_pattern_recognizer_record_and_find(self, tmp_path) -> None:
         """HistoricalPatternRecognizer records a refactoring and finds similar patterns."""
-        from codecustodian.feedback.history import HistoricalPatternRecognizer, HistoricalRefactoring
+        from codecustodian.feedback.history import (
+            HistoricalPatternRecognizer,
+            HistoricalRefactoring,
+        )
         from codecustodian.models import Finding, FindingType, SeverityLevel
 
         recognizer = HistoricalPatternRecognizer(
@@ -834,6 +835,7 @@ class TestMCPServerLocal:
     def test_mcp_list_tools_returns_eight(self) -> None:
         """MCP server exposes exactly 8 tools."""
         from fastmcp import Client
+
         from codecustodian.mcp.server import mcp
 
         async def _run():
@@ -853,6 +855,7 @@ class TestMCPServerLocal:
     def test_mcp_list_scanners_returns_six(self) -> None:
         """list_scanners tool returns all 6 scanner descriptors."""
         from fastmcp import Client
+
         from codecustodian.mcp.server import mcp
 
         async def _run():
@@ -873,6 +876,7 @@ class TestMCPServerLocal:
     def test_mcp_scan_repository_returns_findings(self) -> None:
         """scan_repository tool returns ≥5 findings for demo app."""
         from fastmcp import Client
+
         from codecustodian.mcp.server import mcp
 
         async def _run():
@@ -889,6 +893,7 @@ class TestMCPServerLocal:
     def test_mcp_calculate_roi_returns_savings(self) -> None:
         """calculate_roi tool returns a result dict (ROI info or cache-miss error)."""
         from fastmcp import Client
+
         from codecustodian.mcp.server import mcp
 
         async def _run():
@@ -903,6 +908,7 @@ class TestMCPServerLocal:
     def test_mcp_get_business_impact_returns_data(self) -> None:
         """get_business_impact tool returns a result dict (impact data or cache-miss error)."""
         from fastmcp import Client
+
         from codecustodian.mcp.server import mcp
 
         async def _run():
@@ -1015,6 +1021,7 @@ class TestMCPServerLocal:
     def test_mcp_prompts_list_returns_four(self) -> None:
         """MCP server registers exactly 4 prompts."""
         from fastmcp import Client
+
         from codecustodian.mcp.server import mcp
 
         async def _run():

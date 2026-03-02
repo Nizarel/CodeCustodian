@@ -26,9 +26,9 @@ from __future__ import annotations
 
 import asyncio
 import smtplib
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from email.message import EmailMessage
-from enum import Enum
+from enum import StrEnum
 from typing import Any
 
 from pydantic import BaseModel, Field
@@ -43,7 +43,7 @@ logger = get_logger("intelligence.notifications")
 SEVERITY_ORDER = {"critical": 0, "high": 1, "medium": 2, "low": 3, "info": 4}
 
 
-class NotificationEventType(str, Enum):
+class NotificationEventType(StrEnum):
     """Canonical notification event types."""
 
     NEW_PR = "new_pr"
@@ -58,7 +58,7 @@ class NotificationEvent(BaseModel):
     """A structured notification event."""
 
     timestamp: str = Field(
-        default_factory=lambda: datetime.now(timezone.utc).isoformat()
+        default_factory=lambda: datetime.now(UTC).isoformat()
     )
     event: str                     # pr_created | pipeline_failed | budget_alert | ...
     severity: str = "info"         # critical | high | medium | low | info

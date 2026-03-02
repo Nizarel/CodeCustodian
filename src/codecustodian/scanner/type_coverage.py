@@ -10,10 +10,9 @@ when explicitly enabled in config.
 
 from __future__ import annotations
 
-import asyncio
 import ast
+import asyncio
 from pathlib import Path
-from typing import Any
 
 from codecustodian.logging import get_logger
 from codecustodian.models import Finding, FindingType, SeverityLevel

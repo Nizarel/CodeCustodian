@@ -24,10 +24,10 @@ Usage::
 from __future__ import annotations
 
 import os
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel
 
 from codecustodian.logging import get_logger
 
@@ -237,8 +237,8 @@ class SecretsManager:
             else:
                 dt = datetime.fromisoformat(str(updated_on))
             if dt.tzinfo is None:
-                dt = dt.replace(tzinfo=timezone.utc)
-            delta = datetime.now(timezone.utc) - dt
+                dt = dt.replace(tzinfo=UTC)
+            delta = datetime.now(UTC) - dt
             return delta.days
         except Exception:
             return -1

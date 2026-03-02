@@ -9,7 +9,6 @@ and automatic JSON-Schema generation.
 from __future__ import annotations
 
 import ast
-import os
 from pathlib import Path
 from typing import Any
 
@@ -36,7 +35,7 @@ try:
             return tool_obj
         return wrapper
 
-except ImportError:  # pragma: no cover – SDK optional at import time
+except ImportError:  # pragma: no cover - SDK optional at import time
     # Provide a passthrough decorator so the module can be imported
     # during testing or when the SDK is not installed.
     def define_tool(  # type: ignore[misc]
@@ -50,7 +49,7 @@ except ImportError:  # pragma: no cover – SDK optional at import time
         return wrapper
 
 
-def _get_impl(tool: Any):  # noqa: ANN201
+def _get_impl(tool: Any):
     """Return the raw async callable for a tool, regardless of SDK presence."""
     return getattr(tool, "_impl", tool)
 
@@ -273,11 +272,7 @@ async def get_call_sites(params: GetCallSitesParams) -> str:
                 if (
                     isinstance(node.func, ast.Name)
                     and node.func.id == params.function_name
-                ):
-                    rel = py_file.relative_to(root)
-                    sites.append(f"{rel}:{node.lineno}")
-                # Attribute call: obj.foo()
-                elif (
+                ) or (
                     isinstance(node.func, ast.Attribute)
                     and node.func.attr == params.function_name
                 ):

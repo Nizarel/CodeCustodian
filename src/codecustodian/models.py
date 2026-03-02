@@ -10,13 +10,11 @@ from __future__ import annotations
 import hashlib
 import uuid
 from datetime import UTC, datetime
-from enum import Enum
+from enum import StrEnum
 from pathlib import Path
-from typing import Any
+from typing import Any, Self
 
 from pydantic import BaseModel, ConfigDict, Field, computed_field, field_validator, model_validator
-from typing_extensions import Self
-
 
 # ── Enums ──────────────────────────────────────────────────────────────────
 
@@ -24,7 +22,7 @@ _EFFORT_LEVELS = {"low", "medium", "high"}
 _CRITICALITY_LEVELS = {"normal", "high", "critical"}
 
 
-class SeverityLevel(str, Enum):
+class SeverityLevel(StrEnum):
     """Severity classification for findings."""
 
     CRITICAL = "critical"
@@ -34,7 +32,7 @@ class SeverityLevel(str, Enum):
     INFO = "info"
 
 
-class FindingType(str, Enum):
+class FindingType(StrEnum):
     """Categories of technical debt findings."""
 
     DEPRECATED_API = "deprecated_api"
@@ -45,7 +43,7 @@ class FindingType(str, Enum):
     DEPENDENCY_UPGRADE = "dependency_upgrade"
 
 
-class ChangeType(str, Enum):
+class ChangeType(StrEnum):
     """Types of code changes."""
 
     REPLACE = "replace"
@@ -54,7 +52,7 @@ class ChangeType(str, Enum):
     RENAME = "rename"
 
 
-class PipelineStage(str, Enum):
+class PipelineStage(StrEnum):
     """Stages in the CodeCustodian pipeline."""
 
     ONBOARD = "onboard"
@@ -68,7 +66,7 @@ class PipelineStage(str, Enum):
     FEEDBACK = "feedback"
 
 
-class RiskLevel(str, Enum):
+class RiskLevel(StrEnum):
     """Risk assessment for refactoring plans."""
 
     LOW = "low"

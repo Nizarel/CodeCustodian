@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import tempfile
-from pathlib import Path
 
 from codecustodian.enterprise.audit import AuditLogger
 from codecustodian.enterprise.rbac import Permission, Role, check_permission

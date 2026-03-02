@@ -12,9 +12,9 @@ from codecustodian.mcp.server import main, mcp
 from codecustodian.mcp.tools import register_tools
 
 __all__ = [
-    "mcp",
     "main",
-    "register_tools",
-    "register_resources",
+    "mcp",
     "register_prompts",
+    "register_resources",
+    "register_tools",
 ]

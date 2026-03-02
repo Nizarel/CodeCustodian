@@ -9,7 +9,6 @@ from codecustodian.onboarding.analyzer import ProjectAnalyzer
 from codecustodian.onboarding.onboard import OnboardingManager
 from codecustodian.onboarding.policy_templates import get_template, list_templates
 
-
 FIXTURE_REPO = Path("tests/fixtures/sample_repo")
 
 

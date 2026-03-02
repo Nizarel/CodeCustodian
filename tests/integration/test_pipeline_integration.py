@@ -19,7 +19,6 @@ from codecustodian.models import (
 )
 from codecustodian.pipeline import Pipeline
 
-
 FIXTURE_REPO = Path("tests/fixtures/sample_repo")
 
 

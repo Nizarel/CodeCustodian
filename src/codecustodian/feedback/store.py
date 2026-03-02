@@ -7,7 +7,7 @@ to improve future planning accuracy and confidence scoring.
 from __future__ import annotations
 
 import json
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
 from pydantic import BaseModel, Field
@@ -21,7 +21,7 @@ class FeedbackEntry(BaseModel):
     """A single feedback entry from a PR review."""
 
     timestamp: str = Field(
-        default_factory=lambda: datetime.now(timezone.utc).isoformat()
+        default_factory=lambda: datetime.now(UTC).isoformat()
     )
     finding_id: str
     finding_type: str

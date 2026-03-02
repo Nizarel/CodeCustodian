@@ -195,7 +195,7 @@ class TodoCommentScanner(BaseScanner):
     ) -> SeverityLevel:
         """Override severity when a comment has aged beyond thresholds.
 
-        - ``age > 2 × max_age`` → CRITICAL
+        - ``age > 2 x max_age`` -> CRITICAL
         - ``age > max_age`` → HIGH
         - ``age > max_age / 2`` → at least MEDIUM
         """

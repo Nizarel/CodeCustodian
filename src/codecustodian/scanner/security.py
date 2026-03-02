@@ -2,7 +2,7 @@
 
 Wraps Bandit for security analysis and adds custom regex-based
 pattern detection for hardcoded secrets, weak crypto, injection
-risks, deserialization, and path traversal (FR-SCAN-040 – 043,
+risks, deserialization, and path traversal (FR-SCAN-040 - 043,
 FR-SCAN-101).
 
 Each finding includes an **exploit scenario** and **compliance impact**

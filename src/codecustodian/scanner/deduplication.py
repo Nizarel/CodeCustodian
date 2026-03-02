@@ -11,7 +11,7 @@ from __future__ import annotations
 from datetime import UTC, datetime
 from pathlib import Path
 
-from tinydb import TinyDB, Query
+from tinydb import Query, TinyDB
 
 from codecustodian.logging import get_logger
 from codecustodian.models import Finding
@@ -71,7 +71,7 @@ class DeduplicationEngine:
 
     def get_trends(self) -> dict[str, int]:
         """Return trend counts: ``new``, ``recurring``, ``resolved``."""
-        q = Query()
+        Query()
         all_records = self._table.all()
         resolved = sum(1 for r in all_records if "resolved_at" in r)
         total = len(all_records)

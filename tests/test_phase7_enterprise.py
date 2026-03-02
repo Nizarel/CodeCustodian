@@ -13,15 +13,13 @@ Covers:
 
 from __future__ import annotations
 
-import json
-import tempfile
+from datetime import UTC
 from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
 from codecustodian.models import Finding, FindingType, SeverityLevel
-
 
 # ═══════════════════════════════════════════════════════════════════════════
 # Work IQ Context Provider
@@ -558,14 +556,14 @@ class TestSecretsManager:
         sm._client.get_secret.assert_called_once_with("KV_SECRET")
 
     def test_days_since_update(self):
-        from datetime import datetime, timezone
+        from datetime import datetime
 
         from codecustodian.enterprise.secrets_manager import SecretsManager
 
         days = SecretsManager._days_since_update(None)
         assert days == -1
 
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         days = SecretsManager._days_since_update(now)
         assert days == 0
 
@@ -696,26 +694,7 @@ class TestNotificationEngine:
 class TestPackageExports:
     def test_enterprise_exports(self):
         from codecustodian.enterprise import (
-            ApprovalRequest,
-            ApprovalStatus,
-            ApprovalWorkflowManager,
-            AuditEntry,
-            AuditLogger,
-            BudgetManager,
-            BudgetSummary,
-            CostEntry,
-            MultiTenantManager,
-            Permission,
-            RBACManager,
-            RBACPolicy,
-            ROICalculator,
-            ROIReport,
             Role,
-            SecretsManager,
-            TenantConfig,
-            TenantDirs,
-            UserContext,
-            check_permission,
         )
         # Just verify they're all importable
         assert Role.ADMIN.value == "admin"
@@ -723,15 +702,11 @@ class TestPackageExports:
     def test_intelligence_exports(self):
         from codecustodian.intelligence import (
             NotificationEngine,
-            NotificationEvent,
-            NotificationResult,
         )
         assert NotificationEngine is not None
 
     def test_integrations_exports(self):
         from codecustodian.integrations import (
             WorkIQContextProvider,
-            WorkItemIntelligence,
-            get_work_iq_mcp_config,
         )
         assert WorkIQContextProvider is not None

@@ -21,16 +21,16 @@ from typing import TYPE_CHECKING
 from opentelemetry import trace
 from opentelemetry.trace.status import Status, StatusCode
 
+from codecustodian.enterprise.sla_reporter import SLAReporter
 from codecustodian.exceptions import (
     ApprovalRequiredError,
     ExecutorError,
     PlannerError,
     VerifierError,
 )
-from codecustodian.logging import get_logger
-from codecustodian.intelligence.business_impact import BusinessImpactScorer
-from codecustodian.enterprise.sla_reporter import SLAReporter
 from codecustodian.integrations.work_iq import WorkIQContextProvider
+from codecustodian.intelligence.business_impact import BusinessImpactScorer
+from codecustodian.logging import get_logger
 from codecustodian.models import (
     CodeContext,
     ExecutionResult,
@@ -138,7 +138,7 @@ class Pipeline:
                     len(batches),
                 )
 
-                # Stages 5–8: Plan → Approve? → Execute → Verify → PR/Proposal
+                # Stages 5-8: Plan -> Approve? -> Execute -> Verify -> PR/Proposal
                 for batch in batches:
                     for finding in batch:
                         await self._process_finding(finding)
@@ -462,10 +462,7 @@ class Pipeline:
 
         pm = PolicyManager()
         sensitive = self.config.approval.sensitive_paths
-        if pm.should_use_proposal_mode(finding.file, finding.type.value, sensitive_paths=sensitive):
-            return True
-
-        return False
+        return bool(pm.should_use_proposal_mode(finding.file, finding.type.value, sensitive_paths=sensitive))
 
     def _create_proposal(
         self,

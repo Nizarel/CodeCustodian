@@ -8,7 +8,7 @@ the fly so the pipeline always works on what matters most *right now*.
 from __future__ import annotations
 
 from datetime import UTC, datetime
-from enum import Enum
+from enum import StrEnum
 from typing import Any
 
 from pydantic import BaseModel, Field
@@ -22,7 +22,7 @@ logger = get_logger("intelligence.reprioritization")
 # ── Event types ────────────────────────────────────────────────────────────
 
 
-class EventType(str, Enum):
+class EventType(StrEnum):
     """Supported re-prioritization event types."""
 
     PRODUCTION_INCIDENT = "production_incident"

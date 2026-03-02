@@ -9,7 +9,6 @@ from __future__ import annotations
 
 from codecustodian.models import CodeContext, Finding, FindingType
 
-
 # ── System prompt ──────────────────────────────────────────────────────────
 
 SYSTEM_PROMPT = """\

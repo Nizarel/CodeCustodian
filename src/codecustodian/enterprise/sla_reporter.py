@@ -149,10 +149,7 @@ class SLAReporter:
         """
         from tinydb import where
 
-        if team:
-            records = self._table.search(where("team") == team)
-        else:
-            records = self._table.all()
+        records = self._table.search(where("team") == team) if team else self._table.all()
 
         if last_n > 0:
             records = sorted(records, key=lambda r: r.get("timestamp", ""), reverse=True)
@@ -239,10 +236,7 @@ class SLAReporter:
         """Export SLA records as CSV string."""
         from tinydb import where
 
-        if team:
-            records = self._table.search(where("team") == team)
-        else:
-            records = self._table.all()
+        records = self._table.search(where("team") == team) if team else self._table.all()
 
         if last_n > 0:
             records = sorted(records, key=lambda r: r.get("timestamp", ""), reverse=True)
@@ -281,8 +275,8 @@ class SLAReporter:
             "",
             "## Summary",
             "",
-            f"| Metric | Value |",
-            f"|--------|-------|",
+            "| Metric | Value |",
+            "|--------|-------|",
             f"| Total Runs | {report.total_runs} |",
             f"| Successful | {report.successful_runs} |",
             f"| Failed | {report.failed_runs} |",

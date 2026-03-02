@@ -12,8 +12,6 @@ from __future__ import annotations
 
 import ast
 import os
-import shutil
-import stat
 import tempfile
 from pathlib import Path
 

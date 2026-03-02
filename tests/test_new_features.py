@@ -11,8 +11,6 @@
 from __future__ import annotations
 
 import json
-import tempfile
-import textwrap
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
@@ -28,7 +26,6 @@ from codecustodian.models import (
     RiskLevel,
     SeverityLevel,
 )
-
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -421,7 +418,7 @@ class TestArchitecturalDriftScanner:
 
         scanner = ArchitecturalDriftScanner()
         findings = scanner.scan(str(tmp_path))
-        cycle_findings = [f for f in findings if f.metadata.get("drift_type") == "circular_dependency"]
+        [f for f in findings if f.metadata.get("drift_type") == "circular_dependency"]
         # May or may not detect depending on package resolution — scanner uses top-level package
         # Just verify no crash
         assert isinstance(findings, list)

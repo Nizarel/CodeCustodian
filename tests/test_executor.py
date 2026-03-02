@@ -26,13 +26,11 @@ from codecustodian.models import (
     Finding,
     FindingType,
     RefactoringPlan,
-    RiskLevel,
     SafetyCheckResult,
     SafetyResult,
     SeverityLevel,
     TransactionLogEntry,
 )
-
 
 # ── Helpers ────────────────────────────────────────────────────────────
 
@@ -604,9 +602,10 @@ class TestGitManager:
             mock_repo.git.branch.assert_called_once_with("-D", branch)
 
     def test_push_auth_error(self):
+        from git import GitCommandError
+
         from codecustodian.exceptions import ExecutorError
         from codecustodian.executor.git_manager import GitManager
-        from git import GitCommandError
 
         with patch("codecustodian.executor.git_manager.Repo") as MockRepo:
             mock_repo = MagicMock()
@@ -688,8 +687,8 @@ class TestTestRunner:
 
 class TestLinterRunner:
     def test_filter_new_violations(self):
-        from codecustodian.verifier.linter import LinterRunner
         from codecustodian.models import LintViolation
+        from codecustodian.verifier.linter import LinterRunner
 
         baseline = [
             LintViolation(file="a.py", line=1, code="E501", message="old", tool="ruff"),

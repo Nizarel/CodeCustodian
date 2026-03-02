@@ -13,7 +13,6 @@ from codecustodian.config.schema import (
     BehaviorConfig,
     CodeCustodianConfig,
     CopilotConfig,
-    ScannersConfig,
 )
 
 

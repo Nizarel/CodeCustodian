@@ -1,7 +1,7 @@
 """Code smell scanner.
 
 Detects complexity and maintainability issues using **radon** (Python API)
-and AST analysis (FR-SCAN-030 – 033, FR-SCAN-102):
+and AST analysis (FR-SCAN-030 - 033, FR-SCAN-102):
 
 - Cyclomatic complexity via ``radon.complexity.cc_visit``
 - Cognitive complexity (Sonar-style)
@@ -15,7 +15,6 @@ from __future__ import annotations
 
 import ast
 from pathlib import Path
-from typing import Any
 
 from radon.complexity import cc_rank, cc_visit
 from radon.metrics import mi_rank, mi_visit

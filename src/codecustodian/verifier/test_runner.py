@@ -71,7 +71,7 @@ class TestRunner:
             "pytest",
             "--verbose",
             "--tb=short",
-            f"--cov=src",
+            "--cov=src",
             f"--cov-report=json:{coverage_json}",
             f"--junitxml={junit_xml}",
             *[str(f) for f in test_files],

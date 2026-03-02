@@ -2,15 +2,11 @@
 
 from __future__ import annotations
 
-import os
 import tempfile
-from pathlib import Path
 
-import pytest
 import yaml
 
 from codecustodian.config.policies import PolicyManager, PolicyOverride, _deep_merge
-from codecustodian.config.schema import CodeCustodianConfig
 
 
 class TestPolicyOverride:

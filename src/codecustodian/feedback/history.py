@@ -206,7 +206,7 @@ class HistoricalPatternRecognizer:
         if similar is None:
             import asyncio
             try:
-                loop = asyncio.get_running_loop()
+                asyncio.get_running_loop()
                 # If we're in an async context, create a task
                 # But for simplicity, return empty and let caller use async
                 return ""

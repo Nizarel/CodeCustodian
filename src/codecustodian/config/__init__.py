@@ -14,14 +14,14 @@ from codecustodian.config.schema import (
 )
 
 __all__ = [
+    "DEFAULT_CONFIG",
+    "DEFAULT_YAML",
     "ApprovalConfig",
     "AzureConfig",
     "BehaviorConfig",
     "BudgetConfig",
     "CodeCustodianConfig",
     "CopilotConfig",
-    "DEFAULT_CONFIG",
-    "DEFAULT_YAML",
     "PolicyManager",
     "PolicyOverride",
     "ScannersConfig",

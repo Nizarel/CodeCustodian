@@ -22,8 +22,9 @@ from codecustodian.exceptions import BudgetExceededError, PlannerError
 from codecustodian.logging import get_logger
 
 if TYPE_CHECKING:
-    from codecustodian.config.schema import CopilotConfig
     from copilot.types import CopilotClientOptions
+
+    from codecustodian.config.schema import CopilotConfig
 
 logger = get_logger("planner.copilot_client")
 
@@ -322,7 +323,7 @@ class CopilotPlannerClient:
 
         try:
             await asyncio.wait_for(done.wait(), timeout=self.config.timeout)
-        except asyncio.TimeoutError:
+        except TimeoutError:
             logger.warning("Streaming turn timed out after %ds", self.config.timeout)
 
         # Prefer final assembled content, fallback to joined deltas

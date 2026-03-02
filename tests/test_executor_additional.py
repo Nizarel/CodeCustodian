@@ -15,7 +15,14 @@ from codecustodian.exceptions import ExecutorError
 from codecustodian.executor.backup import BackupManager
 from codecustodian.executor.git_manager import GitManager
 from codecustodian.executor.safety_checks import SafetyCheckRunner
-from codecustodian.models import ChangeType, FileChange, Finding, FindingType, RefactoringPlan, SeverityLevel
+from codecustodian.models import (
+    ChangeType,
+    FileChange,
+    Finding,
+    FindingType,
+    RefactoringPlan,
+    SeverityLevel,
+)
 
 
 def _run(coro):

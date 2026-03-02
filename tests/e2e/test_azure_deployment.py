@@ -213,7 +213,7 @@ class TestMCPTools:
             assert "result" in result
             content = result["result"]
             scanners: list = []
-            if "structuredContent" in content and content["structuredContent"]:
+            if content.get("structuredContent"):
                 scanners = content["structuredContent"].get("result", [])
             elif "content" in content:
                 text = content["content"][0]["text"]
@@ -509,7 +509,7 @@ class TestProductRequirements:
             )
             content = result["result"]
             scanners: list = []
-            if "structuredContent" in content and content["structuredContent"]:
+            if content.get("structuredContent"):
                 scanners = content["structuredContent"].get("result", [])
             elif "content" in content:
                 parsed = json.loads(content["content"][0]["text"])
@@ -718,7 +718,7 @@ class TestMCPToolsExtended:
             if "result" in result:
                 content = result["result"]
                 text = ""
-                if "content" in content and content["content"]:
+                if content.get("content"):
                     text = content["content"][0].get("text", "")
                 elif "structuredContent" in content:
                     text = str(content["structuredContent"])

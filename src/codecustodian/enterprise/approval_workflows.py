@@ -17,8 +17,8 @@ from __future__ import annotations
 import asyncio
 import json
 import uuid
-from datetime import datetime, timezone
-from enum import Enum
+from datetime import UTC, datetime
+from enum import StrEnum
 from fnmatch import fnmatch
 from pathlib import Path
 from typing import Any
@@ -33,7 +33,7 @@ logger = get_logger("enterprise.approvals")
 # ── Models ─────────────────────────────────────────────────────────────────
 
 
-class ApprovalStatus(str, Enum):
+class ApprovalStatus(StrEnum):
     PENDING = "pending"
     APPROVED = "approved"
     REJECTED = "rejected"
@@ -46,7 +46,7 @@ class ApprovalRequest(BaseModel):
 
     id: str = Field(default_factory=lambda: uuid.uuid4().hex[:12])
     timestamp: str = Field(
-        default_factory=lambda: datetime.now(timezone.utc).isoformat()
+        default_factory=lambda: datetime.now(UTC).isoformat()
     )
     resource_id: str = ""
     resource_type: str = "plan"          # plan | pr | execution
@@ -150,7 +150,7 @@ class ApprovalWorkflowManager:
             raise ValueError(f"Approval request {request_id} not found")
         req.status = ApprovalStatus.APPROVED
         req.approver = approver
-        req.approved_at = datetime.now(timezone.utc).isoformat()
+        req.approved_at = datetime.now(UTC).isoformat()
         req.reason = reason
         self._persist(req)
         logger.info("Approved %s by %s", request_id, approver)
@@ -168,7 +168,7 @@ class ApprovalWorkflowManager:
             raise ValueError(f"Approval request {request_id} not found")
         req.status = ApprovalStatus.REJECTED
         req.approver = approver
-        req.approved_at = datetime.now(timezone.utc).isoformat()
+        req.approved_at = datetime.now(UTC).isoformat()
         req.reason = reason
         self._persist(req)
         logger.info("Rejected %s by %s: %s", request_id, approver, reason)
@@ -254,8 +254,8 @@ class ApprovalWorkflowManager:
 
     async def _wait_for_approval(self, request_id: str, timeout: int = 3600) -> bool:
         """Poll approval status until approved/rejected/expired or timeout."""
-        start = datetime.now(timezone.utc)
-        while (datetime.now(timezone.utc) - start).total_seconds() < timeout:
+        start = datetime.now(UTC)
+        while (datetime.now(UTC) - start).total_seconds() < timeout:
             req = self._requests.get(request_id)
             if not req:
                 return False
@@ -269,7 +269,7 @@ class ApprovalWorkflowManager:
         if req and req.status == ApprovalStatus.PENDING:
             req.status = ApprovalStatus.EXPIRED
             req.reason = "Approval request timed out"
-            req.approved_at = datetime.now(timezone.utc).isoformat()
+            req.approved_at = datetime.now(UTC).isoformat()
             self._persist(req)
         return False
 
@@ -293,7 +293,7 @@ class ApprovalWorkflowManager:
             resource_type=resource_type,
             status=ApprovalStatus.AUTO_APPROVED,
             approver="system",
-            approved_at=datetime.now(timezone.utc).isoformat(),
+            approved_at=datetime.now(UTC).isoformat(),
             reason=reason,
         )
         self._requests[req.id] = req
@@ -303,7 +303,7 @@ class ApprovalWorkflowManager:
 
     def expire_stale(self, timeout_seconds: int = 3600) -> list[ApprovalRequest]:
         """Mark pending approval requests older than timeout as expired."""
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         expired: list[ApprovalRequest] = []
         for req in self._requests.values():
             if req.status != ApprovalStatus.PENDING:
@@ -323,10 +323,7 @@ class ApprovalWorkflowManager:
 
     def _is_sensitive(self, file_path: str) -> bool:
         """Check if a file path matches any sensitive-path glob."""
-        for pattern in self.sensitive_paths:
-            if fnmatch(file_path, pattern):
-                return True
-        return False
+        return any(fnmatch(file_path, pattern) for pattern in self.sensitive_paths)
 
     def _persist(self, req: ApprovalRequest) -> None:
         """Append an approval request to the JSONL log."""
@@ -339,7 +336,7 @@ class ApprovalWorkflowManager:
         try:
             dt = datetime.fromisoformat(value)
             if dt.tzinfo is None:
-                return dt.replace(tzinfo=timezone.utc)
+                return dt.replace(tzinfo=UTC)
             return dt
         except Exception:
             return None

@@ -5,8 +5,8 @@ the cost of AI operations against the estimated developer time saved.
 
 Key metrics:
 - Cost per finding fixed  (AI spend / fixes applied)
-- Hours saved             (fixes × avg manual effort)
-- Net ROI %               ((savings − cost) / cost × 100)
+- Hours saved             (fixes x avg manual effort)
+- Net ROI %               ((savings - cost) / cost x 100)
 
 Persistence is JSONL (same pattern as ``AuditLogger`` and ``FeedbackStore``).
 """
@@ -15,7 +15,7 @@ from __future__ import annotations
 
 import json
 from csv import DictWriter
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
@@ -33,7 +33,7 @@ class ROIEntry(BaseModel):
     """A single refactoring event used for ROI tracking."""
 
     timestamp: str = Field(
-        default_factory=lambda: datetime.now(timezone.utc).isoformat()
+        default_factory=lambda: datetime.now(UTC).isoformat()
     )
     run_id: str = ""
     finding_type: str = ""
@@ -105,7 +105,7 @@ class ROICalculator:
         self.effort_hours = effort_hours or dict(DEFAULT_EFFORT_HOURS)
         self.data_dir = Path(data_dir)
         self.data_dir.mkdir(parents=True, exist_ok=True)
-        self._period = datetime.now(timezone.utc).strftime("%Y-%m")
+        self._period = datetime.now(UTC).strftime("%Y-%m")
         self._log_file = self.data_dir / f"roi-{self._period}.jsonl"
 
     # ── Record ─────────────────────────────────────────────────────────

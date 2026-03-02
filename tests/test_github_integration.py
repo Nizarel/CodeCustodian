@@ -11,11 +11,9 @@ Covers:
 
 from __future__ import annotations
 
-import re
 import tempfile
-from datetime import UTC, datetime
 from pathlib import Path
-from unittest.mock import MagicMock, PropertyMock, patch
+from unittest.mock import MagicMock, patch
 
 import pytest
 
@@ -39,7 +37,6 @@ from codecustodian.models import (
     TransactionLogEntry,
     VerificationResult,
 )
-
 
 # ── Fixtures ───────────────────────────────────────────────────────────────
 
@@ -184,7 +181,7 @@ class TestPullRequestCreator:
             return creator, repo
 
     def test_create_pr_returns_pull_request_info(self):
-        creator, repo = self._make_creator()
+        creator, _repo = self._make_creator()
         finding = _make_finding()
         plan = _make_plan()
         execution = _make_execution()
@@ -828,7 +825,7 @@ class TestCommentManager:
             ],
         )
 
-        cid = mgr.post_audit_summary(
+        mgr.post_audit_summary(
             42, _make_finding(), _make_plan(),
             _make_execution(), verification,
         )
@@ -855,7 +852,7 @@ class TestCommentManager:
             ],
         )
 
-        cid = mgr.post_audit_summary(
+        mgr.post_audit_summary(
             42, _make_finding(), _make_plan(),
             _make_execution(), verification,
         )

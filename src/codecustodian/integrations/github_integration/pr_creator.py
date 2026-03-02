@@ -305,7 +305,7 @@ class PullRequestCreator:
 
         Categories:
         - Base: tech-debt, automated, codecustodian
-        - Priority: P1–P4 from severity
+        - Priority: P1-P4 from severity
         - Category: deprecation | security | code-smell | todo | type-coverage
         - Risk: risk:low | risk:medium | risk:high
         - Effort: effort:low | effort:medium | effort:high

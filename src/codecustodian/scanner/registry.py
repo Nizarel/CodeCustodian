@@ -80,7 +80,7 @@ class ScannerRegistry:
         (the finding type the scanner targets).
         """
         catalog: list[dict[str, str]] = []
-        for name, cls in sorted(self._scanners.items()):
+        for _name, cls in sorted(self._scanners.items()):
             catalog.append({
                 "name": cls.name,
                 "description": cls.description,

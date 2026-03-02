@@ -23,7 +23,7 @@ _DEFAULT_TTL_SECONDS: int = 30 * 60  # 30 minutes
 class _Entry:
     """A cache entry with a timestamp for TTL-based expiry."""
 
-    __slots__ = ("value", "created_at")
+    __slots__ = ("created_at", "value")
 
     def __init__(self, value: Any) -> None:
         self.value = value

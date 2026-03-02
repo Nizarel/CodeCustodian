@@ -14,12 +14,10 @@ proposal-mode downgrade for low-confidence plans.
 from __future__ import annotations
 
 import json
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING
 
-from codecustodian.exceptions import PlannerError
 from codecustodian.logging import get_logger
 from codecustodian.models import (
-    AlternativeSolution,
     ChangeType,
     CodeContext,
     FileChange,

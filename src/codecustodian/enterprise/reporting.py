@@ -5,7 +5,7 @@ Generates tech debt reports, trend analysis, and executive summaries.
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
 from codecustodian.logging import get_logger
@@ -23,13 +23,13 @@ class ReportGenerator:
 
     def generate_markdown(self, result: PipelineResult) -> Path:
         """Generate a Markdown report from a pipeline result."""
-        timestamp = datetime.now(timezone.utc).strftime("%Y-%m-%d_%H%M")
+        timestamp = datetime.now(UTC).strftime("%Y-%m-%d_%H%M")
         report_path = self.output_dir / f"tech-debt-report-{timestamp}.md"
 
         content = f"""\
 # Tech Debt Report
 
-**Generated:** {datetime.now(timezone.utc).isoformat()}
+**Generated:** {datetime.now(UTC).isoformat()}
 **Duration:** {result.duration_seconds:.1f}s
 
 ## Summary

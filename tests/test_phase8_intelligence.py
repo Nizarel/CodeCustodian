@@ -7,12 +7,10 @@ PreferenceStore, HistoricalPatternRecognizer, and SLAReporter.
 from __future__ import annotations
 
 import tempfile
-from pathlib import Path
 
 import pytest
 
 from codecustodian.models import Finding, FindingType, SeverityLevel
-
 
 # ── Helpers ────────────────────────────────────────────────────────────────
 
@@ -945,8 +943,8 @@ class TestConfidenceWithLearning:
             end_line=1,
             has_tests=True,
         )
-        score_base, factors_base = calculate_confidence(plan, context)
-        score_zero, factors_zero = calculate_confidence(
+        score_base, _factors_base = calculate_confidence(plan, context)
+        score_zero, _factors_zero = calculate_confidence(
             plan, context, scanner_adjustment=0
         )
         assert score_base == score_zero

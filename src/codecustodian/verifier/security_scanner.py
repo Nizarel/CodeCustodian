@@ -10,9 +10,7 @@ deferred to Phase 9 — stubs are provided for forward compatibility.
 from __future__ import annotations
 
 import json
-import re
 import subprocess
-from datetime import UTC, datetime
 from pathlib import Path
 
 from codecustodian.logging import get_logger

@@ -11,7 +11,6 @@ Covers:
 
 from __future__ import annotations
 
-import asyncio
 import json
 import os
 import textwrap
@@ -32,7 +31,6 @@ from codecustodian.models import (
     FindingType,
     ProposalResult,
     RefactoringPlan,
-    RiskLevel,
     SeverityLevel,
 )
 from codecustodian.planner.alternatives import (
@@ -44,7 +42,6 @@ from codecustodian.planner.alternatives import (
 from codecustodian.planner.confidence import calculate_confidence, estimate_reviewer_effort
 from codecustodian.planner.copilot_client import (
     CopilotPlannerClient,
-    ToolAuditEntry,
     UsageAccumulator,
 )
 from codecustodian.planner.prompts import (
@@ -73,7 +70,6 @@ from codecustodian.planner.tools import (
     get_imports,
     search_references,
 )
-
 
 # ═══════════════════════════════════════════════════════════════════════════
 # Test helpers
@@ -191,13 +187,13 @@ class TestConfidenceScoring:
             ],
         )
         ctx = _make_context(has_tests=False)
-        score, factors = calculate_confidence(plan, ctx)
+        score, _factors = calculate_confidence(plan, ctx)
         assert score >= 1
 
     def test_call_sites_deduction(self):
         plan = _make_plan()
         ctx = _make_context(call_sites=[f"site{i}" for i in range(15)])
-        score, factors = calculate_confidence(plan, ctx)
+        _score, factors = calculate_confidence(plan, ctx)
         assert any("call_sites" in f for f in factors)
 
     def test_many_call_sites_deduction(self):
@@ -740,7 +736,7 @@ class TestCopilotPlannerClient:
         mock_sdk = _mock_copilot_client()
         client._client = mock_sdk
 
-        session = await client.create_session(
+        await client.create_session(
             model="gpt-5.1-codex",
             tools=["tool1", "tool2"],
             system_prompt="Test prompt",
@@ -929,7 +925,7 @@ class TestPlannerOrchestrator:
 
     @pytest.mark.asyncio
     async def test_plan_refactoring_full_flow(self):
-        planner, client, session = self._setup_planner()
+        planner, _client, session = self._setup_planner()
         finding = _make_finding()
         ctx = _make_context()
 
@@ -959,7 +955,7 @@ class TestPlannerOrchestrator:
             "changes_signature": True,
             "requires_manual_verification": True,
         }
-        planner, client, session = self._setup_planner(
+        planner, _client, _session = self._setup_planner(
             plan_json=plan_json,
             config_overrides={"proposal_mode_threshold": 5},
         )
@@ -1048,7 +1044,7 @@ class TestPlannerOrchestrator:
             "ai_reasoning": "Complex",
         }
 
-        planner, client, session = self._setup_planner(
+        planner, client, _session = self._setup_planner(
             plan_json=plan_json,
             config_overrides={"enable_alternatives": True},
         )

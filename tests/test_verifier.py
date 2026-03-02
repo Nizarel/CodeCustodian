@@ -30,14 +30,14 @@ class TestTestRunnerPaths:
         runner = test_runner_mod.TestRunner(timeout=10)
 
         def _fake_run(args, capture_output, text, timeout, cwd):
-            junit_arg = [item for item in args if str(item).startswith("--junitxml=")][0]
-            cov_arg = [item for item in args if str(item).startswith("--cov-report=json:")][0]
+            junit_arg = next(item for item in args if str(item).startswith("--junitxml="))
+            cov_arg = next(item for item in args if str(item).startswith("--cov-report=json:"))
             junit_path = Path(junit_arg.split("=", 1)[1])
             cov_path = Path(cov_arg.split("json:", 1)[1])
 
             junit_path.write_text(
                 """<?xml version=\"1.0\" encoding=\"utf-8\"?>
-<testsuite tests=\"1\" errors=\"0\" failures=\"0\" skipped=\"0\"> 
+<testsuite tests=\"1\" errors=\"0\" failures=\"0\" skipped=\"0\">
   <testcase classname=\"tests.test_demo\" name=\"test_demo\" time=\"0.1\"/>
 </testsuite>
 """
@@ -79,13 +79,13 @@ class TestTestRunnerPaths:
         runner = test_runner_mod.TestRunner(timeout=10)
 
         def _fake_run(args, capture_output, text, timeout, cwd):
-            junit_arg = [item for item in args if str(item).startswith("--junitxml=")][0]
+            junit_arg = next(item for item in args if str(item).startswith("--junitxml="))
             junit_path = Path(junit_arg.split("=", 1)[1])
             junit_path.write_text(
                 """<?xml version=\"1.0\" encoding=\"utf-8\"?>
-<testsuite tests=\"2\" errors=\"0\" failures=\"1\" skipped=\"0\"> 
+<testsuite tests=\"2\" errors=\"0\" failures=\"1\" skipped=\"0\">
   <testcase classname=\"tests.test_a\" name=\"test_pass\" time=\"0.1\"/>
-  <testcase classname=\"tests.test_a\" name=\"test_fail\" time=\"0.1\"> 
+  <testcase classname=\"tests.test_a\" name=\"test_fail\" time=\"0.1\">
     <failure message=\"assert\">trace</failure>
   </testcase>
 </testsuite>
@@ -108,13 +108,13 @@ class TestTestRunnerPaths:
         runner = test_runner_mod.TestRunner(timeout=10)
 
         def _fake_run(args, capture_output, text, timeout, cwd):
-            junit_arg = [item for item in args if str(item).startswith("--junitxml=")][0]
-            cov_arg = [item for item in args if str(item).startswith("--cov-report=json:")][0]
+            junit_arg = next(item for item in args if str(item).startswith("--junitxml="))
+            cov_arg = next(item for item in args if str(item).startswith("--cov-report=json:"))
             junit_path = Path(junit_arg.split("=", 1)[1])
             cov_path = Path(cov_arg.split("json:", 1)[1])
             junit_path.write_text(
                 """<?xml version=\"1.0\" encoding=\"utf-8\"?>
-<testsuite tests=\"1\" errors=\"0\" failures=\"0\" skipped=\"0\"> 
+<testsuite tests=\"1\" errors=\"0\" failures=\"0\" skipped=\"0\">
   <testcase classname=\"tests.test_demo\" name=\"test_demo\" time=\"0.1\"/>
 </testsuite>
 """

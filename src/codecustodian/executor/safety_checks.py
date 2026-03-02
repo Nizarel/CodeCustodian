@@ -197,11 +197,10 @@ class SafetyCheckRunner:
                         top_level = alias.name.split(".")[0]
                         if not self._is_module_available(top_level):
                             missing_imports.append(alias.name)
-                elif isinstance(node, ast.ImportFrom):
-                    if node.module:
-                        top_level = node.module.split(".")[0]
-                        if not self._is_module_available(top_level):
-                            missing_imports.append(node.module)
+                elif isinstance(node, ast.ImportFrom) and node.module:
+                    top_level = node.module.split(".")[0]
+                    if not self._is_module_available(top_level):
+                        missing_imports.append(node.module)
 
         if missing_imports:
             return SafetyCheckResult(
@@ -239,9 +238,7 @@ class SafetyCheckRunner:
             file_name = Path(change.file_path).name
             file_str = change.file_path.replace("\\", "/")
 
-            if file_name in CRITICAL_FILE_PATTERNS:
-                critical_files.append(change.file_path)
-            elif any(pattern in file_str for pattern in CRITICAL_DIR_PATTERNS):
+            if file_name in CRITICAL_FILE_PATTERNS or any(pattern in file_str for pattern in CRITICAL_DIR_PATTERNS):
                 critical_files.append(change.file_path)
 
         if critical_files and plan.confidence_score < 9:

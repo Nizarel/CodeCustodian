@@ -8,12 +8,10 @@ Uses Pydantic v2 ``@field_validator``, ``@model_validator``, and ``ConfigDict``.
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Any
+from typing import Any, Self
 
 import yaml
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
-from typing_extensions import Self
-
 
 # ── Scanner Config ─────────────────────────────────────────────────────────
 

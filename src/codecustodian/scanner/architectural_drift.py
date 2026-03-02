@@ -10,7 +10,6 @@ Architecture rules are defined in ``.codecustodian.yml`` under the
 from __future__ import annotations
 
 import ast
-from collections import deque
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -118,9 +117,8 @@ class ArchitecturalDriftScanner(BaseScanner):
             if isinstance(node, ast.Import):
                 for alias in node.names:
                     imports.append(alias.name)
-            elif isinstance(node, ast.ImportFrom):
-                if node.module and node.level == 0:
-                    imports.append(node.module)
+            elif isinstance(node, ast.ImportFrom) and node.module and node.level == 0:
+                imports.append(node.module)
         return imports
 
     def _check_circular_deps(
@@ -155,14 +153,14 @@ class ArchitecturalDriftScanner(BaseScanner):
             rec_stack.add(node)
             for neighbor in module_graph.get(node, set()):
                 if neighbor not in visited:
-                    _dfs(neighbor, path + [neighbor])
+                    _dfs(neighbor, [*path, neighbor])
                 elif neighbor in rec_stack:
                     cycle_start = path.index(neighbor) if neighbor in path else -1
                     if cycle_start >= 0:
                         cycle = frozenset(path[cycle_start:])
                         if cycle not in reported_cycles and len(cycle) >= 2:
                             reported_cycles.add(cycle)
-                            cycle_list = path[cycle_start:] + [neighbor]
+                            cycle_list = [*path[cycle_start:], neighbor]
                             findings.append(Finding(
                                 type=FindingType.CODE_SMELL,
                                 severity=SeverityLevel.HIGH,

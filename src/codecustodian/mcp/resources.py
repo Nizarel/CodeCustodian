@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import json
 
-from fastmcp import Context, FastMCP
+from fastmcp import FastMCP
 
 from codecustodian.logging import get_logger
 

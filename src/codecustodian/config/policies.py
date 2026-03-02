@@ -9,6 +9,7 @@ proposal-mode gating for sensitive paths (BR-PR-003).
 
 from __future__ import annotations
 
+import contextlib
 import os
 from copy import deepcopy
 from fnmatch import fnmatch
@@ -159,10 +160,7 @@ class PolicyManager:
             if fnmatch(file_path, pattern):
                 return True
 
-        if proposal_only_types and finding_type in proposal_only_types:
-            return True
-
-        return False
+        return bool(proposal_only_types and finding_type in proposal_only_types)
 
 
 # ── Helpers ────────────────────────────────────────────────────────────────
@@ -202,15 +200,11 @@ def _apply_env_overrides(
             if isinstance(existing, bool):
                 config_dict[section][key] = env_value.lower() in ("true", "1", "yes")
             elif isinstance(existing, int):
-                try:
+                with contextlib.suppress(ValueError):
                     config_dict[section][key] = int(env_value)
-                except ValueError:
-                    pass
             elif isinstance(existing, float):
-                try:
+                with contextlib.suppress(ValueError):
                     config_dict[section][key] = float(env_value)
-                except ValueError:
-                    pass
             else:
                 config_dict[section][key] = env_value
 

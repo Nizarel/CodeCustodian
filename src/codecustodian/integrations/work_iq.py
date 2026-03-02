@@ -12,7 +12,6 @@ running as an MCP stdio server (``npx -y @microsoft/workiq mcp``).
 from __future__ import annotations
 
 import asyncio
-from datetime import datetime, timezone
 from typing import Any
 
 from pydantic import BaseModel, Field
@@ -109,9 +108,7 @@ class WorkItemIntelligence:
             return "trivial"
         elif finding.type.value == "deprecated_api":
             return "small"
-        elif finding.type.value == "code_smell":
-            return "medium"
-        elif finding.type.value == "security":
+        elif finding.type.value == "code_smell" or finding.type.value == "security":
             return "medium"
         return "small"
 
@@ -180,7 +177,7 @@ class WorkIQContextProvider:
                     return json.loads(result[0].text)  # type: ignore[union-attr]
                 return {"raw": str(result)}
 
-        except asyncio.TimeoutError:
+        except TimeoutError:
             logger.warning("Work IQ MCP call '%s' timed out", tool_name)
             self._available = False
             return {}

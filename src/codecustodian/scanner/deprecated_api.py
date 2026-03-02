@@ -2,7 +2,7 @@
 
 Detects usage of deprecated library functions and suggests modern
 replacements.  Uses AST parsing, import alias resolution, version-aware
-urgency scoring, and usage frequency counting (FR-SCAN-010 – 014, FR-SCAN-100).
+urgency scoring, and usage frequency counting (FR-SCAN-010 - 014, FR-SCAN-100).
 """
 
 from __future__ import annotations
@@ -303,7 +303,7 @@ class DeprecatedAPIScanner(BaseScanner):
 
     @staticmethod
     def _calculate_urgency(rule: dict[str, Any]) -> float:
-        """Return an urgency multiplier (1.0 – 2.0) based on version proximity.
+        """Return an urgency multiplier (1.0 - 2.0) based on version proximity.
 
         - Already past ``removal_version`` → 2.0
         - Within one minor version of removal → 1.5

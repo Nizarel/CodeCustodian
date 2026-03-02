@@ -14,7 +14,6 @@ from codecustodian.models import Finding, FindingType, SeverityLevel
 from codecustodian.scanner.base import BaseScanner, is_excluded
 from codecustodian.scanner.registry import ScannerRegistry, get_default_registry
 
-
 # ═══════════════════════════════════════════════════════════════════════════
 # ScannerRegistry
 # ═══════════════════════════════════════════════════════════════════════════
@@ -355,7 +354,7 @@ class TestCodeSmellsScanner:
             assert cc_findings[0].metadata.get("rank") is not None
 
     def test_cognitive_complexity_detection(self):
-        from codecustodian.scanner.code_smells import CodeSmellScanner, _cognitive_complexity
+        from codecustodian.scanner.code_smells import CodeSmellScanner
 
         scanner = CodeSmellScanner()
 
@@ -518,9 +517,9 @@ class TestTypeCoverageScanner:
 
     def test_suggest_types_stub_returns_none(self):
         """Fallback stub should return None."""
-        from codecustodian.scanner.type_coverage import TypeCoverageScanner
-
         import ast
+
+        from codecustodian.scanner.type_coverage import TypeCoverageScanner
         node = ast.parse("def foo(): pass").body[0]
         assert TypeCoverageScanner._suggest_types(node) is None
 

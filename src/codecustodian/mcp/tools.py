@@ -10,9 +10,8 @@ All tools use ``Context`` for progress reporting and logging, and carry
 
 from __future__ import annotations
 
-from mcp.types import ToolAnnotations
-
 from fastmcp import Context, FastMCP
+from mcp.types import ToolAnnotations
 
 from codecustodian.logging import get_logger
 
@@ -37,7 +36,7 @@ def _summarize_findings(findings: list) -> dict:
 # ── Registration ───────────────────────────────────────────────────────────
 
 
-def register_tools(mcp: FastMCP) -> None:  # noqa: C901 — intentionally long
+def register_tools(mcp: FastMCP) -> None:
     """Register all MCP tools on the server instance."""
 
     # ── 1. scan_repository ─────────────────────────────────────────────
@@ -352,7 +351,7 @@ def register_tools(mcp: FastMCP) -> None:  # noqa: C901 — intentionally long
         try:
             git = GitManager(repo_path)
             branch = git.create_branch(finding)
-            commit_sha = git.commit(finding, plan)
+            git.commit(finding, plan)
             git.push(branch)
         except Exception as exc:
             return {"error": f"Git operations failed: {exc}"}
@@ -524,7 +523,7 @@ def register_tools(mcp: FastMCP) -> None:  # noqa: C901 — intentionally long
 
         Builds an import-based dependency graph, then uses BFS to
         determine which modules are directly and transitively affected.
-        Returns a risk score (0–1) and risk level.
+        Returns a risk score (0-1) and risk level.
 
         Args:
             plan_id: ID of a cached plan from ``plan_refactoring``.

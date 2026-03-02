@@ -141,9 +141,9 @@ class BaseScanner(ABC):
 
         Formula::
 
-            priority = (severity_weight × urgency × impact) / effort
+            priority = (severity_weight x urgency x impact) / effort
 
-        The result is clamped to **0 – 200**.
+        The result is clamped to **0 - 200**.
 
         ``urgency``, ``impact`` and ``effort`` are read from
         ``finding.metadata`` when present; they default to **1.0**.

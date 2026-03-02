@@ -14,8 +14,8 @@ Factors
 
 Score formula::
 
-    Score = (Usage × 100) + (Criticality × 50) + (ChangeFreq × 30)
-          + (VelocityImpact × 40) + (RegulatoryRisk × 80)
+    Score = (Usage x 100) + (Criticality x 50) + (ChangeFreq x 30)
+          + (VelocityImpact x 40) + (RegulatoryRisk x 80)
 """
 
 from __future__ import annotations
@@ -66,8 +66,8 @@ class ScoringWeights(BaseModel):
 class BusinessImpactScorer:
     """5-factor business impact scoring (FR-PRIORITY-100).
 
-    Score = (Usage × W1) + (Criticality × W2) + (ChangeFreq × W3)
-          + (VelocityImpact × W4) + (RegulatoryRisk × W5)
+    Score = (Usage x W1) + (Criticality x W2) + (ChangeFreq x W3)
+          + (VelocityImpact x W4) + (RegulatoryRisk x W5)
 
     Each factor is normalised to 0-10 before multiplication.
     """

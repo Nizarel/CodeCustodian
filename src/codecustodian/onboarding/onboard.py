@@ -11,7 +11,7 @@ from pathlib import Path
 from typing import Any
 
 from codecustodian.config.defaults import get_default_config
-from codecustodian.config.policies import PolicyManager, _deep_merge
+from codecustodian.config.policies import _deep_merge
 from codecustodian.logging import get_logger
 from codecustodian.onboarding.analyzer import ProjectAnalyzer
 from codecustodian.onboarding.policy_templates import TEMPLATES, get_template
@@ -112,10 +112,7 @@ class OnboardingManager:
         local_path = Path(repo_path)
 
         # If it looks like a local path, analyze it
-        if local_path.exists():
-            analysis = self._analyzer.analyze(local_path)
-        else:
-            analysis = {}
+        analysis = self._analyzer.analyze(local_path) if local_path.exists() else {}
 
         # Get template and merge with default config
         try:

@@ -9,8 +9,8 @@ Scoped permissions support per-repo and per-path enforcement.
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
-from enum import Enum
+from datetime import UTC, datetime
+from enum import StrEnum
 from typing import Any
 
 from pydantic import BaseModel, Field
@@ -20,7 +20,7 @@ from codecustodian.logging import get_logger
 logger = get_logger("enterprise.rbac")
 
 
-class Role(str, Enum):
+class Role(StrEnum):
     ADMIN = "admin"
     SECURITY_ADMIN = "security_admin"
     TEAM_LEAD = "team_lead"
@@ -29,7 +29,7 @@ class Role(str, Enum):
     VIEWER = "viewer"
 
 
-class Permission(str, Enum):
+class Permission(StrEnum):
     SCAN = "scan"
     PLAN = "plan"
     EXECUTE = "execute"
@@ -65,7 +65,7 @@ class UserContext(BaseModel):
         description="Repos this user can access; empty = all",
     )
     authenticated_at: str = Field(
-        default_factory=lambda: datetime.now(timezone.utc).isoformat()
+        default_factory=lambda: datetime.now(UTC).isoformat()
     )
     claims: dict[str, Any] = Field(default_factory=dict)
 

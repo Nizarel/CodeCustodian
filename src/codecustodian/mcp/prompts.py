@@ -45,7 +45,7 @@ def register_prompts(mcp: FastMCP) -> None:
             "1. Root cause analysis\n"
             "2. Recommended fix with complete code changes\n"
             "3. Risk assessment (low / medium / high)\n"
-            "4. Confidence score (1–10)\n"
+            "4. Confidence score (1-10)\n"
             "5. Any alternative approaches\n"
             "6. Testing recommendations"
         )

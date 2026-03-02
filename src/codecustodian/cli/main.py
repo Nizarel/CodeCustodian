@@ -12,12 +12,12 @@ import json
 import tempfile
 from io import StringIO
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any
 
 import typer
 from rich.console import Console
 from rich.panel import Panel
-from rich.progress import Progress, SpinnerColumn, TextColumn, BarColumn, TaskProgressColumn
+from rich.progress import BarColumn, Progress, SpinnerColumn, TaskProgressColumn, TextColumn
 from rich.syntax import Syntax
 from rich.table import Table
 
@@ -213,7 +213,7 @@ def _print_scan_summary(findings: list[Finding]) -> None:
         savings = manual_hours * 85
         lines.append(f"\n  💰 Est. manual effort: {manual_hours:.0f}h  │  Savings: [bold green]${savings:,.0f}[/]")
 
-    lines.append(f"\n  [dim]Next → codecustodian run --dry-run[/]")
+    lines.append("\n  [dim]Next → codecustodian run --dry-run[/]")
 
     console.print(Panel(
         "\n".join(lines),
@@ -260,7 +260,6 @@ def _print_diff_preview(plans: list) -> None:
 
 def _print_finding_detail(finding: Finding, repo_root: str | None = None) -> None:
     """Print a detailed Rich panel for a single finding."""
-    from codecustodian.models import SeverityLevel
 
     sev_colors = {
         "critical": "bold red",
@@ -295,7 +294,7 @@ def _print_finding_detail(finding: Finding, repo_root: str | None = None) -> Non
                 start = max(0, finding.line - 4)
                 end = min(len(all_lines), (finding.end_line or finding.line) + 3)
                 snippet = "\n".join(all_lines[start:end])
-                lines.append(f"\n[bold]Code Context:[/] (lines {start + 1}–{end})")
+                lines.append(f"\n[bold]Code Context:[/] (lines {start + 1}-{end})")
                 lines.append("")
                 console.print(
                     Panel(
@@ -311,13 +310,13 @@ def _print_finding_detail(finding: Finding, repo_root: str | None = None) -> Non
     if finding.metadata:
         interesting = {k: v for k, v in finding.metadata.items() if k not in ("dedup_key",)}
         if interesting:
-            lines.append(f"\n[bold]Metadata:[/]")
+            lines.append("\n[bold]Metadata:[/]")
             for k, v in interesting.items():
                 lines.append(f"  {k}: {v}")
 
     console.print(Panel(
         "\n".join(lines),
-        title=f"🔍 Finding Detail",
+        title="🔍 Finding Detail",
         border_style="blue",
         padding=(1, 2),
     ))
@@ -430,9 +429,9 @@ def run(
     verbose: bool = typer.Option(False, "--verbose", "-v", help="Verbose logging"),
     quiet: bool = typer.Option(False, "--quiet", "-q", help="Suppress non-error output"),
     debug: bool = typer.Option(False, "--debug", help="Enable debug mode"),
-    log_file: Optional[str] = typer.Option(None, "--log-file", help="Log to file"),
+    log_file: str | None = typer.Option(None, "--log-file", help="Log to file"),
     enable_work_iq: bool = typer.Option(False, "--enable-work-iq", help="Enable Work IQ"),
-    azure_devops_project: Optional[str] = typer.Option(
+    azure_devops_project: str | None = typer.Option(
         None,
         "--azure-devops-project",
         help="Azure DevOps project override",
@@ -492,7 +491,7 @@ def run(
 
     # Summary
     if not quiet:
-        console.print(f"\n[bold]Results:[/]")
+        console.print("\n[bold]Results:[/]")
         console.print(f"  Findings:      {len(result.findings)}")
         console.print(f"  Plans:         {len(result.plans)}")
         console.print(f"  PRs created:   {result.prs_created}")
@@ -500,7 +499,7 @@ def run(
         console.print(f"  Duration:      {result.total_duration_seconds:.1f}s")
         if result.cost_savings_estimate:
             cs = result.cost_savings_estimate
-            console.print(f"\n[bold]Cost Savings Estimate:[/]")
+            console.print("\n[bold]Cost Savings Estimate:[/]")
             console.print(f"  Manual effort: {cs.get('manual_hours', 0):.1f}h")
             console.print(f"  Automated:     {cs.get('automated_hours', 0):.1f}h")
             console.print(f"  Hours saved:   {cs.get('hours_saved', 0):.1f}h")
@@ -619,7 +618,7 @@ def validate(
 def config_cmd(
     validate: bool = typer.Option(False, "--validate", help="Validate configuration"),
     show: bool = typer.Option(False, "--show", help="Show resolved configuration as JSON"),
-    get: Optional[str] = typer.Option(None, "--get", help="Get a specific config key (dot-notation, e.g. behavior.max_prs_per_run)"),
+    get: str | None = typer.Option(None, "--get", help="Get a specific config key (dot-notation, e.g. behavior.max_prs_per_run)"),
     path: str = typer.Option(".codecustodian.yml", "--path", "-p", help="Config file path"),
 ) -> None:
     """Manage CodeCustodian configuration."""
@@ -690,7 +689,7 @@ def scan(
 @app.command()
 def onboard(
     repo_path: str = typer.Option(".", "--repo-path", "-r", help="Repository path"),
-    org: Optional[str] = typer.Option(None, "--org", help="Organization name for org-level onboarding"),
+    org: str | None = typer.Option(None, "--org", help="Organization name for org-level onboarding"),
     template: str = typer.Option("full_scan", "--template", help="Onboarding template"),
 ) -> None:
     """Onboard a repository or organization."""
@@ -764,9 +763,9 @@ def status(
 
 @app.command()
 def report(
-    period: Optional[str] = typer.Option(None, "--period", help="Period in YYYY-MM"),
+    period: str | None = typer.Option(None, "--period", help="Period in YYYY-MM"),
     format: str = typer.Option("json", "--format", help="Report format: json, csv, or html"),
-    output: Optional[str] = typer.Option(None, "--output", help="Output file path"),
+    output: str | None = typer.Option(None, "--output", help="Output file path"),
 ) -> None:
     """Generate ROI report in JSON, CSV, or HTML."""
     from codecustodian.enterprise.roi_calculator import ROICalculator
@@ -811,10 +810,10 @@ def findings(
     config: str = typer.Option(
         ".codecustodian.yml", "--config", "-c", help="Configuration file path"
     ),
-    type: Optional[str] = typer.Option(None, "--type", help="Filter by finding type"),
-    severity: Optional[str] = typer.Option(None, "--severity", help="Filter by severity"),
-    status: Optional[str] = typer.Option(None, "--status", help="Filter by status (open/resolved)"),
-    file: Optional[str] = typer.Option(None, "--file", help="Filter by file path substring"),
+    type: str | None = typer.Option(None, "--type", help="Filter by finding type"),
+    severity: str | None = typer.Option(None, "--severity", help="Filter by severity"),
+    status: str | None = typer.Option(None, "--status", help="Filter by status (open/resolved)"),
+    file: str | None = typer.Option(None, "--file", help="Filter by file path substring"),
     output_format: str = typer.Option(
         "table", "--output-format", help="Output format: table, json, csv, sarif"
     ),
@@ -966,7 +965,7 @@ def review_pr(
     output_format: str = typer.Option(
         "json", "--output-format", help="Output format: json or table"
     ),
-    healing_plan_file: Optional[str] = typer.Option(
+    healing_plan_file: str | None = typer.Option(
         None,
         "--healing-plan-file",
         help="Optional healing plan JSON file to enrich review output",

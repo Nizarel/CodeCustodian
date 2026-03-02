@@ -267,6 +267,4 @@ def is_complex_finding(finding: Finding, *, threshold: int = 10) -> bool:
         return True
     if meta.get("multi_file", False):
         return True
-    if finding.severity.value == "critical":
-        return True
-    return False
+    return finding.severity.value == "critical"
