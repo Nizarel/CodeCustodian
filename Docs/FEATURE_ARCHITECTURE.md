@@ -79,7 +79,7 @@ graph LR
 | **Planner** | `planner/` | Multi-turn Copilot SDK sessions with 7 `@define_tool` functions |
 | **Executor** | `executor/` | Atomic file edits, backup/rollback, git branching |
 | **Verifier** | `verifier/` | pytest runner, ruff/mypy linter, Bandit/SARIF security |
-| **MCP** | `mcp/` | FastMCP v2 server: 8 tools, 7 resources, 4 prompts |
+| **MCP** | `mcp/` | FastMCP v2 server: 9 tools, 7 resources, 4 prompts |
 | **Enterprise** | `enterprise/` | RBAC, budgets, SLA, audit, multi-tenant, approvals, secrets |
 | **Intelligence** | `intelligence/` | Business impact scoring, dynamic reprioritization |
 | **Feedback** | `feedback/` | PR outcome tracking, preference learning, pattern recognition |
@@ -1586,8 +1586,8 @@ graph TB
 |---|---------|:--------:|--------|-------|-----------------|
 | 1 | Autonomous SRE (Prod→Code Loop) | **Yes** | High | 12 | Pipeline, Verifier, Integrations (Azure Monitor), MCP |
 | 2 | Predictive Debt Forecasting + Dashboard | **Yes** | Medium–High | 12 | Intelligence, Enterprise (SLA), MCP, Azure Monitor |
-| 3 | Blast Radius Analysis | **Yes** | Medium | 12 | Intelligence, Executor (Safety), Planner, MCP |
-| 4 | Architectural Drift Detection | **Yes** | Medium | 12 | Scanner, Config, MCP |
+| 3 | Blast Radius Analysis | **✅ Done** | Medium | 12 | Intelligence, Executor (Safety), Planner, MCP |
+| 4 | Architectural Drift Detection | **✅ Done** | Medium | 12 | Scanner, Config, MCP |
 | 5 | Zero-Friction Onboarding Enhancement | **Yes** | Low | 12 | Onboarding, CLI, Config |
 | 6 | AI Test Synthesis | **Yes** | Medium–High | 13 | Planner, Verifier, Executor |
 | 7 | Agentic Migrations | **Yes** | High | 13 | Intelligence, Planner, Pipeline, MCP |
@@ -1765,7 +1765,7 @@ class DebtForecast(BaseModel):
 
 ### 19.4 Blast Radius Analysis
 
-**Phase:** 12 | **Effort:** Medium | **New modules:** 1
+**Phase:** 12 | **Effort:** Medium | **New modules:** 1 | **Status:** ✅ Implemented (v0.12.0)
 
 #### Architecture
 
@@ -1826,7 +1826,7 @@ Default threshold: `0.3` (30% of codebase). Configurable via `behavior.blast_rad
 
 ### 19.5 Architectural Drift Detection Scanner
 
-**Phase:** 12 | **Effort:** Medium | **New modules:** 1
+**Phase:** 12 | **Effort:** Medium | **New modules:** 1 | **Status:** ✅ Implemented (v0.12.0)
 
 #### Architecture
 

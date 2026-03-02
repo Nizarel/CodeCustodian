@@ -71,13 +71,22 @@ CodeCustodian automates this maintenance work:
 - **Model routing**: Simple tasks use fast models, complex use deep reasoning (o1-preview)
 - **Explainable AI**: Every decision includes step-by-step reasoning
 
-### 🛡️ Safety Guarantees
+### � Rich CLI Experience
+
+- 🔍 **Diff preview** in dry-run mode — see unified diffs with syntax highlighting before any change
+- 📋 **Finding deep-dive** — `codecustodian finding <id>` shows full detail with code context
+- 📊 **Interactive HTML ROI reports** — Chart.js-powered dashboards with savings, cost, and fix distribution charts
+- 💥 **Blast radius analysis** — quantifies downstream impact before execution (import-graph BFS)
+
+### 🛡️ Safety Guarantees (7-Point Check)
 
 - ✅ **Atomic file operations** (all-or-nothing updates)
 - ✅ **Automatic backups** before every change
 - ✅ **Syntax validation** (AST parsing before commit)
 - ✅ **Test execution** (pytest with coverage tracking)
 - ✅ **Linting verification** (ruff, mypy, bandit)
+- ✅ **Secret detection** (prevents hardcoded credentials)
+- ✅ **Blast radius gate** (auto-downgrades to proposal mode if >30% of codebase affected)
 - ✅ **Rollback on failure** (automatic restoration)
 
 ### 📊 Enterprise Features

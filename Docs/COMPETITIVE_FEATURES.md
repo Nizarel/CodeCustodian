@@ -486,7 +486,7 @@ Developers can ask: *"Scan this file for tech debt"*, *"What deprecated APIs am 
 
 ### 4.7 Blast Radius Analysis for Every Change
 
-**Status:** Approved — Phase 12  
+**Status:** ✅ Implemented — v0.12.0  
 **Feasibility:** Yes | **Effort:** Medium | **Strategy Alignment:** Security & Governance (15 pts)
 
 **Gap this closes:** The executor checks for concurrent changes (git SHA) and runs safety checks, but doesn't model the downstream impact of a proposed refactoring. Augment Code shows interactive blast radius overlays — CodeCustodian should quantify impact before execution.
@@ -528,7 +528,7 @@ Developers can ask: *"Scan this file for tech debt"*, *"What deprecated APIs am 
 
 ### 4.9 Architectural Drift Detection Scanner
 
-**Status:** Approved — Phase 12  
+**Status:** ✅ Implemented — v0.12.0  
 **Feasibility:** Yes | **Effort:** Medium | **Strategy Alignment:** Enterprise Value (30 pts)
 
 **Gap this closes:** CodeCustodian has six scanner categories focused on code-level issues. None detect architectural problems — when the actual implementation diverges from intended design. SonarQube doesn't detect drift. Moderne doesn't. This is a category-defining feature.
@@ -773,9 +773,9 @@ Developers can ask: *"Scan this file for tech debt"*, *"What deprecated APIs am 
 | **Org-wide scanning** | 🔜 Planned | ✅ | ✅ | ✅ | ❌ | ✅ Core feature | ❌ | ✅ |
 | **Autonomous SRE** | 🔜 Approved | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
 | **Predictive debt forecast** | 🔜 Approved | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
-| **Blast radius analysis** | 🔜 Approved | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
+| **Blast radius analysis** | ✅ Done | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
 | **AI test synthesis** | 🔜 Approved | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
-| **Architectural drift** | 🔜 Approved | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
+| **Architectural drift** | ✅ Done | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
 | **Agentic migrations** | 🔜 Approved | ❌ | ❌ | ❌ | ❌ | ✅ Recipe | ❌ | ❌ |
 | **ChatOps (Teams/Slack)** | 🔜 Approved | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
 | **Knowledge graph** | 🔜 Approved | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
@@ -815,8 +815,8 @@ Developers can ask: *"Scan this file for tech debt"*, *"What deprecated APIs am 
 |---|---|---|---|---|
 | 11 | Autonomous SRE (Prod-to-Code Loop) | High | Game-Changer | Azure Monitor webhook + Copilot SDK hotfix + Work IQ routing |
 | 12 | Predictive Debt Forecasting + Dashboard | Medium–High | Very High | TinyDB time-series + Azure Monitor dashboard + MCP resource |
-| 13 | Blast Radius Analysis | Medium | High | AST import graph + Copilot SDK context + Safety Check #7 |
-| 14 | Architectural Drift Detection Scanner | Medium | High | New `BaseScanner` subclass + config DSL + Copilot SDK remediation |
+| 13 | ~~Blast Radius Analysis~~ | ✅ Done | High | AST import graph + Copilot SDK context + Safety Check #7 |
+| 14 | ~~Architectural Drift Detection Scanner~~ | ✅ Done | High | New `BaseScanner` subclass + config DSL + Copilot SDK remediation |
 | 15 | Zero-Friction Onboarding Enhancement | Low | High | `ProjectAnalyzer` extension + auto-config + health check |
 
 ### Phase 13 — Advanced Intelligence (Business-Approved, Medium Priority)
@@ -843,12 +843,12 @@ Developers can ask: *"Scan this file for tech debt"*, *"What deprecated APIs am 
 ### Feature Readiness Summary
 
 ```
-Done:        8 of 20 features ████████░░░░░░░░░░░░ 40%
+Done:       10 of 20 features ██████████░░░░░░░░░░ 50%
 Planned:     2 of 20 features ██░░░░░░░░░░░░░░░░░░ 10%
-Approved:   10 of 20 features ██████████░░░░░░░░░░ 50%
+Approved:    8 of 20 features ████████░░░░░░░░░░░░ 40%
 Deferred:    1 feature
 ```
 
 ---
 
-*This document is generated from the CodeCustodian codebase as of March 1, 2026.*
+*This document is generated from the CodeCustodian codebase as of March 2, 2026.*

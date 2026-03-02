@@ -1,6 +1,6 @@
 [project]
 name = "codecustodian"
-version = "0.10.0"
+version = "0.12.0"
 description = "Autonomous AI agent for technical debt management powered by GitHub Copilot SDK"
 readme = "README.md"
 license = { text = "MIT" }

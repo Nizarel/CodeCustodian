@@ -1,6 +1,6 @@
 # CodeCustodian — Tools & Usage Guide
 
-**Version:** 0.10.0 | **Last Updated:** February 21, 2026
+**Version:** 0.12.0 | **Last Updated:** March 2, 2026
 
 ---
 
@@ -104,7 +104,7 @@ codecustodian scan --repo-path . --scanner all --output-format json
 | Option | Default | Description |
 |--------|---------|-------------|
 | `--repo-path` | `.` | Repository path |
-| `--scanner` | `all` | Scanner: `deprecated_apis`, `todo_comments`, `code_smells`, `security_patterns`, `type_coverage`, or `all` |
+| `--scanner` | `all` | Scanner: `deprecated_apis`, `todo_comments`, `code_smells`, `security_patterns`, `type_coverage`, `dependency_upgrades`, `architectural_drift`, or `all` |
 | `--config` | `.codecustodian.yml` | Configuration file |
 | `--output-format` | `table` | Output: `table`, `json`, `csv` |
 
@@ -148,13 +148,24 @@ codecustodian create-prs --top 3 --dry-run
 
 ```bash
 codecustodian report --period monthly --format json --output roi-report.json
+codecustodian report --format html --output roi-dashboard.html
 ```
+
+Supports `json`, `csv`, and `html` formats. HTML generates a standalone interactive dashboard with Chart.js charts, hero cards, and breakdown tables.
 
 ### `codecustodian validate` — Validate Config
 
 ```bash
 codecustodian validate --path .codecustodian.yml
 ```
+
+### `codecustodian finding` — Finding Deep-Dive
+
+```bash
+codecustodian finding <id-or-substring> --repo-path .
+```
+
+Shows detailed view of a single finding with code context, syntax highlighting, severity, priority, business impact, and metadata. Matches by ID substring.
 
 ### `codecustodian onboard` — Onboard Repository
 
@@ -302,6 +313,7 @@ List available scanners with marketplace metadata.
 | `security_patterns` | Security vulnerabilities (Bandit + custom) |
 | `type_coverage` | Functions missing type annotations |
 | `dependency_upgrades` | Outdated or unpinned dependencies |
+| `architectural_drift` | Circular deps, layer violations, oversized modules |
 
 ---
 
@@ -331,7 +343,7 @@ Apply a cached refactoring plan. **Destructive** — creates file backups.
 
 **Returns:** `{ plan_id, success, changed_files[] }`
 
-**Safety:** Atomic operations with backup/rollback. 6-point safety check (path traversal, file size, binary detection, syntax validation, encoding, symlink).
+**Safety:** Atomic operations with backup/rollback. 7-point safety check (path traversal, file size, binary detection, syntax validation, encoding, symlink, blast radius).
 
 ---
 
@@ -390,6 +402,21 @@ Calculate return-on-investment metrics for fixing a finding.
 **Returns:** `{ finding_id, total_score, factors: { usage_frequency, criticality, change_frequency, velocity_impact, regulatory_risk }, business_impact_level, sla_risk, recommendation }`
 
 **Levels:** >500 = critical, >200 = high, >100 = medium, else low.
+
+---
+
+### 9. `get_blast_radius`
+
+Analyse the blast radius of a cached refactoring plan.
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `plan_id` | `string` | Yes | Plan ID from `plan_refactoring` |
+| `repo_path` | `string` | No | Repository root (default `"."`) |
+
+**Returns:** `{ directly_affected[], transitively_affected[], affected_tests[], total_files_in_repo, radius_score, risk_level }`
+
+**Model:** Builds an import-based dependency graph via AST parsing, then BFS from changed modules through the reverse-dependency graph. Risk levels: >30% = critical, >15% = high, >5% = medium, else low.
 
 ---
 

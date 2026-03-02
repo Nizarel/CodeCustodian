@@ -6,6 +6,61 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
 
+## [0.12.0] — 2026-03-02
+
+### Added — Phase 12: Demo-Critical Features (5 Features, 28 New Tests)
+
+#### Diff Preview in Dry-Run Mode
+- `_print_diff_preview()` in CLI renders unified diffs via `difflib.unified_diff`
+  with Rich `Syntax` highlighting in a bordered panel
+- Hooked into the `run --dry-run` command: plans with `FileChange.old_content` /
+  `new_content` show coloured diff output automatically
+
+#### Finding Deep-Dive CLI Command
+- New `codecustodian finding <id>` command for full finding inspection
+- Rich panel displays: ID, type, severity, file:line, priority, business impact,
+  scanner, description, suggestion, and metadata
+- Code context rendered with `Syntax` and line highlighting
+- Matches by ID substring for convenience
+
+#### Interactive HTML ROI Report
+- `ROICalculator.export_html()` generates a standalone HTML report
+- GitHub dark-theme CSS, 4 hero cards (Savings, Net ROI, Hours Saved, Total Fixes)
+- Chart.js 4 CDN: bar chart (Savings vs Cost by type), doughnut chart (fix distribution)
+- Summary table + breakdown by finding type — no external Python dependencies
+- CLI: `codecustodian report --format html [--output file.html]`
+
+#### Blast Radius Analysis (Section 4.7)
+- New `intelligence/blast_radius.py`: `BlastRadiusAnalyzer` builds AST-parsed
+  import graph, BFS traversal quantifies downstream impact
+- `BlastRadiusReport` Pydantic model: `directly_affected`, `transitively_affected`,
+  `affected_tests`, `radius_score` (0.0–1.0), `risk_level`
+- Safety Check #7 in `executor/safety_checks.py`: auto-downgrades to proposal mode
+  when `radius_score > 0.30` (30% of codebase affected)
+- MCP Tool #9: `get_blast_radius` (read-only) for pre-change impact queries
+
+#### Architectural Drift Detection Scanner (Section 4.9)
+- New 7th scanner: `ArchitecturalDriftScanner` extending `BaseScanner`
+- Three checks: circular dependency detection (DFS), layer boundary violations
+  (configurable forbidden imports), module size violations (>600 lines default)
+- Default layer rules: cli/mcp → presentation, scanner/planner/executor/verifier/
+  intelligence → domain, enterprise → service, integrations/config → infrastructure
+- Registered in `scanner/registry.py`; CLI aliases: `architectural_drift`, `architecture`
+
+### Changed
+- MCP server: 8 → 9 tools (added `get_blast_radius`)
+- Safety checks: 6 → 7 (added blast radius gate)
+- Scanner registry: 6 → 7 scanners (added `architectural_drift`)
+- FastMCP server init: `on_duplicate_tools=` → `on_duplicate=` (API compatibility)
+- `report` command: `--format` now accepts `json`, `csv`, or `html`
+
+### Tests
+- 28 new tests in `tests/test_new_features.py`
+- Updated `test_executor.py` and `test_mcp_server.py` for new feature assertions
+- **674 tests passing**, zero regressions from new features
+
+---
+
 ## [0.11.0] — 2026-02-23
 
 ### Added — Multi-Language Scanner Support
