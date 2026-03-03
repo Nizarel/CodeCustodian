@@ -12,9 +12,9 @@ from __future__ import annotations
 import textwrap
 from pathlib import Path
 from tempfile import TemporaryDirectory
-from typing import Any
 from types import SimpleNamespace
-from unittest.mock import AsyncMock, MagicMock, patch
+from typing import Any
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
@@ -39,7 +39,6 @@ from codecustodian.planner.skills import (
     SkillRegistry,
     _parse_skill_md,
 )
-
 
 # ═══════════════════════════════════════════════════════════════════════════
 # Test helpers
@@ -363,7 +362,7 @@ class TestCopilotClientExtensions:
         finding = _make_finding(severity=SeverityLevel.LOW)
 
         # Without preference → auto routing (low severity → fast model)
-        model_auto = client.select_model(finding)
+        client.select_model(finding)
 
         # With preference → overrides config
         model_reasoning = client.select_model(finding, preference="reasoning")
@@ -529,7 +528,7 @@ class TestPlannerIntegration:
             end_line=1,
         )
 
-        result = await planner.plan_refactoring(finding, context)
+        await planner.plan_refactoring(finding, context)
 
         # Verify agent preference was used in model selection
         client.select_model.assert_called_once()

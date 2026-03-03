@@ -39,8 +39,8 @@ from codecustodian.planner.skills import SkillDefinition, SkillRegistry
 from codecustodian.planner.tools import get_all_tools
 
 __all__ = [
-    "AgentProfile",
     "SYSTEM_PROMPT",
+    "AgentProfile",
     "AlternativeGenerator",
     "CopilotPlannerClient",
     "Planner",

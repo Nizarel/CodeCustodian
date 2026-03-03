@@ -113,10 +113,7 @@ class SkillRegistry:
         When *skill_dir* is ``None``, defaults to ``.copilot_skills/`` in the
         current working directory.
         """
-        if skill_dir is None:
-            skill_dir = Path(".copilot_skills")
-        else:
-            skill_dir = Path(skill_dir)
+        skill_dir = Path(".copilot_skills") if skill_dir is None else Path(skill_dir)
         if not skill_dir.is_dir():
             logger.info("Skill directory %s not found — no skills loaded", skill_dir)
             return

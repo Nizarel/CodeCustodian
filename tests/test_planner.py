@@ -925,7 +925,9 @@ class TestPlannerOrchestrator:
 
     @pytest.mark.asyncio
     async def test_plan_refactoring_full_flow(self):
-        planner, _client, session = self._setup_planner()
+        planner, _client, session = self._setup_planner(
+            config_overrides={"session_reuse": False},
+        )
         finding = _make_finding()
         ctx = _make_context()
 
@@ -1009,7 +1011,7 @@ class TestPlannerOrchestrator:
     @pytest.mark.asyncio
     async def test_session_cleanup_on_error(self):
         """Verify session.destroy() is called even on error."""
-        config = _make_config()
+        config = _make_config(session_reuse=False)
         client = CopilotPlannerClient(config)
         mock_sdk = _mock_copilot_client()
         client._client = mock_sdk

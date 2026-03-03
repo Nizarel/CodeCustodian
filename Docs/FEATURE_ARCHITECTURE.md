@@ -1892,6 +1892,160 @@ graph LR
     TS --> CG[Config Generator<br/>.codecustodian.yml]
     CG --> SP[Sensitive Path<br/>Auto-Populator]
     SP --> WF[Workflow Generator<br/>.github/workflows/]
+```
+
+---
+
+## 20. SDK Showcase — Domain Skills, Custom Agents, Multi-Session
+
+**Module:** `src/codecustodian/planner/` (skills.py, agents.py, updated planner.py + copilot_client.py)
+
+**Version:** 0.13.0 | **Tests:** 42 new tests in `test_skills_agents.py`
+
+This section documents three features that showcase deep GitHub Copilot SDK integration:
+domain skills, custom agent profiles, and multi-session (session pooling).
+
+### 20.1 Domain Skills (SKILL.md Knowledge System)
+
+**Module:** `planner/skills.py` + `.copilot_skills/` directory
+
+Skills are domain-specific knowledge files loaded from `.copilot_skills/*/SKILL.md`
+and injected into the Copilot SDK `system_message.content`. This gives each
+planning session deep expertise relevant to the finding type.
+
+```mermaid
+graph TB
+    subgraph ".copilot_skills/"
+        S1["security-remediation/SKILL.md"]
+        S2["api-migration/SKILL.md"]
+        S3["code-quality/SKILL.md"]
+        S4["python-typing/SKILL.md"]
+        S5["todo-resolution/SKILL.md"]
+        S6["dependency-management/SKILL.md"]
+        S7["general-refactoring/SKILL.md"]
+    end
+
+    SR[SkillRegistry] -->|load_skills| S1
+    SR -->|load_skills| S2
+    SR -->|load_skills| S3
+    SR -->|load_skills| S4
+    SR -->|load_skills| S5
+    SR -->|load_skills| S6
+    SR -->|load_skills| S7
+
+    SR -->|format_skill_context| SC["[Domain Skills]\n## Skill: ...\ncontent\n[End Domain Skills]"]
+    SC -->|prepended to| SM["system_message.content"]
+
+    style SR fill:#0078d4,color:#fff
+    style SM fill:#0078d4,color:#fff
+```
+
+**SKILL.md Format:** YAML front-matter (`name`, `description`) + Markdown body with
+code examples, migration tables, checklists, and remediation patterns.
+
+**Finding Type → Skill Mapping:**
+
+| FindingType | Skills Loaded |
+|-------------|--------------|
+| `security` | `security-remediation`, `code-quality` |
+| `deprecated_api` | `api-migration`, `general-refactoring` |
+| `code_smell` | `code-quality`, `general-refactoring` |
+| `type_coverage` | `python-typing` |
+| `todo_comment` | `todo-resolution` |
+| `dependency_upgrade` | `dependency-management` |
+
+### 20.2 Custom Agent Profiles (7 Specialized AI Personas)
+
+**Module:** `planner/agents.py`
+
+Agent profiles are an application-layer routing concept. Each profile combines
+a system prompt overlay, model preference, skill set, and optional tool filter.
+The planner routes findings to the most appropriate agent.
+
+```mermaid
+graph LR
+    F[Finding] -->|FindingType| AR{Agent Router}
+    AR -->|security| SA["🔒 security-auditor<br/>reasoning model"]
+    AR -->|deprecated_api| ME["🔄 modernization-expert<br/>balanced model"]
+    AR -->|code_smell| QA["🏗 quality-architect<br/>balanced model"]
+    AR -->|type_coverage| TA["📝 type-advisor<br/>fast model"]
+    AR -->|todo_comment| TR["✅ task-resolver<br/>fast model"]
+    AR -->|dependency_upgrade| DE["📦 dependency-expert<br/>balanced model"]
+    AR -->|fallback| GR["⚙ general-refactorer<br/>auto model"]
+```
+
+**Agent Registry:**
+
+| Agent | FindingType | Model Preference | Skills |
+|-------|-------------|-----------------|--------|
+| `security-auditor` | SECURITY | reasoning | security-remediation, code-quality |
+| `modernization-expert` | DEPRECATED_API | balanced | api-migration, general-refactoring |
+| `quality-architect` | CODE_SMELL | balanced | code-quality, general-refactoring |
+| `type-advisor` | TYPE_COVERAGE | fast | python-typing |
+| `task-resolver` | TODO_COMMENT | fast | todo-resolution |
+| `dependency-expert` | DEPENDENCY_UPGRADE | balanced | dependency-management |
+| `general-refactorer` | (fallback) | auto | general-refactoring |
+
+Each agent's `model_preference` overrides `CopilotConfig.model_selection` for that
+finding, and the `system_prompt_overlay` is prepended to the base system prompt.
+
+### 20.3 Multi-Session (Session Pooling with Infinite Sessions)
+
+**Module:** `planner/planner.py` (session pool) + `copilot_client.py` (infinite_sessions)
+
+Sessions are pooled by agent name. When multiple findings map to the same agent,
+the same session is reused — avoiding redundant session creation and keeping
+conversation context across findings.
+
+```mermaid
+sequenceDiagram
+    participant Pipeline
+    participant Planner
+    participant Pool as Session Pool
+    participant SDK as Copilot SDK
+
+    Pipeline->>Planner: plan_refactoring(finding_1)  [security]
+    Planner->>Planner: select_agent → security-auditor
+    Planner->>SDK: create_session(infinite_sessions=true)
+    SDK-->>Pool: session_A (security-auditor)
+    Planner->>SDK: send_streaming + send_and_wait
+    SDK-->>Planner: plan_1
+
+    Pipeline->>Planner: plan_refactoring(finding_2)  [security]
+    Planner->>Pool: lookup "security-auditor"
+    Pool-->>Planner: session_A (reused!)
+    Planner->>SDK: send_streaming + send_and_wait
+    SDK-->>Planner: plan_2
+
+    Pipeline->>Planner: plan_refactoring(finding_3)  [code_smell]
+    Planner->>Planner: select_agent → quality-architect
+    Planner->>SDK: create_session(infinite_sessions=true)
+    SDK-->>Pool: session_B (quality-architect)
+
+    Pipeline->>Planner: close_sessions()
+    Planner->>Pool: destroy all sessions
+    Pool->>SDK: session_A.destroy()
+    Pool->>SDK: session_B.destroy()
+```
+
+**SDK Configuration:**
+```python
+"infinite_sessions": {
+    "enabled": True,
+    "background_compaction_threshold": 0.80,
+    "buffer_exhaustion_threshold": 0.95,
+}
+```
+
+### 20.4 Configuration
+
+Three new fields in `CopilotConfig`:
+
+| Field | Type | Default | Description |
+|-------|------|---------|-------------|
+| `enable_agents` | `bool` | `True` | Enable agent-based routing |
+| `custom_skill_dir` | `str` | `""` | Path to custom SKILL.md directory |
+| `session_reuse` | `bool` | `True` | Reuse sessions across same-agent findings |
     WF --> HC[Health Check<br/>validate config,<br/>test token,<br/>quick scan]
     HC --> DONE[Ready ✅]
 ```

@@ -6,6 +6,61 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
 
+## [0.13.0] — 2026-03-03
+
+### Added — Phase 13: SDK Showcase — Domain Skills, Custom Agents, Multi-Session
+
+#### Domain Skills (SKILL.md Knowledge System)
+- 7 SKILL.md knowledge files in `.copilot_skills/`: `security-remediation`,
+  `api-migration`, `code-quality`, `python-typing`, `todo-resolution`,
+  `dependency-management`, `general-refactoring`
+- `SkillRegistry` in `planner/skills.py`: discovers, parses YAML front-matter +
+  Markdown body, maps `FindingType` → relevant skills, formats for injection
+- Skills injected into Copilot SDK `system_message.content` — gives each session
+  deep, domain-specific expertise (OWASP patterns, migration tables, refactoring
+  catalogs, typing idioms, etc.)
+- Custom skill directories supported via `CopilotConfig.custom_skill_dir`
+
+#### Custom Agent Profiles (7 Specialized AI Personas)
+- `AgentProfile` Pydantic model in `planner/agents.py` with system prompt overlay,
+  model preference, skill set, and optional tool filter
+- 7 predefined agents: `security-auditor` (reasoning model), `modernization-expert`,
+  `quality-architect`, `type-advisor` (fast), `task-resolver` (fast),
+  `dependency-expert`, `general-refactorer` (fallback)
+- `FindingType` → agent routing: each finding type is automatically routed to the
+  most appropriate specialist agent
+- Agent `model_preference` overrides `CopilotConfig.model_selection` per-finding
+- Agents configurable via `CopilotConfig.enable_agents` (default: `True`)
+
+#### Multi-Session (Session Pooling with Infinite Sessions)
+- Session pool in `Planner`: reuses sessions across findings handled by the same
+  agent — avoids redundant session creation overhead
+- Leverages SDK `infinite_sessions: {enabled: true, background_compaction_threshold:
+  0.80, buffer_exhaustion_threshold: 0.95}` for long-lived sessions
+- `Planner.close_sessions()` destroys all pooled sessions at pipeline shutdown
+- Pipeline calls `close_sessions()` before `client.stop()` for clean lifecycle
+- Configurable via `CopilotConfig.session_reuse` (default: `True`)
+
+### Changed
+- `CopilotPlannerClient.select_model()`: new `preference` kwarg for agent-level override
+- `CopilotPlannerClient.create_session()`: new `skill_context` and `session_reuse` kwargs
+- `CopilotConfig`: 3 new fields — `enable_agents`, `custom_skill_dir`, `session_reuse`
+- `Planner.__init__()`: initializes `SkillRegistry` and session pool
+- `Planner.plan_refactoring()`: agent selection → skill loading → composite system
+  prompt → model preference → tool filtering → session reuse (7-step flow)
+- `Pipeline._plan()`: calls `planner.close_sessions()` before `client.stop()`
+- `planner/__init__.py`: re-exports `AgentProfile`, `SkillRegistry`, `SkillDefinition`,
+  `select_agent`, `get_agent_tools`, `list_agents`
+
+### Tests
+- 42 new tests in `tests/test_skills_agents.py` covering skill parsing, registry,
+  agent selection, tool filtering, session pooling, config extensions, and planner
+  integration
+- **720 tests passing** (excluding pre-existing e2e FastMCP compatibility failures),
+  zero regressions
+
+---
+
 ## [0.12.0] — 2026-03-02
 
 ### Added — Phase 12: Demo-Critical Features (5 Features, 28 New Tests)
