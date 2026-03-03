@@ -9,6 +9,7 @@ import asyncio
 import csv
 import difflib
 import json
+import sys
 import tempfile
 from io import StringIO
 from pathlib import Path
@@ -23,6 +24,11 @@ from rich.table import Table
 
 from codecustodian import __version__
 from codecustodian.models import Finding
+
+# Force UTF-8 output on Windows to avoid cp1252 encoding errors with emoji/Unicode
+if sys.platform == "win32":
+    sys.stdout.reconfigure(encoding="utf-8", errors="replace")  # type: ignore[union-attr]
+    sys.stderr.reconfigure(encoding="utf-8", errors="replace")  # type: ignore[union-attr]
 
 app = typer.Typer(
     name="codecustodian",
@@ -853,7 +859,12 @@ def finding(
     """Show detailed view of a single finding with code context."""
     all_findings = _scan_findings(repo_path, config, "all")
     needle = finding_id.strip().lower()
-    matched = [f for f in all_findings if needle in f.id.lower()]
+    matched = [
+        f for f in all_findings
+        if needle in f.id.lower()
+        or needle in f.description.lower()
+        or needle in f.file.lower()
+    ]
     if not matched:
         console.print(f"[red]No finding matching '{finding_id}' found.[/]")
         raise typer.Exit(1)
