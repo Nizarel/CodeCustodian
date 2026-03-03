@@ -10,20 +10,20 @@
 | 2 | **Video (3 min max)** | TODO | Record after build |
 | 3 | **Working code in GitHub repo** | DONE | `src/codecustodian/` |
 | 4 | **README with architecture + setup** | DONE | `README.md`, `Docs/` |
-| 5 | **Presentation deck (1-2 slides)** | TODO | `presentations/CodeCustodian.pptx` |
+| 5 | **Presentation deck (1-2 slides)** | DONE | `presentations/CodeCustodian-Deck.html` |
 | 6 | **`/src` or `/app` (working code)** | DONE | `src/` |
 | 7 | **`/docs` (README, prereqs, setup, deployment, arch diagram, RAI)** | DONE | `Docs/README.md`, `ARCHITECTURE.md`, `DEPLOYMENT.md`, `RESPONSIBLE_AI.md` |
 | 8 | **`AGENTS.md`** | DONE | `AGENTS.md` |
 | 9 | **`mcp.json`** | DONE | `mcp.json` |
-| 10 | **Demo deck in `/presentations/`** | TODO | `presentations/CodeCustodian.pptx` |
-| 11 | **`/customer` folder** | TODO | `customer/` |
+| 10 | **Demo deck in `/presentations/`** | DONE | `presentations/CodeCustodian-Deck.html` |
+| 11 | **`/customer` folder** | DONE | `customer/testimonial.md` |
 
 ### Bonus Points
 
 | # | Bonus | Status | Notes |
 |---|-------|--------|-------|
 | B1 | **Product feedback on GHCP SDK** | TODO | Post in SDK channel + screenshot |
-| B2 | **Customer testimonial release** | TODO | Signed form or validation doc |
+| B2 | **Customer testimonial release** | DONE | `customer/testimonial.md` |
 
 ---
 
@@ -33,9 +33,10 @@
 
 **What we have:**
 - Full pipeline: scan → plan → execute → verify → PR
-- Budget manager, SLA reporter, ROI calculator
+- Budget manager, SLA reporter, ROI calculator with **HTML export**
 - Multi-tenant, RBAC, approval workflows
 - Policy templates for different org needs
+- **NEW v0.12.0:** Diff preview in dry-run, finding deep-dive, blast radius analysis, architectural drift scanner
 
 **What to build to maximize score:**
 
@@ -44,7 +45,7 @@
 | A1. **Demo repo with planted tech debt** (15-20 realistic findings) | HIGH — makes the demo repeatable and impressive | Low |
 | A2. **Live scan → PR demo script** (`scripts/demo-run.ps1`) | HIGH — "zero to PR in 60 seconds" hero moment | Low |
 | A3. **Cost savings summary in pipeline output** ("Saved 47 eng hours") | HIGH — direct business value proof | Low |
-| A4. **HTML ROI report** with charts (export from `report` command) | MEDIUM — leave-behind for decision makers | Medium |
+| A4. **HTML ROI report** with charts (export from `report` command) | DONE ✅ — `codecustodian report --format html` | Done |
 | A5. **150-word project summary** (for submission) | Required | Low |
 
 ### 2. Integration with Azure / Microsoft Solutions — 25 pts
@@ -72,7 +73,7 @@
 ### 3. Operational Readiness — 15 pts
 
 **What we have:**
-- CI workflow: lint (ruff) → test (609 tests, 82% cov, 80% gate) → security (bandit)
+- CI workflow: lint (ruff, 0 errors) → test (676 tests, 82%+ cov, 80% gate) → security (bandit)
 - Deploy workflow: test → build/push → Bicep deploy → MCP smoke test
 - Security scan workflow: Bandit + Trivy (weekly schedule)
 - Docker multi-stage build (non-root user, healthcheck)
@@ -95,8 +96,10 @@
 - Path traversal + symlink blocking
 - Dangerous function detection (eval, exec, compile, __import__)
 - Secret detection in pre-execution validation
+- **Blast radius gate** — blocks changes touching >N files
 - Confidence-gated safety (8-10: PR, 5-7: draft, <5: proposal-only)
 - Bandit + Trivy in CI/CD
+- **7-point safety check system** (syntax, file_size, binary, path_traversal, encoding, secrets, blast_radius)
 
 **What to build to maximize score:**
 
@@ -152,21 +155,21 @@
 
 **CodeCustodian** is an autonomous AI agent that eliminates technical debt at enterprise
 scale. It scans Python codebases for deprecated APIs, aging TODO comments, code smells,
-and security vulnerabilities, then uses the **GitHub Copilot SDK** to plan safe refactorings
-with confidence scoring (1-10).
+security vulnerabilities, type coverage gaps, and architectural drift, then uses the
+**GitHub Copilot SDK** to plan safe refactorings with confidence scoring (1-10).
 
-Changes are applied atomically with backup/rollback guarantees, verified by automated
-tests and linting, and submitted as pull requests with full AI reasoning — keeping
-humans in control.
+Changes are applied atomically with 7-point safety checks (including blast radius
+analysis and secret detection), verified by automated tests and linting, and submitted
+as pull requests with full AI reasoning — keeping humans in control.
 
-Built on **FastMCP v2**, CodeCustodian integrates as an MCP server in VS Code Copilot Chat.
-It deploys to **Azure Container Apps** with **Key Vault** secrets, **Azure Monitor** observability,
-and **Azure DevOps** work item integration.
+Built on **FastMCP v2**, CodeCustodian integrates as an MCP server in VS Code Copilot Chat
+with 9 tools. It deploys to **Azure Container Apps** with **Key Vault** secrets,
+**Azure Monitor** observability, and **Azure DevOps** work item integration.
 
-Enterprise features include budget management, SLA reporting, ROI calculation, RBAC,
-approval workflows, and a feedback loop that learns from PR outcomes to improve over time.
+Enterprise features include budget management, SLA reporting, HTML ROI reports, RBAC,
+approval workflows, and a feedback loop that learns from PR outcomes.
 
-**609 tests, 82% coverage, 4 CI/CD workflows, Responsible AI policy.**
+**676 tests, 82%+ coverage, 4 CI/CD workflows, 0 lint errors, Responsible AI policy.**
 
 ---
 
@@ -176,12 +179,14 @@ approval workflows, and a feedback loop that learns from PR outcomes to improve 
 |------|---------|---------|
 | 0:00-0:20 | **Hook** | "Engineering teams spend 40% of their time on maintenance. What if an AI agent handled it autonomously?" |
 | 0:20-0:40 | **Problem** | Show a real codebase with deprecated APIs, old TODOs, code smells. "This is technical debt." |
-| 0:40-1:30 | **Live Demo** | Run `codecustodian scan` → show findings table. Run `codecustodian run --dry-run` → show plan with confidence scores and AI reasoning. |
-| 1:30-2:00 | **Safety** | Show confidence-gated behavior: high confidence → PR, low confidence → proposal. Show eval() being blocked. |
-| 2:00-2:20 | **MCP in VS Code** | Open Copilot Chat, ask CodeCustodian MCP to scan and analyze. Unique differentiator. |
-| 2:20-2:40 | **Enterprise** | Flash: ROI report, budget dashboard, SLA metrics, audit log. "Enterprise-ready from day one." |
+| 0:40-1:10 | **Live Demo: Scan** | Run `codecustodian scan --repo-path demo/sample-enterprise-app` → show 60 findings with severity colors, bar chart, and ROI estimate. |
+| 1:10-1:30 | **Finding Deep-Dive** | Run `codecustodian finding "sql injection"` → show detailed view with CWE, exploit scenario, compliance refs. |
+| 1:30-1:50 | **Dry-Run + Diff Preview** | Run `codecustodian run --dry-run --max-prs 1` → show diff preview of proposed changes before any code is touched. |
+| 1:50-2:10 | **Safety** | Show 7-point safety system: blast radius gate, secret detection, confidence-gated behavior. eval() blocked. |
+| 2:10-2:25 | **MCP in VS Code** | Open Copilot Chat, ask CodeCustodian MCP to scan and analyze. Show blast radius tool. |
+| 2:25-2:40 | **Enterprise** | HTML ROI report, budget dashboard, SLA metrics, audit log. "Enterprise-ready from day one." |
 | 2:40-2:50 | **Azure Integration** | Architecture diagram: Key Vault + Container Apps + Monitor + DevOps + GitHub Actions + Copilot SDK |
-| 2:50-3:00 | **Close** | "CodeCustodian: your autonomous guardian against technical debt. 609 tests. Open source. Production-ready." |
+| 2:50-3:00 | **Close** | "CodeCustodian: your autonomous guardian against technical debt. 676 tests. Zero lint errors. Production-ready." |
 
 ---
 
@@ -190,13 +195,13 @@ approval workflows, and a feedback loop that learns from PR outcomes to improve 
 ```mermaid
 graph TB
     subgraph "Developer Experience"
-        CLI["CLI (10 commands)"]
+        CLI["CLI (14+ commands)"]
         MCP["MCP Server (FastMCP v2)"]
         VSCode["VS Code Copilot Chat"]
     end
 
     subgraph "CodeCustodian Pipeline"
-        SCAN["Scanner\n5 built-in scanners"]
+        SCAN["Scanner\n7 built-in scanners"]
         PLAN["Planner\nGitHub Copilot SDK"]
         EXEC["Executor\nAtomic + Rollback"]
         VERIFY["Verifier\npytest + ruff + bandit"]
