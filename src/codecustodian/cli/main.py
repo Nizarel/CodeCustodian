@@ -114,7 +114,7 @@ def _print_findings(findings: list[Finding], output_format: str, repo_root: str 
         typer.echo(findings_to_sarif(findings, repo_root=repo_root))
         return
 
-    _SEVERITY_STYLES = {
+    severity_styles = {
         "critical": "bold red",
         "high": "red",
         "medium": "yellow",
@@ -130,7 +130,7 @@ def _print_findings(findings: list[Finding], output_format: str, repo_root: str 
     table.add_column("Description", style="white")
     for finding in findings:
         sev = finding.severity.value
-        sev_style = _SEVERITY_STYLES.get(sev, "white")
+        sev_style = severity_styles.get(sev, "white")
         table.add_row(
             finding.type.value,
             f"[{sev_style}]{sev}[/]",
@@ -611,7 +611,7 @@ def validate(
         console.print(f"  Require PR approval: {cfg.approval.require_pr_approval}")
     except Exception as exc:
         console.print(f"[red]✗ Invalid configuration: {exc}[/]")
-        raise typer.Exit(1)
+        raise typer.Exit(1) from exc
 
 
 @app.command(name="config")
@@ -633,7 +633,7 @@ def config_cmd(
             cfg = CodeCustodianConfig.from_file(path)
         except Exception as exc:
             console.print(f"[red]✗ Failed to load config: {exc}[/]")
-            raise typer.Exit(1)
+            raise typer.Exit(1) from exc
 
         data = cfg.model_dump(mode="json")
         if get:
@@ -1030,7 +1030,7 @@ def interactive(
         from InquirerPy import inquirer
     except Exception as exc:
         console.print(f"[red]Interactive mode requires InquirerPy: {exc}[/]")
-        raise typer.Exit(1)
+        raise typer.Exit(1) from exc
 
     while True:
         choice = inquirer.select(

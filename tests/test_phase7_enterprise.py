@@ -602,7 +602,7 @@ class TestNotificationEngine:
         mock_response = MagicMock()
         mock_response.raise_for_status = MagicMock()
 
-        with patch("httpx.AsyncClient") as MockClient:
+        with patch("httpx.AsyncClient") as MockClient:  # noqa: N806
             mock_client_instance = AsyncMock()
             mock_client_instance.post = AsyncMock(return_value=mock_response)
             mock_client_instance.__aenter__ = AsyncMock(return_value=mock_client_instance)

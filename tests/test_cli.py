@@ -179,10 +179,10 @@ def test_findings_filter_type_sarif(cli_runner) -> None:
 
 def test_create_prs_outputs_summary(cli_runner, monkeypatch) -> None:
     class _DummyResult:
-        findings = [1, 2]
-        plans = [1]
-        proposals = []
-        errors = []
+        findings = [1, 2]  # noqa: RUF012
+        plans = [1]  # noqa: RUF012
+        proposals = []  # noqa: RUF012
+        errors = []  # noqa: RUF012
         prs_created = 1
 
     class _DummyPipeline:

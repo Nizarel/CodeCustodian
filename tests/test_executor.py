@@ -544,7 +544,7 @@ class TestGitManager:
     def test_create_branch_name_format(self):
         from codecustodian.executor.git_manager import GitManager
 
-        with patch("codecustodian.executor.git_manager.Repo") as MockRepo:
+        with patch("codecustodian.executor.git_manager.Repo") as MockRepo:  # noqa: N806
             mock_repo = MagicMock()
             mock_repo.active_branch = MagicMock()
             mock_repo.active_branch.__str__ = MagicMock(return_value="main")
@@ -560,7 +560,7 @@ class TestGitManager:
     def test_commit_message_format(self):
         from codecustodian.executor.git_manager import GitManager
 
-        with patch("codecustodian.executor.git_manager.Repo") as MockRepo:
+        with patch("codecustodian.executor.git_manager.Repo") as MockRepo:  # noqa: N806
             mock_repo = MagicMock()
             mock_repo.active_branch = MagicMock()
             mock_repo.active_branch.__str__ = MagicMock(return_value="main")
@@ -585,7 +585,7 @@ class TestGitManager:
     def test_cleanup_returns_to_original(self):
         from codecustodian.executor.git_manager import GitManager
 
-        with patch("codecustodian.executor.git_manager.Repo") as MockRepo:
+        with patch("codecustodian.executor.git_manager.Repo") as MockRepo:  # noqa: N806
             mock_repo = MagicMock()
             mock_repo.active_branch = MagicMock()
             mock_repo.active_branch.__str__ = MagicMock(return_value="main")
@@ -607,7 +607,7 @@ class TestGitManager:
         from codecustodian.exceptions import ExecutorError
         from codecustodian.executor.git_manager import GitManager
 
-        with patch("codecustodian.executor.git_manager.Repo") as MockRepo:
+        with patch("codecustodian.executor.git_manager.Repo") as MockRepo:  # noqa: N806
             mock_repo = MagicMock()
             MockRepo.return_value = mock_repo
             mock_repo.git.push.side_effect = GitCommandError(

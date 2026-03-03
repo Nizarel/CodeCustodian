@@ -166,7 +166,7 @@ def _mock_github_repo():
 
 class TestPullRequestCreator:
     def _make_creator(self, mock_repo=None):
-        with patch("github.Github") as MockGH:
+        with patch("github.Github") as MockGH:  # noqa: N806
             gh = MagicMock()
             repo = mock_repo or _mock_github_repo()
             gh.get_repo.return_value = repo
@@ -457,7 +457,7 @@ class TestPullRequestCreator:
 
 class TestPRInteractionHandler:
     def _make_handler(self, mock_repo=None, feedback_dir=None):
-        with patch("github.Github") as MockGH:
+        with patch("github.Github") as MockGH:  # noqa: N806
             gh = MagicMock()
             repo = mock_repo or _mock_github_repo()
             gh.get_repo.return_value = repo
@@ -637,7 +637,7 @@ class TestPRInteractionHandler:
 
 class TestIssueManager:
     def _make_manager(self, mock_repo=None):
-        with patch("github.Github") as MockGH:
+        with patch("github.Github") as MockGH:  # noqa: N806
             gh = MagicMock()
             repo = mock_repo or _mock_github_repo()
             gh.get_repo.return_value = repo
@@ -747,7 +747,7 @@ class TestIssueManager:
 
 class TestCommentManager:
     def _make_manager(self, mock_repo=None):
-        with patch("github.Github") as MockGH:
+        with patch("github.Github") as MockGH:  # noqa: N806
             gh = MagicMock()
             repo = mock_repo or _mock_github_repo()
             gh.get_repo.return_value = repo
@@ -866,7 +866,7 @@ class TestCommentManager:
 
 class TestGitManagerRepoName:
     def _make_git_manager(self, remote_url=None):
-        with patch("codecustodian.executor.git_manager.Repo") as MockRepo:
+        with patch("codecustodian.executor.git_manager.Repo") as MockRepo:  # noqa: N806
             mock_repo = MagicMock()
             mock_repo.active_branch = MagicMock()
             mock_repo.active_branch.__str__ = MagicMock(return_value="main")
@@ -994,7 +994,7 @@ class TestPipelineCreatePR:
             patch(
                 "codecustodian.executor.git_manager.GitManager.push",
             ),
-            patch("github.Github") as MockGH,
+            patch("github.Github") as MockGH,  # noqa: N806
         ):
             # Setup PR creator mock
             mock_pr = MagicMock()

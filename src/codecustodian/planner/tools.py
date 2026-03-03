@@ -85,8 +85,7 @@ async def get_function_definition(params: GetFunctionParams) -> str:
         return f"Syntax error in {params.file_path}: {exc}"
 
     for node in ast.walk(tree):
-        if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
-            if node.name == params.function_name:
+        if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)) and node.name == params.function_name:
                 lines = source.splitlines()
                 start = max(0, node.lineno - 6)
                 end_line = getattr(node, "end_lineno", node.lineno + 20)
@@ -219,8 +218,7 @@ async def find_test_coverage(params: FindTestCoverageParams) -> str:
             # Find specific test functions that reference it
             tree = ast.parse(source)
             for node in ast.walk(tree):
-                if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
-                    if node.name.startswith("test_"):
+                if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)) and node.name.startswith("test_"):
                         func_body = ast.get_source_segment(source, node) or ""
                         if params.function_name in func_body:
                             results.append(f"{tf}::{node.name}")
@@ -267,15 +265,15 @@ async def get_call_sites(params: GetCallSitesParams) -> str:
             continue
 
         for node in ast.walk(tree):
-            if isinstance(node, ast.Call):
-                # Direct call: foo()
-                if (
+            if isinstance(node, ast.Call) and (
+                (
                     isinstance(node.func, ast.Name)
                     and node.func.id == params.function_name
                 ) or (
                     isinstance(node.func, ast.Attribute)
                     and node.func.attr == params.function_name
-                ):
+                )
+            ):
                     rel = py_file.relative_to(root)
                     sites.append(f"{rel}:{node.lineno}")
 

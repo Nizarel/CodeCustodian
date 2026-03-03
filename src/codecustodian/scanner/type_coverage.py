@@ -62,8 +62,7 @@ class TypeCoverageScanner(BaseScanner):
             for node in ast.walk(tree):
                 if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
                     # Skip private methods unless strict_mode
-                    if not strict_mode:
-                        if node.name.startswith("_") and not node.name.startswith("__"):
+                    if not strict_mode and node.name.startswith("_") and not node.name.startswith("__"):
                             continue
 
                     total_functions += 1

@@ -203,10 +203,9 @@ class TodoCommentScanner(BaseScanner):
             return SeverityLevel.CRITICAL
         if age_days > max_age:
             return SeverityLevel.HIGH
-        if age_days > max_age // 2:
-            # Ensure at least MEDIUM (don't downgrade HIGH tags)
-            if base in (SeverityLevel.LOW, SeverityLevel.INFO):
-                return SeverityLevel.MEDIUM
+        # Ensure at least MEDIUM (don't downgrade HIGH tags)
+        if age_days > max_age // 2 and base in (SeverityLevel.LOW, SeverityLevel.INFO):
+            return SeverityLevel.MEDIUM
         return base
 
     @staticmethod

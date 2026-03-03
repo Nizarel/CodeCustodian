@@ -267,9 +267,11 @@ class TestTodoScanner:
 
             # Mock git blame integration
             mock_blame_map = {1: {"author": "Test User", "author_email": "test@x.com", "age_days": 100}}
-            with patch.object(scanner, "_build_blame_map", return_value=mock_blame_map):
-                with patch.object(scanner, "_get_git_repo", return_value=MagicMock()):
-                    findings = scanner.scan(tmpdir)
+            with (
+                patch.object(scanner, "_build_blame_map", return_value=mock_blame_map),
+                patch.object(scanner, "_get_git_repo", return_value=MagicMock()),
+            ):
+                findings = scanner.scan(tmpdir)
 
             assert len(findings) >= 1
             # Verify the scanner runs without crashing

@@ -22,7 +22,7 @@ from __future__ import annotations
 
 import asyncio
 from pathlib import Path
-from typing import Any
+from typing import Any, ClassVar
 
 from pydantic import BaseModel, Field
 
@@ -72,11 +72,11 @@ class BusinessImpactScorer:
     Each factor is normalised to 0-10 before multiplication.
     """
 
-    CRITICAL_PATTERNS: list[str] = [
+    CRITICAL_PATTERNS: ClassVar[list[str]] = [
         "payment", "auth", "billing", "security", "crypto",
         "checkout", "token", "credential", "session",
     ]
-    REGULATED_PATTERNS: list[str] = [
+    REGULATED_PATTERNS: ClassVar[list[str]] = [
         "pii", "credit_card", "ssn", "hipaa", "gdpr",
         "ferpa", "sox", "pci", "phi", "personal_data",
     ]

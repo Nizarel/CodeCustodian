@@ -16,7 +16,7 @@ import time
 from collections import defaultdict
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, ClassVar
 
 from opentelemetry import trace
 from opentelemetry.trace.status import Status, StatusCode
@@ -206,7 +206,7 @@ class Pipeline:
 
     # ── Cost savings estimation ────────────────────────────────────────
 
-    _EFFORT_HOURS: dict[str, float] = {
+    _EFFORT_HOURS: ClassVar[dict[str, float]] = {
         "deprecated_api": 2.0,
         "todo_comment": 0.5,
         "code_smell": 1.5,
@@ -589,7 +589,7 @@ class Pipeline:
                 context.start_line = start + 1
                 context.end_line = end
                 context.imports = [
-                    l for l in lines if l.strip().startswith(("import ", "from "))
+                    line for line in lines if line.strip().startswith(("import ", "from "))
                 ]
         except Exception as exc:
             logger.debug("Could not read source for %s: %s", finding.file, exc)

@@ -319,8 +319,7 @@ class CodeSmellScanner(BaseScanner):
         # Pass 1: collect defined private names
         defined: dict[str, int] = {}  # name → lineno
         for node in ast.walk(tree):
-            if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)):
-                if node.name.startswith("_") and not node.name.startswith("__"):
+            if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)) and node.name.startswith("_") and not node.name.startswith("__"):
                     defined[node.name] = node.lineno
 
         if not defined:

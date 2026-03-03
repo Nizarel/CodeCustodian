@@ -5,6 +5,7 @@ from __future__ import annotations
 from pathlib import Path
 
 import pytest
+from pydantic import ValidationError
 
 from codecustodian.models import (
     AlternativeSolution,
@@ -131,11 +132,11 @@ class TestRefactoringPlan:
         assert plan.risk_level == RiskLevel.LOW
 
     def test_confidence_bounds(self):
-        with pytest.raises(Exception):
+        with pytest.raises(ValidationError):
             RefactoringPlan(
                 finding_id="x", summary="test", confidence_score=0
             )
-        with pytest.raises(Exception):
+        with pytest.raises(ValidationError):
             RefactoringPlan(
                 finding_id="x", summary="test", confidence_score=11
             )
