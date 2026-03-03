@@ -146,8 +146,14 @@ class CopilotPlannerClient:
             logger.info("Discovered %d available models", len(models))
         return self._available_models if self._available_models is not None else []
 
-    def select_model(self, finding: Any) -> str:
+    def select_model(self, finding: Any, *, preference: str = "") -> str:
         """Route to the appropriate model based on strategy + finding.
+
+        Args:
+            finding: Finding object (used for severity-based routing).
+            preference: Agent-level override (``fast``, ``balanced``,
+                ``reasoning``). When non-empty, takes priority over
+                ``config.model_selection``.
 
         Strategies:
         - ``auto``:  severity critical/high → best available, else mini
@@ -158,7 +164,7 @@ class CopilotPlannerClient:
         When ``list_available_models()`` has been called, validates
         the chosen model exists. Otherwise uses sensible defaults.
         """
-        strategy = self.config.model_selection
+        strategy = preference if preference and preference != "auto" else self.config.model_selection
 
         # Fixed strategies — models queried via list_models() 2026-02
         preferred: dict[str, list[str]] = {
@@ -210,6 +216,8 @@ class CopilotPlannerClient:
         model: str,
         tools: list[Any] | None = None,
         system_prompt: str = "",
+        skill_context: str = "",
+        session_reuse: bool = False,
     ) -> Any:
         """Create a multi-turn Copilot session for refactoring planning.
 
@@ -217,12 +225,21 @@ class CopilotPlannerClient:
             model: Model identifier (e.g. ``"gpt-5.1-codex"``).
             tools: List of ``@define_tool``-decorated tool objects.
             system_prompt: System prompt text (appended to SDK defaults).
+            skill_context: Domain-skill knowledge to prepend to the
+                system prompt (loaded from SKILL.md files).
+            session_reuse: When ``True``, enables ``infinite_sessions``
+                so the session survives across multiple findings.
 
         Returns:
             A ``CopilotSession`` object.
         """
         self._ensure_client()
         from copilot import PermissionHandler  # type: ignore[import-untyped]
+
+        # Compose system prompt: skill knowledge + base prompt
+        full_system_prompt = (
+            f"{skill_context}\n\n{system_prompt}" if skill_context else system_prompt
+        )
 
         session_config: dict[str, Any] = {
             "model": model,
@@ -232,9 +249,15 @@ class CopilotPlannerClient:
             "on_permission_request": PermissionHandler.approve_all,
             "system_message": {
                 "mode": "append",
-                "content": system_prompt,
+                "content": full_system_prompt,
             },
-            "infinite_sessions": {"enabled": False},
+            "infinite_sessions": {
+                "enabled": session_reuse,
+                **({
+                    "background_compaction_threshold": 0.80,
+                    "buffer_exhaustion_threshold": 0.95,
+                } if session_reuse else {}),
+            },
             "hooks": {
                 "on_pre_tool_use": self._on_pre_tool_use,
                 "on_post_tool_use": self._on_post_tool_use,

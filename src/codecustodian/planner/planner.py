@@ -14,7 +14,7 @@ proposal-mode downgrade for low-confidence plans.
 from __future__ import annotations
 
 import json
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 from codecustodian.logging import get_logger
 from codecustodian.models import (
@@ -26,6 +26,7 @@ from codecustodian.models import (
     RefactoringPlan,
     RiskLevel,
 )
+from codecustodian.planner.agents import get_agent_tools, select_agent
 from codecustodian.planner.alternatives import (
     AlternativeGenerator,
     is_complex_finding,
@@ -37,6 +38,7 @@ from codecustodian.planner.prompts import (
     build_context_request_prompt,
     build_finding_prompt,
 )
+from codecustodian.planner.skills import SkillRegistry
 from codecustodian.planner.tools import get_all_tools
 
 if TYPE_CHECKING:
@@ -65,6 +67,12 @@ class Planner:
         self.config = config
         self.client = copilot_client
         self.alt_generator = AlternativeGenerator(copilot_client)
+        # ── Skills & Agents ───────────────────────────────────────────
+        self._skill_registry = SkillRegistry()
+        skill_dir = config.custom_skill_dir or None
+        self._skill_registry.load_skills(skill_dir)
+        # Session pool: agent_name → session (for multi-session reuse)
+        self._session_pool: dict[str, Any] = {}
 
     async def plan_refactoring(
         self,
@@ -74,20 +82,61 @@ class Planner:
         """Create a refactoring plan using a multi-turn Copilot session.
 
         Steps:
-        1. Select model based on finding characteristics
-        2. Create session with tools + system prompt
-        3. Turn 1: context gathering (tool-assisted streaming)
-        4. Turn 2: plan generation (send_and_wait, JSON output)
-        5. Turn 3: alternative generation (conditional)
-        6. Post-process: confidence, reviewer effort, proposal downgrade
+        1. Select agent profile & load domain skills
+        2. Select model (agent preference → finding severity)
+        3. Create or reuse session with composite system prompt
+        4. Turn 1: context gathering (tool-assisted streaming)
+        5. Turn 2: plan generation (send_and_wait, JSON output)
+        6. Turn 3: alternative generation (conditional)
+        7. Post-process: confidence, reviewer effort, proposal downgrade
         """
-        model = self.client.select_model(finding)
-        tools = get_all_tools()
-        session = await self.client.create_session(
-            model=model,
-            tools=tools,
-            system_prompt=SYSTEM_PROMPT,
+        # ── Agent selection ───────────────────────────────────────────
+        agent = select_agent(finding) if self.config.enable_agents else None
+        agent_name = agent.name if agent else "default"
+
+        # ── Skill loading ─────────────────────────────────────────────
+        if agent and agent.skill_names:
+            skills = self._skill_registry.get_skills_by_names(agent.skill_names)
+        else:
+            skills = self._skill_registry.get_skills_for_finding(finding.type.value)
+        skill_context = self._skill_registry.format_skill_context(skills)
+
+        # ── Model selection (agent preference overrides config) ───────
+        preference = agent.model_preference if agent else ""
+        model = self.client.select_model(finding, preference=preference)
+
+        # ── Tool filtering ────────────────────────────────────────────
+        all_tools = get_all_tools()
+        tools = get_agent_tools(agent, all_tools) if agent else all_tools
+
+        # ── Composite system prompt ───────────────────────────────────
+        base_prompt = SYSTEM_PROMPT
+        if agent and agent.system_prompt_overlay:
+            base_prompt = f"{agent.system_prompt_overlay}\n\n{base_prompt}"
+
+        logger.info(
+            "Agent=%s model=%s skills=%d for %s",
+            agent_name,
+            model,
+            len(skills),
+            finding.id,
         )
+
+        # ── Session: reuse from pool or create new ────────────────────
+        session_reuse = self.config.session_reuse and agent is not None
+        session = self._session_pool.get(agent_name) if session_reuse else None
+        created_new = session is None
+
+        if session is None:
+            session = await self.client.create_session(
+                model=model,
+                tools=tools,
+                system_prompt=base_prompt,
+                skill_context=skill_context,
+                session_reuse=session_reuse,
+            )
+            if session_reuse:
+                self._session_pool[agent_name] = session
 
         try:
             # ── Turn 1: Context gathering (tool-assisted) ─────────────
@@ -190,10 +239,29 @@ class Planner:
             return plan
 
         finally:
+            # Only destroy sessions that are NOT pooled for reuse
+            if not session_reuse or not created_new:
+                pass  # pooled session — kept alive for next finding
+            else:
+                # Non-pooled one-off session — clean up immediately
+                pass
+            if not session_reuse:
+                try:
+                    await session.destroy()
+                except Exception:
+                    logger.debug("Session cleanup failed", exc_info=True)
+
+    async def close_sessions(self) -> None:
+        """Destroy all pooled sessions. Call at pipeline shutdown."""
+        for name, session in self._session_pool.items():
             try:
                 await session.destroy()
+                logger.debug("Closed pooled session for agent=%s", name)
             except Exception:
-                logger.debug("Session cleanup failed", exc_info=True)
+                logger.debug(
+                    "Failed to close session for agent=%s", name, exc_info=True
+                )
+        self._session_pool.clear()
 
     # ── Parse helpers ──────────────────────────────────────────────────
 

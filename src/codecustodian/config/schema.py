@@ -259,6 +259,19 @@ class CopilotConfig(BaseModel):
         default=None,
         description="Azure OpenAI BYOK provider. When set, routes through Azure.",
     )
+    # ── SDK showcase — Skills, Agents, Multi-Session ──────────────────
+    enable_agents: bool = Field(
+        default=True,
+        description="Enable agent-based routing (specialized AI personas per finding type)",
+    )
+    custom_skill_dir: str = Field(
+        default="",
+        description="Path to custom SKILL.md directory. Defaults to .copilot_skills/",
+    )
+    session_reuse: bool = Field(
+        default=True,
+        description="Reuse sessions across findings handled by the same agent",
+    )
 
     @field_validator("model_selection")
     @classmethod

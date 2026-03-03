@@ -569,6 +569,7 @@ class Pipeline:
 
                 return result
             finally:
+                await planner.close_sessions()
                 await client.stop()
 
     def _build_code_context(self, finding: Finding) -> CodeContext:

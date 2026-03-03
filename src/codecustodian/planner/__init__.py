@@ -5,6 +5,12 @@ Re-exports the public API so consumers can do::
     from codecustodian.planner import Planner, CopilotPlannerClient
 """
 
+from codecustodian.planner.agents import (
+    AgentProfile,
+    get_agent_tools,
+    list_agents,
+    select_agent,
+)
 from codecustodian.planner.alternatives import (
     AlternativeGenerator,
     generate_alternatives,
@@ -29,13 +35,17 @@ from codecustodian.planner.prompts import (
     build_user_prompt,
     truncate_context,
 )
+from codecustodian.planner.skills import SkillDefinition, SkillRegistry
 from codecustodian.planner.tools import get_all_tools
 
 __all__ = [
+    "AgentProfile",
     "SYSTEM_PROMPT",
     "AlternativeGenerator",
     "CopilotPlannerClient",
     "Planner",
+    "SkillDefinition",
+    "SkillRegistry",
     "ToolAuditEntry",
     "UsageAccumulator",
     "build_alternatives_prompt",
@@ -46,7 +56,10 @@ __all__ = [
     "estimate_reviewer_effort",
     "generate_alternatives",
     "generate_static_alternatives",
+    "get_agent_tools",
     "get_all_tools",
     "is_complex_finding",
+    "list_agents",
+    "select_agent",
     "truncate_context",
 ]
