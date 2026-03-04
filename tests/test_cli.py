@@ -234,8 +234,7 @@ def test_heal_fails_for_missing_log_file(cli_runner) -> None:
         ["heal", "--failure-log", "missing-ci.log", "--output-format", "json"],
     )
     assert result.exit_code != 0
-    combined = (result.stdout or "") + (result.stderr or "")
-    assert "Failure log file not found" in combined
+    assert "Failure log file not found" in result.output
 
 
 def test_review_pr_outputs_json(cli_runner) -> None:
@@ -309,8 +308,7 @@ def test_review_pr_rejects_invalid_block_on_value(cli_runner) -> None:
         ],
     )
     assert result.exit_code != 0
-    combined = (result.stdout or "") + (result.stderr or "")
-    assert "--block-on must only contain" in combined
+    assert "--block-on must only contain" in result.output
 
 
 def test_review_pr_includes_healing_plan(cli_runner, tmp_path: Path) -> None:

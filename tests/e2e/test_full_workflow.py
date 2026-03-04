@@ -725,6 +725,12 @@ class TestSafetyChecksE2E:
         """Safety check passes for clean, simple replacement code."""
         from codecustodian.executor.safety_checks import SafetyCheckRunner
 
+        # Create multi-file repo so blast_radius sees target as <30% of codebase
+        (tmp_path / "src").mkdir()
+        (tmp_path / "src" / "safe_to_delete.py").write_text("x = 1\n")
+        for name in ("app.py", "utils.py", "config.py", "models.py"):
+            (tmp_path / "src" / name).write_text("# module\n")
+
         plan = self._make_plan_with_content(
             "import os\nimport json\n\ndef process(data: dict) -> str:\n"
             "    return json.dumps(data)\n"
@@ -832,8 +838,8 @@ class TestMCPServerLocal:
     """Verify the local MCP server exposes all tools, resources and prompts (Phase 2.7)."""
 
     @pytest.mark.e2e
-    def test_mcp_list_tools_returns_eight(self) -> None:
-        """MCP server exposes exactly 8 tools."""
+    def test_mcp_list_tools_returns_nine(self) -> None:
+        """MCP server exposes exactly 9 tools."""
         from fastmcp import Client
 
         from codecustodian.mcp.server import mcp
@@ -847,13 +853,13 @@ class TestMCPServerLocal:
         expected = {
             "scan_repository", "list_scanners", "plan_refactoring",
             "apply_refactoring", "verify_changes", "create_pull_request",
-            "calculate_roi", "get_business_impact",
+            "calculate_roi", "get_business_impact", "get_blast_radius",
         }
         assert expected == tool_names, f"Missing tools: {expected - tool_names}"
 
     @pytest.mark.e2e
-    def test_mcp_list_scanners_returns_six(self) -> None:
-        """list_scanners tool returns all 6 scanner descriptors."""
+    def test_mcp_list_scanners_returns_seven(self) -> None:
+        """list_scanners tool returns all 7 scanner descriptors."""
         from fastmcp import Client
 
         from codecustodian.mcp.server import mcp
@@ -869,7 +875,8 @@ class TestMCPServerLocal:
             data = data["result"]
         names = {s["name"] for s in data} if isinstance(data, list) else set()
         expected = {"deprecated_apis", "security_patterns", "code_smells",
-                    "todo_comments", "type_coverage", "dependency_upgrades"}
+                    "todo_comments", "type_coverage", "dependency_upgrades",
+                    "architectural_drift"}
         assert expected == names, f"Missing scanners: {expected - names}"
 
     @pytest.mark.e2e
@@ -922,45 +929,50 @@ class TestMCPServerLocal:
     @pytest.mark.e2e
     def test_mcp_resource_version_readable(self) -> None:
         """codecustodian://version resource returns a semver string."""
+        from fastmcp import Client
+
         from codecustodian.mcp.server import mcp
 
-        result = asyncio.run(
-            mcp._resource_manager.read_resource("codecustodian://version")
-        )
-        text = result
-        if hasattr(text, "contents"):
-            text = text.contents[0].text if text.contents else ""
-        assert isinstance(text, str) and "." in text, (
+        async def _run():
+            async with Client(mcp) as client:
+                return await client.read_resource("codecustodian://version")
+
+        result = asyncio.run(_run())
+        text = str(result)
+        assert "." in text, (
             f"Expected semver version string, got: {text!r}"
         )
 
     @pytest.mark.e2e
     def test_mcp_resource_config_readable(self) -> None:
         """codecustodian://config resource returns YAML content."""
+        from fastmcp import Client
+
         from codecustodian.mcp.server import mcp
 
-        result = asyncio.run(
-            mcp._resource_manager.read_resource("codecustodian://config")
-        )
-        text = result
-        if hasattr(text, "contents"):
-            text = text.contents[0].text if text.contents else ""
-        assert isinstance(text, str) and "version" in text.lower(), (
+        async def _run():
+            async with Client(mcp) as client:
+                return await client.read_resource("codecustodian://config")
+
+        result = asyncio.run(_run())
+        text = str(result)
+        assert "version" in text.lower(), (
             f"Expected YAML config with 'version' key, got: {text[:200]!r}"
         )
 
     @pytest.mark.e2e
     def test_mcp_resource_scanners_readable(self) -> None:
         """codecustodian://scanners resource lists scanner names."""
+        from fastmcp import Client
+
         from codecustodian.mcp.server import mcp
 
-        result = asyncio.run(
-            mcp._resource_manager.read_resource("codecustodian://scanners")
-        )
-        text = result
-        if hasattr(text, "contents"):
-            text = text.contents[0].text if text.contents else ""
-        assert isinstance(text, str)
+        async def _run():
+            async with Client(mcp) as client:
+                return await client.read_resource("codecustodian://scanners")
+
+        result = asyncio.run(_run())
+        text = str(result)
         assert "security" in text.lower() or "deprecated" in text.lower(), (
             f"Expected scanner names in resource; got: {text[:200]!r}"
         )
@@ -968,51 +980,47 @@ class TestMCPServerLocal:
     @pytest.mark.e2e
     def test_mcp_resource_config_settings_readable(self) -> None:
         """config://settings resource returns JSON with version key."""
+        from fastmcp import Client
+
         from codecustodian.mcp.server import mcp
 
-        result = asyncio.run(
-            mcp._resource_manager.read_resource("config://settings")
-        )
-        text = result
-        if hasattr(text, "contents"):
-            text = text.contents[0].text if text.contents else ""
-        assert isinstance(text, str)
-        # Should be valid JSON
-        try:
-            data = json.loads(text)
-            assert isinstance(data, dict)
-        except json.JSONDecodeError:
-            # May return default YAML if JSON parse fails -- still acceptable
-            pass
+        async def _run():
+            async with Client(mcp) as client:
+                return await client.read_resource("config://settings")
+
+        result = asyncio.run(_run())
+        text = result[0].text
+        data = json.loads(text)
+        assert isinstance(data, dict)
 
     @pytest.mark.e2e
     def test_mcp_resource_findings_all_readable(self) -> None:
         """findings://myrepo/all URI template resource returns JSON structure."""
+        from fastmcp import Client
+
         from codecustodian.mcp.server import mcp
 
-        result = asyncio.run(
-            mcp._resource_manager.read_resource("findings://myrepo/all")
-        )
-        text = result
-        if hasattr(text, "contents"):
-            text = text.contents[0].text if text.contents else ""
-        assert isinstance(text, str)
-        data = json.loads(text)
+        async def _run():
+            async with Client(mcp) as client:
+                return await client.read_resource("findings://myrepo/all")
+
+        result = asyncio.run(_run())
+        data = json.loads(result[0].text)
         assert "findings" in data and "total" in data
 
     @pytest.mark.e2e
     def test_mcp_resource_dashboard_readable(self) -> None:
         """dashboard://team-alpha/summary resource returns expected structure."""
+        from fastmcp import Client
+
         from codecustodian.mcp.server import mcp
 
-        result = asyncio.run(
-            mcp._resource_manager.read_resource("dashboard://team-alpha/summary")
-        )
-        text = result
-        if hasattr(text, "contents"):
-            text = text.contents[0].text if text.contents else ""
-        assert isinstance(text, str)
-        data = json.loads(text)
+        async def _run():
+            async with Client(mcp) as client:
+                return await client.read_resource("dashboard://team-alpha/summary")
+
+        result = asyncio.run(_run())
+        data = json.loads(result[0].text)
         assert "total_findings" in data
         assert "by_severity" in data
         assert "by_type" in data
@@ -1036,24 +1044,26 @@ class TestMCPServerLocal:
     @pytest.mark.e2e
     def test_mcp_prompt_refactor_finding_invocable(self) -> None:
         """refactor_finding prompt renders messages for a test finding."""
+        from fastmcp import Client
+
         from codecustodian.mcp.server import mcp
 
-        result = asyncio.run(
-            mcp._prompt_manager.render_prompt(
-                "refactor_finding",
-                {
-                    "finding_type": "deprecated_api",
-                    "file_path": "src/data.py",
-                    "line": "42",
-                    "description": "df.append is deprecated",
-                },
-            )
-        )
-        messages = result
-        if hasattr(result, "messages"):
-            messages = result.messages
+        async def _run():
+            async with Client(mcp) as client:
+                return await client.get_prompt(
+                    "refactor_finding",
+                    {
+                        "finding_type": "deprecated_api",
+                        "file_path": "src/data.py",
+                        "line": "42",
+                        "description": "df.append is deprecated",
+                    },
+                )
+
+        result = asyncio.run(_run())
+        messages = result.messages
         assert messages, "Expected at least one message from refactor_finding prompt"
-        text = messages[0].content.text if hasattr(messages[0].content, "text") else str(messages[0])
+        text = messages[0].content.text
         assert "deprecated_api" in text or "src/data.py" in text or "df.append" in text, (
             f"Expected finding info in prompt text; got: {text[:300]!r}"
         )
