@@ -114,3 +114,26 @@ def register_prompts(mcp: FastMCP) -> None:
             "5. CI/CD integration steps (GitHub Actions)\n"
             "6. Expected initial scan results and how to interpret them"
         )
+
+    # ── 5. forecast_report ─────────────────────────────────────────────
+
+    @mcp.prompt()
+    def forecast_report(repo_name: str, period: str = "quarterly") -> str:
+        """Generate a prompt for interpreting debt forecasts.
+
+        Args:
+            repo_name: Repository or project name.
+            period: Time horizon (monthly / quarterly / yearly).
+        """
+        return (
+            f"Analyse the **{period}** technical debt forecast for "
+            f"**{repo_name}** and produce an executive summary.\n\n"
+            "Include:\n"
+            "1. Current trend (improving / stable / worsening) with slope data\n"
+            "2. Predicted findings at the end of the period\n"
+            "3. Confidence interval and data quality assessment\n"
+            "4. Top hotspot directories with growing debt\n"
+            "5. Recommended sprint-level remediation priorities\n"
+            "6. ROI projection if top hotspots are addressed\n"
+            "7. Comparison with previous forecast (if available)"
+        )

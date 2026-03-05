@@ -50,6 +50,7 @@ class ScanCache:
         self._ttl = ttl_seconds
         self._findings: dict[str, _Entry] = {}
         self._plans: dict[str, _Entry] = {}
+        self._forecasts: dict[str, _Entry] = {}
         self._lock = asyncio.Lock()
 
     # ── Findings ───────────────────────────────────────────────────────
@@ -103,6 +104,22 @@ class ScanCache:
             self._purge_expired(self._plans)
             return [e.value for e in self._plans.values()]
 
+    # ── Forecasts ──────────────────────────────────────────────────────
+
+    async def store_forecast(self, repo_key: str, forecast: Any) -> None:
+        """Store a forecast keyed by repo identifier."""
+        async with self._lock:
+            self._forecasts[repo_key] = _Entry(forecast)
+            logger.debug("Cached forecast for %s", repo_key)
+
+    async def get_forecast(self, repo_key: str) -> Any | None:
+        """Retrieve a forecast by repo key, or ``None`` if missing/expired."""
+        async with self._lock:
+            entry = self._forecasts.get(repo_key)
+            if entry is None or entry.expired(self._ttl):
+                return None
+            return entry.value
+
     # ── Housekeeping ───────────────────────────────────────────────────
 
     def _purge_expired(self, store: dict[str, _Entry]) -> None:
@@ -116,6 +133,7 @@ class ScanCache:
         async with self._lock:
             self._findings.clear()
             self._plans.clear()
+            self._forecasts.clear()
             logger.debug("Cache cleared")
 
     async def stats(self) -> dict[str, int]:
@@ -123,9 +141,11 @@ class ScanCache:
         async with self._lock:
             self._purge_expired(self._findings)
             self._purge_expired(self._plans)
+            self._purge_expired(self._forecasts)
             return {
                 "findings": len(self._findings),
                 "plans": len(self._plans),
+                "forecasts": len(self._forecasts),
             }
 
 

@@ -151,6 +151,36 @@ AGENT_REGISTRY: dict[str, AgentProfile] = {
         model_preference="auto",
         skill_names=["general-refactoring"],
     ),
+    "forecasting-analyst": AgentProfile(
+        name="forecasting-analyst",
+        description="Predictive debt trend analyst — interprets forecasts and recommends sprint priorities",
+        system_prompt_overlay=(
+            "You are a forecasting-analyst agent. Focus on:\n"
+            "- Interpreting debt trend slopes and confidence intervals\n"
+            "- Identifying hotspot directories with growing technical debt\n"
+            "- Recommending sprint-level remediation priorities\n"
+            "- Calculating ROI of debt reduction based on velocity data\n"
+            "- Communicating forecasts clearly for engineering leadership\n"
+            "- Setting data-quality thresholds (minimum snapshots, outlier handling)\n"
+        ),
+        model_preference="reasoning",
+        skill_names=["debt-forecasting"],
+    ),
+    "reachability-analyst": AgentProfile(
+        name="reachability-analyst",
+        description="Code reachability and attack-surface analyst for entry-point-aware prioritisation",
+        system_prompt_overlay=(
+            "You are a reachability-analyst agent. Focus on:\n"
+            "- Determining whether findings are reachable from entry points\n"
+            "- Identifying the shortest call chain from each entry point\n"
+            "- Escalating severity for findings on security-sensitive paths\n"
+            "- Flagging dynamic imports and circular dependencies\n"
+            "- De-prioritising internal-only and test-only findings\n"
+            "- Recommending remediation order based on exposure and fan-in\n"
+        ),
+        model_preference="balanced",
+        skill_names=["reachability-analysis", "security-remediation"],
+    ),
 }
 
 
@@ -179,6 +209,15 @@ def select_agent(finding: Finding) -> AgentProfile:
     profile = AGENT_REGISTRY[agent_name]
     logger.debug("Selected agent '%s' for finding type '%s'", profile.name, type_value)
     return profile
+
+
+def get_agent_by_name(name: str) -> AgentProfile | None:
+    """Look up an agent profile by name.
+
+    Useful for advisory agents (e.g. ``forecasting-analyst``) that are
+    not mapped to a specific ``FindingType`` and must be invoked by name.
+    """
+    return AGENT_REGISTRY.get(name)
 
 
 def get_agent_tools(

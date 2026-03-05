@@ -291,3 +291,113 @@ class DependencyUpgradeScanner(BaseScanner):
             }
 
         return recommendations
+
+    # ── Live PyPI intelligence (v0.14.0) ───────────────────────────────
+
+    @staticmethod
+    async def check_pypi(
+        package: str,
+        timeout: int = 10,
+    ) -> dict[str, str | None]:
+        """Query PyPI JSON API for the latest version of *package*.
+
+        Returns a dict with ``latest_version``, ``release_date``,
+        ``home_page``, and ``changelog_url``.  Returns empty strings
+        on network errors — never raises.
+        """
+        import httpx
+
+        url = f"https://pypi.org/pypi/{package}/json"
+        try:
+            async with httpx.AsyncClient(timeout=timeout) as client:
+                resp = await client.get(url)
+                resp.raise_for_status()
+                data = resp.json()
+        except Exception as exc:
+            logger.debug("PyPI lookup failed for %s: %s", package, exc)
+            return {
+                "latest_version": None,
+                "release_date": None,
+                "home_page": None,
+                "changelog_url": None,
+            }
+
+        info = data.get("info", {})
+        latest = info.get("version", "")
+        home_page = info.get("home_page", "") or info.get("project_url", "")
+        project_urls = info.get("project_urls") or {}
+        changelog_url = (
+            project_urls.get("Changelog")
+            or project_urls.get("Changes")
+            or project_urls.get("Release Notes")
+            or ""
+        )
+
+        # Get release date of the latest version
+        releases = data.get("releases", {})
+        release_date = None
+        latest_uploads = releases.get(latest)
+        if latest_uploads:
+            upload = latest_uploads[0].get("upload_time_iso_8601", "")
+            if upload:
+                release_date = upload[:10]  # YYYY-MM-DD
+
+        return {
+            "latest_version": latest,
+            "release_date": release_date,
+            "home_page": home_page,
+            "changelog_url": changelog_url,
+        }
+
+    async def scan_with_live_check(
+        self,
+        repo_path: str | Path,
+        timeout: int = 10,
+    ) -> list[Finding]:
+        """Run the standard scan, then enrich findings with live PyPI data.
+
+        Only called when ``live_pypi`` is enabled in config.  Adds
+        ``pypi_latest``, ``pypi_release_date``, ``major_version_jump``,
+        and ``changelog_url`` to each finding's metadata.
+        """
+        findings = self.scan(repo_path)
+
+        # Collect unique packages from findings
+        packages: set[str] = set()
+        for f in findings:
+            pkg = f.metadata.get("package")
+            if pkg:
+                packages.add(pkg)
+
+        if not packages:
+            return findings
+
+        # Query PyPI for each unique package
+        pypi_cache: dict[str, dict[str, str | None]] = {}
+        for pkg in packages:
+            pypi_cache[pkg] = await self.check_pypi(pkg, timeout=timeout)
+
+        # Enrich findings
+        for f in findings:
+            pkg = f.metadata.get("package")
+            if not pkg or pkg not in pypi_cache:
+                continue
+
+            pypi_info = pypi_cache[pkg]
+            f.metadata["pypi_latest"] = pypi_info["latest_version"]
+            f.metadata["pypi_release_date"] = pypi_info["release_date"]
+            f.metadata["changelog_url"] = pypi_info["changelog_url"]
+
+            # Detect major version jump
+            if pypi_info["latest_version"] and f.metadata.get("current_spec"):
+                current_pin = _PIN_PATTERN.search(f.metadata["current_spec"])
+                if current_pin:
+                    current_major = _parse_version(current_pin.group(1))[0]
+                    latest_major = _parse_version(pypi_info["latest_version"])[0]
+                    f.metadata["major_version_jump"] = latest_major > current_major
+                else:
+                    f.metadata["major_version_jump"] = False
+            else:
+                f.metadata["major_version_jump"] = False
+
+        return findings

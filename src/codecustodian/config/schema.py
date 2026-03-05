@@ -100,6 +100,16 @@ class DependencyUpgradeScannerConfig(BaseModel):
             "poetry.lock",
         ]
     )
+    live_pypi: bool = Field(
+        default=False,
+        description="Query PyPI for latest versions (requires network access)",
+    )
+    pypi_timeout: int = Field(
+        default=10, ge=1, description="Timeout in seconds for PyPI API calls"
+    )
+    cache_ttl_hours: int = Field(
+        default=24, ge=1, description="Cache TTL for PyPI responses in hours"
+    )
 
 
 class ScannersConfig(BaseModel):
@@ -500,6 +510,31 @@ class ApprovalConfig(BaseModel):
     )
 
 
+# ── v0.14.0 Config ────────────────────────────────────────────────────────
+
+
+class ForecastingConfig(BaseModel):
+    """Predictive debt forecasting configuration."""
+
+    enabled: bool = True
+    snapshot_dir: str = ".codecustodian-cache/snapshots"
+    forecast_horizon_days: int = Field(
+        default=90, ge=7, description="Number of days to forecast ahead"
+    )
+    min_snapshots: int = Field(
+        default=3, ge=2, description="Minimum snapshots required for forecasting"
+    )
+
+
+class OnboardingConfig(BaseModel):
+    """Enhanced onboarding configuration."""
+
+    auto_detect_language: bool = True
+    auto_detect_ci: bool = True
+    generate_workflow: bool = True
+    health_check: bool = True
+
+
 # ── Root Config ────────────────────────────────────────────────────────────
 
 
@@ -521,6 +556,9 @@ class CodeCustodianConfig(BaseModel):
     sla: SLAConfig = Field(default_factory=SLAConfig)
     learning: LearningConfig = Field(default_factory=LearningConfig)
     business_impact: BusinessImpactConfig = Field(default_factory=BusinessImpactConfig)
+    # ── NEW — v0.14.0 config sections ────────────────────────────────
+    forecasting: ForecastingConfig = Field(default_factory=ForecastingConfig)
+    onboarding: OnboardingConfig = Field(default_factory=OnboardingConfig)
 
     @classmethod
     def from_file(cls, path: str | Path) -> CodeCustodianConfig:

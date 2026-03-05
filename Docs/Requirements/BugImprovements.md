@@ -8,8 +8,8 @@
 
 | Change | SDK Version | Impact on CodeCustodian | Action Needed |
 |---|---|---|---|
-| `CopilotClient.stop()` now raises `ExceptionGroup[StopError]` instead of returning a list | v0.1.29 | **HIGH** — Our pipeline.py calls `await client.stop()` in a bare `finally` block with no `ExceptionGroup` handling. If sessions fail to destroy, we'll get an unhandled `ExceptionGroup`. | Wrap in `try/except*` or catch `ExceptionGroup` |
-| `on_permission_request` handler **required** on `create_session()` / `resume_session()` (deny-all by default) | v0.1.28 | **CRITICAL** — Our copilot_client.py `create_session()` **does NOT pass `on_permission_request`** in the session config. The SDK will raise `ValueError` immediately. | Must add `"on_permission_request": PermissionHandler.approve_all` to session config |
+| `CopilotClient.stop()` now raises `ExceptionGroup[StopError]` instead of returning a list | v0.1.29 | **HIGH** — Our pipeline.py calls `await client.stop()` in a bare `finally` block with no `ExceptionGroup` handling. If sessions fail to destroy, we'll get an unhandled `ExceptionGroup`. | ✅ **FIXED in v0.13.0** — Wrapped in `try/except*` with `ExceptionGroup` handling |
+| `on_permission_request` handler **required** on `create_session()` / `resume_session()` (deny-all by default) | v0.1.28 | **CRITICAL** — Our copilot_client.py `create_session()` **does NOT pass `on_permission_request`** in the session config. The SDK will raise `ValueError` immediately. | ✅ **FIXED in v0.13.0** — Added `PermissionHandler.approve_all` to session config |
 | `typing-extensions` dropped from dependencies | v0.1.29 | Low — We don't depend on it transitively through the SDK | None |
 | Min Python bumped to 3.11 | v0.1.28 | None — We already target 3.11+ | None |
 | 30s hardcoded timeout removed from `JsonRpcClient.request()` | v0.1.28 | **Positive** — Our long-running planning turns won't hit an unexpected 30s wall anymore. `send_and_wait()` default is now 60s and configurable | Monitor for hangs |

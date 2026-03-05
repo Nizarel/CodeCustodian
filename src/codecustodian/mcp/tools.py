@@ -1,8 +1,9 @@
 """MCP tool definitions for the CodeCustodian server.
 
-Nine tools exposed via FastMCP covering the full pipeline:
-scan → plan → apply → verify → PR, plus read-only analytics
-and blast-radius impact analysis.
+Twelve tools exposed via FastMCP covering the full pipeline:
+scan → plan → apply → verify → PR, plus read-only analytics,
+blast-radius impact analysis, debt forecasting, live PyPI checks,
+and code reachability analysis.
 
 All tools use ``Context`` for progress reporting and logging, and carry
 ``ToolAnnotations`` to communicate intent to MCP clients.
@@ -551,3 +552,168 @@ def register_tools(mcp: FastMCP) -> None:
             )
 
         return report.model_dump(mode="json")
+
+    # ── 10. get_debt_forecast ──────────────────────────────────────────
+
+    @mcp.tool(annotations=ToolAnnotations(readOnlyHint=True))
+    async def get_debt_forecast(
+        repo_path: str = ".",
+        horizon_days: int = 90,
+        ctx: Context = None,  # type: ignore[assignment]
+    ) -> dict:
+        """Forecast technical debt trends for a repository.
+
+        Uses historical snapshots to predict future finding counts,
+        identify hotspot directories, and recommend remediation actions.
+        If no prior snapshots exist, a baseline snapshot is recorded
+        from the current scan cache.
+
+        Args:
+            repo_path: Path to repository root.
+            horizon_days: Number of days to forecast ahead (default 90).
+        """
+        from codecustodian.intelligence.forecasting import PredictiveDebtForecaster
+        from codecustodian.mcp.cache import scan_cache
+
+        if ctx:
+            await ctx.info("Loading snapshots and computing forecast…")
+
+        forecaster = PredictiveDebtForecaster()
+
+        # If no snapshots exist yet, record one from cached findings
+        existing = forecaster.load_snapshots(repo_path)
+        if not existing:
+            findings = await scan_cache.list_findings()
+            if findings:
+                forecaster.record_snapshot(findings, repo_path)
+                if ctx:
+                    await ctx.info("Recorded baseline snapshot from current scan")
+
+        try:
+            forecast = forecaster.forecast(repo_path, horizon_days=horizon_days)
+        except ValueError as exc:
+            return {"error": str(exc), "hint": "Run scan_repository multiple times to build history"}
+
+        # Cache the forecast
+        await scan_cache.store_forecast(repo_path, forecast)
+
+        if ctx:
+            await ctx.info(
+                f"Forecast: {forecast.predicted_findings} findings in {horizon_days}d "
+                f"(trend: {forecast.trend})"
+            )
+
+        return forecast.model_dump(mode="json")
+
+    # ── 11. check_pypi_versions ────────────────────────────────────────
+
+    @mcp.tool(annotations=ToolAnnotations(readOnlyHint=True))
+    async def check_pypi_versions(
+        repo_path: str = ".",
+        timeout: int = 10,
+        ctx: Context = None,  # type: ignore[assignment]
+    ) -> dict:
+        """Live-check PyPI for outdated dependencies in the repository.
+
+        Runs the dependency upgrade scanner and enriches each finding
+        with the latest PyPI version, release date, and whether a
+        major version jump is required.
+
+        Args:
+            repo_path: Path to repository root.
+            timeout: HTTP timeout in seconds for PyPI queries.
+        """
+        from codecustodian.scanner.dependency_upgrades import DependencyUpgradeScanner
+
+        if ctx:
+            await ctx.info("Scanning dependencies and checking PyPI…")
+
+        scanner = DependencyUpgradeScanner()
+        findings = await scanner.scan_with_live_check(repo_path, timeout=timeout)
+
+        enriched = []
+        for f in findings:
+            data = f.model_dump(mode="json")
+            data["pypi_latest"] = f.metadata.get("pypi_latest")
+            data["major_version_jump"] = f.metadata.get("major_version_jump", False)
+            enriched.append(data)
+
+        major_jumps = sum(1 for f in findings if f.metadata.get("major_version_jump"))
+
+        if ctx:
+            await ctx.info(
+                f"Found {len(findings)} dependency issues, {major_jumps} with major version jumps"
+            )
+
+        return {
+            "total": len(enriched),
+            "major_version_jumps": major_jumps,
+            "findings": enriched[:50],
+        }
+
+    # ── 12. get_reachability_analysis ──────────────────────────────────
+
+    @mcp.tool(annotations=ToolAnnotations(readOnlyHint=True))
+    async def get_reachability_analysis(
+        finding_id: str | None = None,
+        repo_path: str = ".",
+        ctx: Context = None,  # type: ignore[assignment]
+    ) -> dict:
+        """Analyse code reachability from entry points.
+
+        When ``finding_id`` is provided, analyses that specific finding.
+        Otherwise analyses all cached findings and returns a summary.
+
+        Args:
+            finding_id: Optional finding ID to analyse specifically.
+            repo_path: Path to repository root.
+        """
+        from codecustodian.intelligence.reachability import ReachabilityAnalyzer
+        from codecustodian.mcp.cache import scan_cache
+
+        if ctx:
+            await ctx.info("Building import graph and detecting entry points…")
+
+        analyzer = ReachabilityAnalyzer(repo_path)
+        analyzer.build_graph()
+        entry_points = analyzer.detect_entry_points()
+
+        if finding_id:
+            finding = await scan_cache.get_finding(finding_id)
+            if finding is None:
+                return {"error": f"Finding '{finding_id}' not in cache"}
+
+            result = analyzer.analyze_finding(finding)
+
+            if ctx:
+                await ctx.info(
+                    f"Finding is {result.reachability_tag} "
+                    f"({len(result.entry_points)} entry points reach it)"
+                )
+
+            return {
+                "finding_id": finding_id,
+                "result": result.model_dump(mode="json"),
+                "entry_points": [ep.model_dump(mode="json") for ep in entry_points],
+            }
+
+        # Batch analysis of all cached findings
+        findings = await scan_cache.list_findings()
+        results = analyzer.analyze_findings(findings)
+
+        reachable = sum(1 for r in results if r.is_reachable)
+        entry_count = sum(1 for r in results if r.reachability_tag == "entry-point")
+
+        if ctx:
+            await ctx.info(
+                f"{reachable}/{len(results)} findings reachable, "
+                f"{entry_count} in entry points"
+            )
+
+        return {
+            "total_findings": len(results),
+            "reachable": reachable,
+            "entry_point_findings": entry_count,
+            "entry_points": [ep.model_dump(mode="json") for ep in entry_points],
+            "results": [r.model_dump(mode="json") for r in results[:50]],
+        }

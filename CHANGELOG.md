@@ -6,6 +6,84 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
 
+## [0.14.0] — 2026-03-04
+
+### Added — Phase 14: Production Intelligence & SDK Hardening
+
+#### Predictive Debt Forecasting
+- `PredictiveDebtForecaster` in `intelligence/forecasting.py`: records time-series
+  snapshots of scan results, applies pure-Python linear regression, and projects
+  future finding counts with confidence intervals
+- `DebtSnapshot` and `DebtForecast` Pydantic models in `models.py`
+- Trend classification (improving / stable / worsening) with configurable slope
+  thresholds, hotspot directory identification, and recommended remediation actions
+- `ForecastingConfig` in `config/schema.py` with `snapshot_dir`, `forecast_horizon_days`,
+  `min_snapshots` settings
+
+#### Code Reachability Analysis
+- `ReachabilityAnalyzer` in `intelligence/reachability.py`: AST-based import graph
+  builder with BFS path tracing from entry points to finding locations
+- Framework-aware entry-point detection: Flask (`@app.route`), FastAPI (`@router.get`),
+  Django (class-based views), Lambda (`handler(event, context)`), CLI (`__main__`)
+- `ReachabilityResult` model with `reachability_tag` (entry-point / reachable /
+  internal-only) for severity-aware prioritisation
+- `EntryPoint` model for structured entry-point metadata
+
+#### Live PyPI Version Intelligence
+- `check_pypi()` async method on `DependencyUpgradeScanner`: queries PyPI JSON API
+  via `httpx.AsyncClient` for latest version, release date, and changelog URL
+- `scan_with_live_check()` enriches scan findings with `pypi_latest`,
+  `pypi_release_date`, `major_version_jump`, and `changelog_url` metadata
+- `DependencyUpgradeScannerConfig` extended with `live_pypi`, `pypi_timeout`,
+  `cache_ttl_hours` fields
+
+#### Enhanced Onboarding
+- 6 new detection methods on `ProjectAnalyzer`: `_detect_languages()`,
+  `_detect_package_managers()`, `_detect_test_frameworks()`, `_detect_ci_platform()`,
+  `_detect_linters()`, `_detect_sensitive_paths()`
+- `recommend_template()` auto-selects policy template based on project analysis
+  (security_first for auth/payment code, deprecations_first for large codebases)
+- `OnboardingManager.onboard_repo()`: auto-template, sensitive-path population,
+  GitHub Actions workflow generation, health check validation
+- `OnboardingConfig` in `config/schema.py` with auto-detection toggles
+
+#### Advisory Agent Profiles
+- 2 new advisory agents in `planner/agents.py`: `forecasting-analyst` (reasoning
+  model, debt-forecasting skill) and `reachability-analyst` (balanced model,
+  reachability-analysis + security-remediation skills)
+- `get_agent_by_name()` helper for invoking advisory agents directly (not via
+  finding-type routing)
+- 9 total agent profiles (7 finding-mapped + 2 advisory)
+
+#### Domain Skills (3 New Knowledge Files)
+- `.copilot_skills/debt-forecasting/SKILL.md`: trend interpretation, velocity
+  optimisation, sprint planning, forecasting best practices
+- `.copilot_skills/live-dependency-intelligence/SKILL.md`: PyPI semver analysis,
+  changelog interpretation, migration planning, transitive risk
+- `.copilot_skills/reachability-analysis/SKILL.md`: entry-point patterns, call
+  graph traversal, attack-surface analysis, remediation prioritisation
+
+#### MCP Server Expansion (12 Tools, 5 Prompts)
+- 3 new read-only tools: `get_debt_forecast`, `check_pypi_versions`,
+  `get_reachability_analysis`
+- New `forecast_report` prompt for executive forecast summaries
+- Dashboard resource enhanced with forecast trend data and hotspot directories
+- Forecast cache layer in `cache.py`: `store_forecast()`, `get_forecast()`, TTL-based
+
+### Changed
+- `OnboardingManager.onboard_repo()` default template: `"full_scan"` → `"auto"`
+- `ScanCache`: new `_forecasts` dict + methods, updated `stats()`/`clear()`
+- `intelligence/__init__.py`: exports `PredictiveDebtForecaster`, `ReachabilityAnalyzer`
+
+### Tests
+- 3 new test files: `test_forecasting.py`, `test_reachability.py`, `test_live_pypi.py`
+- Extended `test_onboarding.py` with 10 new detection method tests
+- Extended `test_skills_agents.py` with 7 new advisory agent tests
+- Updated `test_mcp_server.py` and `test_full_workflow.py` for 12 tools / 5 prompts
+- **766 unit/integration tests + 98 e2e tests passing**, zero regressions
+
+---
+
 ## [0.13.0] — 2026-03-03
 
 ### Added — Phase 13: SDK Showcase — Domain Skills, Custom Agents, Multi-Session

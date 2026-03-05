@@ -439,3 +439,76 @@ class PipelineResult(BaseModel):
     @property
     def prs_created(self) -> int:
         return len(self.pull_requests)
+
+
+# ── v0.14.0 — Production Intelligence Models ──────────────────────────────
+
+
+class DebtSnapshot(BaseModel):
+    """Point-in-time snapshot of technical debt state for trend analysis."""
+
+    model_config = ConfigDict(extra="ignore", validate_assignment=True)
+
+    date: datetime = Field(default_factory=lambda: datetime.now(UTC))
+    repo_path: str = "."
+    total_findings: int = 0
+    by_type: dict[str, int] = Field(default_factory=dict)
+    by_severity: dict[str, int] = Field(default_factory=dict)
+    churn_rate: float = Field(default=0.0, ge=0.0, description="File churn rate (changes/week)")
+    complexity_avg: float = Field(default=0.0, ge=0.0, description="Average cyclomatic complexity")
+    coverage_pct: float = Field(default=0.0, ge=0.0, le=100.0, description="Test coverage %")
+
+
+class DebtForecast(BaseModel):
+    """Predicted future state of technical debt from trend analysis."""
+
+    model_config = ConfigDict(extra="ignore", validate_assignment=True)
+
+    forecast_date: datetime = Field(default_factory=lambda: datetime.now(UTC))
+    predicted_findings: int = Field(default=0, ge=0)
+    predicted_by_severity: dict[str, int] = Field(default_factory=dict)
+    confidence_interval: tuple[int, int] = Field(
+        default=(0, 0), description="(lower_bound, upper_bound) for predicted findings"
+    )
+    trend: str = Field(
+        default="stable", description="improving | stable | worsening"
+    )
+    hotspot_directories: list[str] = Field(default_factory=list)
+    recommended_actions: list[str] = Field(default_factory=list)
+    snapshots_used: int = Field(default=0, ge=0, description="Number of snapshots used")
+    slope: float = Field(default=0.0, description="Linear regression slope (findings/day)")
+
+    @field_validator("trend")
+    @classmethod
+    def _validate_trend(cls, v: str) -> str:
+        allowed = {"improving", "stable", "worsening"}
+        if v not in allowed:
+            raise ValueError(f"trend must be one of {allowed}")
+        return v
+
+
+class ReachabilityResult(BaseModel):
+    """Reachability analysis result for a single finding."""
+
+    model_config = ConfigDict(extra="ignore", validate_assignment=True)
+
+    finding_id: str
+    entry_points: list[str] = Field(default_factory=list)
+    call_chains: list[list[str]] = Field(
+        default_factory=list, description="Paths from entry points to the finding's module"
+    )
+    is_reachable: bool = False
+    reachability_tag: str = Field(
+        default="internal_only", description="reachable | internal_only"
+    )
+    framework: str = Field(
+        default="unknown", description="Detected framework: flask | fastapi | django | lambda | unknown"
+    )
+
+    @field_validator("reachability_tag")
+    @classmethod
+    def _validate_tag(cls, v: str) -> str:
+        allowed = {"reachable", "internal_only"}
+        if v not in allowed:
+            raise ValueError(f"reachability_tag must be one of {allowed}")
+        return v

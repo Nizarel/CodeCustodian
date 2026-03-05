@@ -99,12 +99,28 @@ def register_resources(mcp: FastMCP) -> None:
 
         cache_stats = await scan_cache.stats()
 
+        # Include forecast data if available
+        forecast = await scan_cache.get_forecast(team_name)
+        forecast_summary = None
+        if forecast is not None:
+            forecast_data = (
+                forecast.model_dump(mode="json")
+                if hasattr(forecast, "model_dump")
+                else forecast
+            )
+            forecast_summary = {
+                "trend": forecast_data.get("trend", "unknown"),
+                "predicted_findings": forecast_data.get("predicted_findings"),
+                "hotspot_directories": forecast_data.get("hotspot_directories", []),
+            }
+
         dashboard = {
             "team": team_name,
             "total_findings": len(findings),
             "by_severity": by_severity,
             "by_type": by_type,
             "plans_cached": cache_stats.get("plans", 0),
+            "forecast": forecast_summary,
         }
         return json.dumps(dashboard, indent=2)
 
@@ -117,3 +133,21 @@ def register_resources(mcp: FastMCP) -> None:
         catalog = registry.list_catalog()
         lines = [f"- {entry['name']}: {entry['description']}" for entry in catalog]
         return "\n".join(lines) if lines else "No scanners registered."
+
+    @mcp.resource("forecasting://{repo_name}/latest")
+    async def get_latest_forecast(repo_name: str) -> str:
+        """Return the latest cached debt forecast for a repository.
+
+        Populated by calling ``get_debt_forecast``.  Returns trend,
+        predicted findings, hotspots, and recommended actions.
+        """
+        from codecustodian.mcp.cache import scan_cache
+
+        forecast = await scan_cache.get_forecast(repo_name)
+        if forecast is None:
+            return json.dumps(
+                {"repo": repo_name, "error": "No forecast cached. Run get_debt_forecast first."}
+            )
+
+        data = forecast.model_dump(mode="json") if hasattr(forecast, "model_dump") else forecast
+        return json.dumps({"repo": repo_name, "forecast": data}, indent=2)

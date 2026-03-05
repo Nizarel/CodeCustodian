@@ -83,6 +83,9 @@ class TestMCPServerStructure:
             "calculate_roi",
             "get_business_impact",
             "get_blast_radius",
+            "get_debt_forecast",
+            "check_pypi_versions",
+            "get_reachability_analysis",
         }
         assert expected == names
 
@@ -118,7 +121,7 @@ class TestMCPServerStructure:
             prompts = await client.list_prompts()
             names = {p.name for p in prompts}
 
-        expected = {"refactor_finding", "scan_summary", "roi_report", "onboard_repo"}
+        expected = {"refactor_finding", "scan_summary", "roi_report", "onboard_repo", "forecast_report"}
         assert expected == names
 
 
@@ -145,6 +148,9 @@ class TestToolAnnotations:
             "calculate_roi",
             "get_business_impact",
             "get_blast_radius",
+            "get_debt_forecast",
+            "check_pypi_versions",
+            "get_reachability_analysis",
         }
         for t in tools:
             if t.name in readonly_names:

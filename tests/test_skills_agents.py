@@ -331,7 +331,9 @@ class TestAgentProfiles:
         agents = list_agents()
         assert "security-auditor" in agents
         assert "general-refactorer" in agents
-        assert len(agents) == 7
+        assert "forecasting-analyst" in agents
+        assert "reachability-analyst" in agents
+        assert len(agents) == 9
 
     def test_agent_profile_model(self) -> None:
         profile = AgentProfile(
@@ -344,6 +346,35 @@ class TestAgentProfiles:
         )
         assert profile.name == "test-agent"
         assert profile.model_preference == "balanced"
+
+    def test_forecasting_analyst_profile(self) -> None:
+        profile = AGENT_REGISTRY["forecasting-analyst"]
+        assert profile.model_preference == "reasoning"
+        assert "debt-forecasting" in profile.skill_names
+        assert "debt" in profile.description.lower()
+
+    def test_reachability_analyst_profile(self) -> None:
+        profile = AGENT_REGISTRY["reachability-analyst"]
+        assert profile.model_preference == "balanced"
+        assert "reachability-analysis" in profile.skill_names
+        assert "security-remediation" in profile.skill_names
+
+    def test_get_agent_by_name_exists(self) -> None:
+        from codecustodian.planner.agents import get_agent_by_name
+
+        profile = get_agent_by_name("forecasting-analyst")
+        assert profile is not None
+        assert profile.name == "forecasting-analyst"
+
+    def test_get_agent_by_name_missing(self) -> None:
+        from codecustodian.planner.agents import get_agent_by_name
+
+        assert get_agent_by_name("nonexistent-agent") is None
+
+    def test_advisory_agents_not_in_finding_map(self) -> None:
+        """Advisory agents are invoked by name, not by FindingType."""
+        assert "forecasting-analyst" not in FINDING_TYPE_AGENT_MAP.values()
+        assert "reachability-analyst" not in FINDING_TYPE_AGENT_MAP.values()
 
 
 # ═══════════════════════════════════════════════════════════════════════════

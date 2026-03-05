@@ -2437,6 +2437,274 @@ gantt
 
 ---
 
+## 21. Production Intelligence & SDK Hardening (v0.14.0)
+
+**Version:** 0.14.0 | **Tests:** 31 new tests across 3 files + updated assertions in 4 existing test files
+
+This release adds three intelligence modules (predictive debt forecasting, code
+reachability analysis, live PyPI checking), enhances onboarding auto-detection,
+introduces advisory agent profiles, and expands the MCP surface to 12 tools / 5 prompts.
+
+### 21.1 Predictive Debt Forecasting
+
+**Module:** `intelligence/forecasting.py` | **Model:** `DebtSnapshot`, `DebtForecast`
+
+Records periodic snapshots of debt metrics (finding counts, severity distribution,
+category breakdown) and applies linear regression to forecast trends, detect
+hotspots, and recommend actions.
+
+```mermaid
+graph TB
+    subgraph "Data Collection"
+        SNAP[DebtSnapshot<br/>timestamp, total, by_severity,<br/>by_category, score]
+        STORE[JSON file storage<br/>per-repo hash]
+    end
+
+    subgraph "Analysis Engine"
+        LR[Linear Regression<br/>_linear_regression]
+        TR[Trend Detection<br/>_determine_trend]
+        HS[Hotspot Identification<br/>_identify_hotspots]
+        ACT[Action Generator<br/>_generate_actions]
+    end
+
+    subgraph "Output"
+        DF[DebtForecast<br/>trend, velocity, predicted_total,<br/>hotspots, recommended_actions]
+    end
+
+    SNAP --> STORE
+    STORE -->|load_snapshots| LR
+    LR --> TR
+    LR --> HS
+    TR --> ACT
+    HS --> ACT
+    ACT --> DF
+
+    style LR fill:#0078d4,color:#fff
+    style DF fill:#0078d4,color:#fff
+```
+
+**Key Methods:**
+
+| Method | Purpose |
+|--------|---------|
+| `record_snapshot(findings)` | Convert current findings to `DebtSnapshot` and persist |
+| `load_snapshots()` | Load history from `{data_dir}/{repo_hash}_snapshots.json` |
+| `forecast(snapshots, horizon_days)` | Run regression → trend → hotspots → actions |
+| `_linear_regression(x, y)` | Pure-Python least-squares regression (no numpy needed) |
+| `_determine_trend(slope, mean)` | Classify: improving / stable / worsening / critical |
+| `_identify_hotspots(snapshots)` | Categories growing fastest across snapshots |
+| `_generate_actions(trend, velocity, hotspots)` | Actionable recommendations per trend state |
+
+**SDK Integration:** The `forecasting-analyst` advisory agent (§21.5) uses forecast
+data in its system prompt to provide conversational analysis of debt trends.
+
+### 21.2 Code Reachability Analysis
+
+**Module:** `intelligence/reachability.py` | **Model:** `ReachabilityResult`
+
+Performs static analysis to determine whether a finding is reachable from
+user-facing entry points (API routes, CLI commands, `__main__` blocks). Findings
+in dead code can be safely deprioritized.
+
+```mermaid
+graph TB
+    subgraph "Graph Construction"
+        AST[AST Parsing<br/>per .py file]
+        IG[Import Extraction<br/>_extract_imports]
+        BG[build_graph<br/>module → imports mapping]
+    end
+
+    subgraph "Entry Point Detection"
+        EP[detect_entry_points]
+        FLASK["Flask: @app.route"]
+        FASTAPI["FastAPI: @router.get/post"]
+        DJANGO["Django: urlpatterns"]
+        MAIN["if __name__ == '__main__'"]
+        TYPER["Typer: @app.command"]
+        CELERY["Celery: @app.task"]
+    end
+
+    subgraph "Reachability Trace"
+        BFS[BFS Traversal<br/>_bfs_path]
+        AF[analyze_finding<br/>single finding]
+        AFS[analyze_findings<br/>batch analysis]
+    end
+
+    subgraph "Output"
+        RR[ReachabilityResult<br/>is_reachable, entry_points,<br/>call_path, confidence]
+    end
+
+    AST --> IG --> BG
+    EP --> FLASK & FASTAPI & DJANGO & MAIN & TYPER & CELERY
+    BG --> BFS
+    EP --> BFS
+    BFS --> AF --> AFS --> RR
+
+    style BFS fill:#0078d4,color:#fff
+    style RR fill:#0078d4,color:#fff
+```
+
+**Entry Point Detection Matrix:**
+
+| Framework | Pattern | Detection Method |
+|-----------|---------|-----------------|
+| Flask | `@app.route(...)` | AST decorator check for `route` attr on `app` |
+| FastAPI | `@router.get(...)`, `@router.post(...)` | AST decorator check for HTTP methods on `router` |
+| Django | `urlpatterns = [...]` | AST assignment to `urlpatterns` variable |
+| CLI | `if __name__ == '__main__'` | AST `If` node with `__name__` comparison |
+| Typer | `@app.command(...)` | AST decorator check for `command` attr |
+| Celery | `@app.task(...)` | AST decorator check for `task` attr |
+
+**SDK Integration:** The `reachability-analyst` advisory agent (§21.5) interprets
+reachability results and recommends prioritization strategies.
+
+### 21.3 Live PyPI Intelligence
+
+**Module:** `scanner/dependency_upgrades.py` (extended) | **Dependency:** `httpx`
+
+Adds real-time version checking against the PyPI JSON API. When enabled, the
+dependency upgrade scanner enriches each finding with the actual latest version
+from PyPI, rather than relying only on static analysis.
+
+```mermaid
+sequenceDiagram
+    participant Scanner as DependencyUpgradeScanner
+    participant PyPI as PyPI JSON API
+    participant Cache as MCP Cache
+
+    Scanner->>Scanner: scan(repo_path) — static analysis
+    Note over Scanner: Finds pinned/outdated deps
+
+    alt live_pypi enabled
+        Scanner->>Scanner: scan_with_live_check(repo_path)
+        loop For each dependency
+            Scanner->>PyPI: GET /pypi/{package}/json
+            PyPI-->>Scanner: {info: {version: "X.Y.Z"}}
+            Scanner->>Scanner: Compare installed vs latest
+        end
+        Scanner->>Cache: store enriched findings
+    end
+```
+
+**Configuration:**
+
+```yaml
+scanners:
+  dependency_upgrades:
+    enabled: true
+    live_pypi: true         # Enable real-time PyPI checks
+    pypi_timeout: 10        # HTTP timeout in seconds
+    cache_ttl_hours: 24     # Cache PyPI responses
+```
+
+**Error Handling:** Network failures are non-fatal — the scanner gracefully falls
+back to static analysis, returning findings with `latest_version: null`.
+
+### 21.4 Enhanced Onboarding Auto-Detection
+
+**Module:** `onboarding/analyzer.py` (extended) + `onboarding/onboard.py` (extended)
+
+The project analyzer now detects 6 ecosystem signals and recommends scanner
+configuration templates automatically.
+
+**New Detection Methods:**
+
+| Method | Detects | Config Impact |
+|--------|---------|---------------|
+| `detect_python()` | `*.py`, `pyproject.toml`, `setup.py` | Enable Python scanners |
+| `detect_javascript()` | `*.js`, `*.ts`, `package.json` | Enable JS/TS scanners |
+| `detect_testing()` | `conftest.py`, `pytest.ini`, `jest.config.*` | Set testing framework |
+| `detect_linting()` | `ruff.toml`, `.eslintrc.*`, `pyproject.toml [tool.ruff]` | Set linting config |
+| `detect_ci()` | `.github/workflows/`, `azure-pipelines.yml` | CI platform detection |
+| `detect_frameworks()` | Flask, FastAPI, Django, Typer imports | Framework-aware scanning |
+
+**Template Recommendation:** `recommend_template(analysis)` maps detected signals
+to one of: `python-full`, `python-minimal`, `javascript`, `mixed`, `default`.
+
+**Enhanced `onboard_repo()`:** Now includes auto-template selection, CI workflow
+generation suggestions, and a health check that validates config + tests a quick scan.
+
+### 21.5 Advisory Agent Profiles
+
+**Module:** `planner/agents.py` (extended) | **Total agents:** 9
+
+Two new advisory (non-routing) agents join the existing 7 execution agents.
+These agents provide analysis and recommendations rather than direct refactoring.
+
+| Agent | Role | Model Preference | Skills |
+|-------|------|-----------------|--------|
+| `forecasting-analyst` | Interpret debt trends, velocity, sprint impact | balanced | debt-forecasting |
+| `reachability-analyst` | Analyze call paths, entry points, dead code risk | balanced | reachability-analysis |
+
+**New Skills (`.copilot_skills/`):**
+
+| Skill | Purpose |
+|-------|---------|
+| `debt-forecasting` | Trend interpretation, velocity patterns, sprint planning |
+| `live-dependency-intelligence` | PyPI version analysis, semver reasoning, changelog interpretation |
+| `reachability-analysis` | Entry-point patterns, call graph traversal, dead code identification |
+
+**Lookup Helper:** `get_agent_by_name(name)` provides O(1) agent retrieval from
+the registry, used by MCP tools and the planner for advisory queries.
+
+### 21.6 MCP Expansion (12 Tools / 5 Prompts)
+
+**Module:** `mcp/tools.py`, `mcp/prompts.py`, `mcp/resources.py`, `mcp/cache.py`
+
+Three new MCP tools and one new prompt bring the total surface to 12 tools, 5 prompts,
+and enhanced dashboard resources.
+
+**New Tools:**
+
+| Tool | Parameters | Returns |
+|------|-----------|---------|
+| `get_debt_forecast` | `repo_path`, `horizon_days` | Trend, velocity, hotspots, recommended actions |
+| `check_pypi_versions` | `packages` (comma-separated) | Latest versions from PyPI for each package |
+| `get_reachability_analysis` | `repo_path`, `file_path`, `line_number` | Reachability status, entry points, call path |
+
+**New Prompt:**
+
+| Prompt | Arguments | Purpose |
+|--------|-----------|---------|
+| `forecast_report` | `repo_path` | Generate executive summary of debt trends |
+
+**Enhanced Resources:** The `codecustodian://dashboard` resource now includes a
+`forecast` section with trend, velocity, and hotspot data when forecast cache is populated.
+
+**Cache Extension:** `cache.py` gains `_forecasts` dict, `store_forecast()`, and
+`get_forecast()` for cross-tool forecast data sharing.
+
+### 21.7 Complete Tool / Prompt / Resource Reference
+
+**All 12 MCP Tools (v0.14.0):**
+
+| # | Tool | Category | Added |
+|---|------|----------|-------|
+| 1 | `scan_repository` | Scanning | v0.8.0 |
+| 2 | `get_scan_results` | Scanning | v0.8.0 |
+| 3 | `plan_refactoring` | Planning | v0.8.0 |
+| 4 | `execute_plan` | Execution | v0.8.0 |
+| 5 | `get_finding_details` | Analysis | v0.10.0 |
+| 6 | `get_blast_radius` | Analysis | v0.10.0 |
+| 7 | `get_business_impact` | Intelligence | v0.11.0 |
+| 8 | `get_approval_status` | Governance | v0.11.0 |
+| 9 | `get_policy_violations` | Governance | v0.11.0 |
+| 10 | `get_debt_forecast` | Intelligence | v0.14.0 |
+| 11 | `check_pypi_versions` | Intelligence | v0.14.0 |
+| 12 | `get_reachability_analysis` | Analysis | v0.14.0 |
+
+**All 5 MCP Prompts (v0.14.0):**
+
+| # | Prompt | Added |
+|---|--------|-------|
+| 1 | `analyze_debt` | v0.8.0 |
+| 2 | `plan_sprint` | v0.10.0 |
+| 3 | `security_audit` | v0.11.0 |
+| 4 | `executive_summary` | v0.11.0 |
+| 5 | `forecast_report` | v0.14.0 |
+
+---
+
 ## Appendix A: File ↔ Feature Mapping
 
 | Feature | Primary Files | SDK Dependencies |
@@ -2468,13 +2736,16 @@ gantt
 | CI self-healing | `cli/ci_healer.py` | — |
 | PR review bot | `.github/workflows/pr-review-bot.yml` | — |
 | Dependency upgrades | `scanner/dependency_upgrades.py` | — |
+| Live PyPI intelligence | `scanner/dependency_upgrades.py` (`check_pypi`, `scan_with_live_check`) | httpx |
+| Code reachability analysis | `intelligence/reachability.py` | — |
+| Advisory agents | `planner/agents.py` (forecasting-analyst, reachability-analyst) | Copilot SDK |
 | Onboarding | `onboarding/` | — |
 | Azure deployment | `infra/*.bicep`, `Dockerfile` | Bicep, Container Apps |
 | **Autonomous SRE** *(planned)* | `mcp/incident_webhook.py`, `intelligence/incident_converter.py`, `enterprise/incident_policy.py` | Azure Monitor, Copilot SDK, Work IQ |
-| **Predictive Forecasting** *(planned)* | `intelligence/forecasting.py`, `intelligence/executive_dashboard.py` | TinyDB, Azure Monitor |
+| **Predictive Forecasting** | `intelligence/forecasting.py` | — |
 | **Blast Radius Analysis** *(planned)* | `intelligence/blast_radius.py`, `executor/safety_checks.py` | networkx |
 | **Architectural Drift** *(planned)* | `scanner/architectural_drift.py` | AST |
-| **Zero-Friction Onboarding** *(planned)* | `onboarding/project_analyzer.py`, `onboarding/template_selector.py` | — |
+| **Enhanced Onboarding** | `onboarding/analyzer.py`, `onboarding/onboard.py` | — |
 | **AI Test Synthesis** *(planned)* | `planner/planner.py` (Turn 4), `planner/copilot_client.py` | Copilot SDK |
 | **Agentic Migrations** *(planned)* | `intelligence/migrations.py` | Copilot SDK |
 | **ChatOps** *(planned)* | `integrations/teams_chatops.py`, `integrations/slack_chatops.py` | botbuilder-core, slack-bolt |
@@ -2522,6 +2793,26 @@ work_iq:
   enabled: true
 
 # --- Planned extensions (Phase 12–14) ---
+
+# --- v0.14.0: Production Intelligence ---
+forecasting:
+  enabled: true
+  data_dir: ".codecustodian/forecasts"
+  min_snapshots: 3
+  horizon_days: 30
+
+onboarding:
+  auto_detect: true
+  generate_ci_workflow: true
+  health_check: true
+
+scanners:
+  dependency_upgrades:
+    enabled: true
+    live_pypi: true
+    pypi_timeout: 10
+    cache_ttl_hours: 24
+
 autonomous_sre:
   enabled: false
   webhook_secret: "${INCIDENT_WEBHOOK_SECRET}"

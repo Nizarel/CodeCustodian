@@ -854,6 +854,7 @@ class TestMCPServerLocal:
             "scan_repository", "list_scanners", "plan_refactoring",
             "apply_refactoring", "verify_changes", "create_pull_request",
             "calculate_roi", "get_business_impact", "get_blast_radius",
+            "get_debt_forecast", "check_pypi_versions", "get_reachability_analysis",
         }
         assert expected == tool_names, f"Missing tools: {expected - tool_names}"
 
@@ -1038,7 +1039,7 @@ class TestMCPServerLocal:
 
         prompts = asyncio.run(_run())
         prompt_names = {p.name for p in prompts}
-        expected = {"refactor_finding", "scan_summary", "roi_report", "onboard_repo"}
+        expected = {"refactor_finding", "scan_summary", "roi_report", "onboard_repo", "forecast_report"}
         assert expected == prompt_names, f"Missing prompts: {expected - prompt_names}"
 
     @pytest.mark.e2e
