@@ -10,6 +10,7 @@ from codecustodian.intelligence.business_impact import (
     ScoringWeights,
 )
 from codecustodian.intelligence.forecasting import PredictiveDebtForecaster
+from codecustodian.intelligence.migrations import MigrationEngine
 from codecustodian.intelligence.notifications import (
     NotificationEngine,
     NotificationEvent,
@@ -31,6 +32,7 @@ __all__ = [
     "DynamicReprioritizer",
     "EventType",
     "ImpactBreakdown",
+    "MigrationEngine",
     "NotificationEngine",
     "NotificationEvent",
     "NotificationResult",

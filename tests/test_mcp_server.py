@@ -86,6 +86,11 @@ class TestMCPServerStructure:
             "get_debt_forecast",
             "check_pypi_versions",
             "get_reachability_analysis",
+            # v0.15.0
+            "synthesize_tests",
+            "plan_migration",
+            "get_migration_status",
+            "send_teams_notification",
         }
         assert expected == names
 
@@ -121,7 +126,12 @@ class TestMCPServerStructure:
             prompts = await client.list_prompts()
             names = {p.name for p in prompts}
 
-        expected = {"refactor_finding", "scan_summary", "roi_report", "onboard_repo", "forecast_report"}
+        expected = {
+            "refactor_finding", "scan_summary", "roi_report", "onboard_repo",
+            "forecast_report",
+            # v0.15.0
+            "migration_assessment", "test_coverage_gap",
+        }
         assert expected == names
 
 

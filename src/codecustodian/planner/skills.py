@@ -46,11 +46,11 @@ class SkillDefinition:
 
 FINDING_TYPE_SKILL_MAP: dict[str, list[str]] = {
     FindingType.SECURITY.value: ["security-remediation", "code-quality"],
-    FindingType.DEPRECATED_API.value: ["api-migration", "general-refactoring"],
+    FindingType.DEPRECATED_API.value: ["api-migration", "general-refactoring", "framework-migrations"],
     FindingType.CODE_SMELL.value: ["code-quality", "general-refactoring"],
     FindingType.TYPE_COVERAGE.value: ["python-typing"],
     FindingType.TODO_COMMENT.value: ["todo-resolution"],
-    FindingType.DEPENDENCY_UPGRADE.value: ["dependency-management"],
+    FindingType.DEPENDENCY_UPGRADE.value: ["dependency-management", "framework-migrations"],
 }
 
 

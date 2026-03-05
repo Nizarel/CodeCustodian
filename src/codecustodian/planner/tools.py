@@ -394,6 +394,89 @@ async def get_git_history(params: GetGitHistoryParams) -> str:
 
 
 # ═══════════════════════════════════════════════════════════════════════════
+# 8. run_pytest_subset  (v0.15.0 — AI Test Synthesis)
+# ═══════════════════════════════════════════════════════════════════════════
+
+
+class RunPytestSubsetParams(BaseModel):
+    """Parameters for running a subset of pytest tests."""
+
+    test_file: str = Field(description="Path to the test file to run")
+    markers: str = Field(default="", description="Optional pytest markers (-m expression)")
+    timeout: int = Field(default=30, ge=5, le=120, description="Timeout in seconds")
+
+
+@define_tool(
+    description=(
+        "Run a pytest test file (or marker-filtered subset) and return "
+        "the short summary. Use this to validate AI-generated tests."
+    ),
+)
+async def run_pytest_subset(params: RunPytestSubsetParams) -> str:
+    import asyncio
+    import subprocess as _sp
+
+    test_path = Path(params.test_file).resolve()
+    if not test_path.exists():
+        return f"Error: test file not found: {params.test_file}"
+    if test_path.suffix != ".py":
+        return "Error: test file must be a .py file"
+
+    cmd = ["python", "-m", "pytest", str(test_path), "--tb=short", "-q"]
+    if params.markers:
+        cmd.extend(["-m", params.markers])
+
+    try:
+        proc = await asyncio.wait_for(
+            asyncio.create_subprocess_exec(
+                *cmd,
+                stdout=_sp.PIPE,
+                stderr=_sp.PIPE,
+            ),
+            timeout=params.timeout,
+        )
+        stdout, _stderr = await proc.communicate()
+        output = (stdout or b"").decode(errors="replace")[:2000]
+        return f"exit_code={proc.returncode}\n{output}"
+    except TimeoutError:
+        return f"Error: test run timed out after {params.timeout}s"
+    except Exception as exc:
+        return f"Error running tests: {exc}"
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# 9. check_test_syntax  (v0.15.0 — AI Test Synthesis)
+# ═══════════════════════════════════════════════════════════════════════════
+
+
+class CheckTestSyntaxParams(BaseModel):
+    """Parameters for checking test code syntax."""
+
+    code: str = Field(description="Python test source code to validate")
+
+
+@define_tool(
+    description=(
+        "Check whether a block of Python test code is syntactically valid. "
+        "Returns the number of test functions found or syntax errors."
+    ),
+)
+async def check_test_syntax(params: CheckTestSyntaxParams) -> str:
+    try:
+        tree = ast.parse(params.code)
+    except SyntaxError as exc:
+        return f"SyntaxError at line {exc.lineno}: {exc.msg}"
+
+    test_count = sum(
+        1
+        for node in ast.walk(tree)
+        if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef))
+        and node.name.startswith("test_")
+    )
+    return f"Valid Python — {test_count} test function(s) found"
+
+
+# ═══════════════════════════════════════════════════════════════════════════
 # Tool registry
 # ═══════════════════════════════════════════════════════════════════════════
 
@@ -412,4 +495,6 @@ def get_all_tools() -> list[Any]:
         get_call_sites,
         check_type_hints,
         get_git_history,
+        run_pytest_subset,
+        check_test_syntax,
     ]

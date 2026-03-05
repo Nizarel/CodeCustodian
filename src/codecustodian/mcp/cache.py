@@ -51,6 +51,7 @@ class ScanCache:
         self._findings: dict[str, _Entry] = {}
         self._plans: dict[str, _Entry] = {}
         self._forecasts: dict[str, _Entry] = {}
+        self._migrations: dict[str, _Entry] = {}
         self._lock = asyncio.Lock()
 
     # ── Findings ───────────────────────────────────────────────────────
@@ -120,6 +121,28 @@ class ScanCache:
                 return None
             return entry.value
 
+    # ── Migrations (v0.15.0) ───────────────────────────────────────────
+
+    async def store_migration(self, migration_id: str, plan: Any) -> None:
+        """Store a migration plan keyed by its ID."""
+        async with self._lock:
+            self._migrations[migration_id] = _Entry(plan)
+            logger.debug("Cached migration plan %s", migration_id)
+
+    async def get_migration(self, migration_id: str) -> Any | None:
+        """Retrieve a migration plan by ID, or ``None`` if missing/expired."""
+        async with self._lock:
+            entry = self._migrations.get(migration_id)
+            if entry is None or entry.expired(self._ttl):
+                return None
+            return entry.value
+
+    async def list_migrations(self) -> list[Any]:
+        """Return all non-expired migration plans."""
+        async with self._lock:
+            self._purge_expired(self._migrations)
+            return [e.value for e in self._migrations.values()]
+
     # ── Housekeeping ───────────────────────────────────────────────────
 
     def _purge_expired(self, store: dict[str, _Entry]) -> None:
@@ -134,6 +157,7 @@ class ScanCache:
             self._findings.clear()
             self._plans.clear()
             self._forecasts.clear()
+            self._migrations.clear()
             logger.debug("Cache cleared")
 
     async def stats(self) -> dict[str, int]:
@@ -142,10 +166,12 @@ class ScanCache:
             self._purge_expired(self._findings)
             self._purge_expired(self._plans)
             self._purge_expired(self._forecasts)
+            self._purge_expired(self._migrations)
             return {
                 "findings": len(self._findings),
                 "plans": len(self._plans),
                 "forecasts": len(self._forecasts),
+                "migrations": len(self._migrations),
             }
 
 

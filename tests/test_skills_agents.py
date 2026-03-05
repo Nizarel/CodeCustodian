@@ -333,7 +333,11 @@ class TestAgentProfiles:
         assert "general-refactorer" in agents
         assert "forecasting-analyst" in agents
         assert "reachability-analyst" in agents
-        assert len(agents) == 9
+        # v0.15.0 agents
+        assert "test-synthesizer" in agents
+        assert "migration-engineer" in agents
+        assert "notification-composer" in agents
+        assert len(agents) == 12
 
     def test_agent_profile_model(self) -> None:
         profile = AgentProfile(

@@ -181,6 +181,54 @@ AGENT_REGISTRY: dict[str, AgentProfile] = {
         model_preference="balanced",
         skill_names=["reachability-analysis", "security-remediation"],
     ),
+    # ── v0.15.0 agents ────────────────────────────────────────────────
+    "test-synthesizer": AgentProfile(
+        name="test-synthesizer",
+        description="AI test generation specialist — creates regression guards for findings",
+        system_prompt_overlay=(
+            "You are a test-synthesizer agent. Focus on:\n"
+            "- Generating concise pytest tests for the *current* code (pre-refactor)\n"
+            "- Ensuring each test asserts expected behaviour that can catch regressions\n"
+            "- Preferring direct imports over unittest.mock when possible\n"
+            "- One test per logical behaviour — avoid giant parameterised fixtures\n"
+            "- Valid Python syntax that passes ast.parse before execution\n"
+            "- Tests must pass on the original code to be useful as regression guards\n"
+        ),
+        model_preference="fast",
+        skill_names=["test-synthesis"],
+        tool_filter=["get_function_definition", "get_imports", "find_test_coverage",
+                      "run_pytest_subset", "check_test_syntax"],
+    ),
+    "migration-engineer": AgentProfile(
+        name="migration-engineer",
+        description="Framework migration specialist — plans multi-stage migrations with dependency ordering",
+        system_prompt_overlay=(
+            "You are a migration-engineer agent. Focus on:\n"
+            "- Identifying every file and import affected by the version upgrade\n"
+            "- Breaking the migration into small, independently-verifiable stages\n"
+            "- Specifying dependency ordering between stages\n"
+            "- Consulting official migration guides and changelogs\n"
+            "- Providing find/replace patterns for mechanical changes\n"
+            "- Flagging breaking changes that need manual intervention\n"
+            "- Keeping each PR reviewable (≤10 files per stage by default)\n"
+        ),
+        model_preference="reasoning",
+        skill_names=["framework-migrations", "api-migration"],
+    ),
+    "notification-composer": AgentProfile(
+        name="notification-composer",
+        description="ChatOps notification specialist — crafts clear Adaptive Card messages for Teams",
+        system_prompt_overlay=(
+            "You are a notification-composer agent. Focus on:\n"
+            "- Summarising scan results, PR details, or approval requests concisely\n"
+            "- Sprint-aware delivery — consider crunch-time windows from Work IQ\n"
+            "- Using Adaptive Card FactSet + TextBlock for structured data\n"
+            "- Keeping messages actionable — include approve/reject links when applicable\n"
+            "- Batching low-priority notifications during crunch time\n"
+        ),
+        model_preference="fast",
+        skill_names=["chatops-delivery"],
+    ),
 }
 
 

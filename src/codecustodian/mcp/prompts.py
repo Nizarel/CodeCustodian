@@ -137,3 +137,55 @@ def register_prompts(mcp: FastMCP) -> None:
             "6. ROI projection if top hotspots are addressed\n"
             "7. Comparison with previous forecast (if available)"
         )
+
+    # ── 6. migration_assessment (v0.15.0) ──────────────────────────────
+
+    @mcp.prompt()
+    def migration_assessment(
+        framework: str,
+        from_version: str = "current",
+        to_version: str = "latest",
+    ) -> str:
+        """Generate a prompt for assessing a framework migration.
+
+        Args:
+            framework: Framework or library name (e.g. Flask, Django).
+            from_version: Current version in use.
+            to_version: Target version to migrate to.
+        """
+        return (
+            f"Assess a migration for **{framework}** from version "
+            f"**{from_version}** to **{to_version}**.\n\n"
+            "Provide:\n"
+            "1. Breaking changes between versions\n"
+            "2. Deprecated APIs that must be replaced\n"
+            "3. Recommended migration stages (in dependency order)\n"
+            "4. Estimated complexity (simple / complex / expert-only)\n"
+            "5. Files and patterns most likely affected\n"
+            "6. Risk factors and rollback strategy\n"
+            "7. Suggested PR strategy (single vs staged)"
+        )
+
+    # ── 7. test_coverage_gap (v0.15.0) ─────────────────────────────────
+
+    @mcp.prompt()
+    def test_coverage_gap(
+        file_path: str,
+        finding_count: int = 0,
+    ) -> str:
+        """Generate a prompt for identifying test coverage gaps.
+
+        Args:
+            file_path: Source file to assess test coverage for.
+            finding_count: Number of active findings in this file.
+        """
+        return (
+            f"Analyse test coverage gaps for **{file_path}** which has "
+            f"**{finding_count}** active findings.\n\n"
+            "Provide:\n"
+            "1. Functions/methods without test coverage\n"
+            "2. Edge cases that existing tests don't cover\n"
+            "3. Regression tests needed before refactoring\n"
+            "4. Suggested pytest test code for the most critical gap\n"
+            "5. Priority ordering for test creation"
+        )

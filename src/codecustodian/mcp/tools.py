@@ -1,9 +1,10 @@
 """MCP tool definitions for the CodeCustodian server.
 
-Twelve tools exposed via FastMCP covering the full pipeline:
+Sixteen tools exposed via FastMCP covering the full pipeline:
 scan → plan → apply → verify → PR, plus read-only analytics,
 blast-radius impact analysis, debt forecasting, live PyPI checks,
-and code reachability analysis.
+code reachability analysis, AI test synthesis, agentic migrations,
+and Teams ChatOps notifications.
 
 All tools use ``Context`` for progress reporting and logging, and carry
 ``ToolAnnotations`` to communicate intent to MCP clients.
@@ -717,3 +718,201 @@ def register_tools(mcp: FastMCP) -> None:
             "entry_points": [ep.model_dump(mode="json") for ep in entry_points],
             "results": [r.model_dump(mode="json") for r in results[:50]],
         }
+
+    # ── 13. synthesize_tests (v0.15.0) ────────────────────────────────
+
+    @mcp.tool()
+    async def synthesize_tests(
+        finding_id: str | None = None,
+        max_tests: int = 3,
+        ctx: Context = None,  # type: ignore[assignment]
+    ) -> dict:
+        """Generate regression tests for findings using AI.
+
+        When ``finding_id`` is provided, generates a test for that finding.
+        Otherwise generates tests for the top *max_tests* findings.
+
+        Args:
+            finding_id: Optional finding ID to generate tests for.
+            max_tests: Maximum number of tests to generate.
+        """
+        from codecustodian.config.schema import TestSynthesisConfig
+        from codecustodian.mcp.cache import scan_cache
+        from codecustodian.models import CodeContext
+        from codecustodian.planner.test_synthesizer import TestSynthesizer
+
+        config = TestSynthesisConfig(enabled=True, max_per_run=max_tests)
+        synth = TestSynthesizer(config=config)
+
+        if finding_id:
+            finding = await scan_cache.get_finding(finding_id)
+            if finding is None:
+                return {"error": f"Finding '{finding_id}' not in cache"}
+            findings = [finding]
+        else:
+            findings = await scan_cache.list_findings()
+            findings = findings[:max_tests]
+
+        if not findings:
+            return {"error": "No findings available for test synthesis"}
+
+        if ctx:
+            await ctx.info(f"Synthesising tests for {len(findings)} finding(s)…")
+
+        contexts = {
+            f.id: CodeContext(
+                source_code=f.description,
+                file_path=f.file,
+                language="python",
+                start_line=f.line,
+                end_line=f.line,
+            )
+            for f in findings
+        }
+
+        results = await synth.synthesize_batch(findings, contexts)
+
+        kept = [r for r in results if not r.discarded]
+        if ctx:
+            await ctx.info(f"Generated {len(kept)}/{len(results)} valid tests")
+
+        return {
+            "total": len(results),
+            "kept": len(kept),
+            "results": [r.model_dump(mode="json") for r in results],
+        }
+
+    # ── 14. plan_migration (v0.15.0) ──────────────────────────────────
+
+    @mcp.tool()
+    async def plan_migration(
+        framework: str = "",
+        repo_path: str = ".",
+        ctx: Context = None,  # type: ignore[assignment]
+    ) -> dict:
+        """Plan a multi-stage framework migration.
+
+        Analyses cached findings for migration-eligible patterns and
+        produces a staged migration plan with dependency ordering.
+
+        Args:
+            framework: Framework name filter (e.g. ``flask``). Empty = auto-detect.
+            repo_path: Path to repository root.
+        """
+        from codecustodian.config.schema import MigrationsConfig
+        from codecustodian.intelligence.migrations import MigrationEngine
+        from codecustodian.mcp.cache import scan_cache
+
+        config = MigrationsConfig(enabled=True)
+        engine = MigrationEngine(config=config)
+
+        findings = await scan_cache.list_findings()
+        if framework:
+            findings = [
+                f for f in findings
+                if framework.lower() in f.description.lower()
+            ]
+
+        if not findings:
+            return {"error": "No migration-eligible findings in cache"}
+
+        if ctx:
+            await ctx.info(f"Planning migration from {len(findings)} findings…")
+
+        plan = await engine.plan_migration(findings)
+        if plan is None:
+            return {"error": "Could not detect framework migration target"}
+
+        await scan_cache.store_migration(plan.id, plan)
+
+        if ctx:
+            await ctx.info(
+                f"Migration plan: {plan.framework} — {len(plan.stages)} stages"
+            )
+
+        return plan.model_dump(mode="json")
+
+    # ── 15. get_migration_status (v0.15.0) ────────────────────────────
+
+    @mcp.tool(annotations=ToolAnnotations(readOnlyHint=True))
+    async def get_migration_status(
+        migration_id: str = "",
+        ctx: Context = None,  # type: ignore[assignment]
+    ) -> dict:
+        """Get the status of a migration plan.
+
+        When ``migration_id`` is empty, returns a summary of all cached
+        migration plans.
+
+        Args:
+            migration_id: Migration plan ID.
+        """
+        from codecustodian.mcp.cache import scan_cache
+
+        if migration_id:
+            plan = await scan_cache.get_migration(migration_id)
+            if plan is None:
+                return {"error": f"Migration '{migration_id}' not in cache"}
+            return plan.model_dump(mode="json")
+
+        plans = await scan_cache.list_migrations()
+        return {
+            "count": len(plans),
+            "migrations": [
+                {
+                    "id": p.id,
+                    "framework": p.framework,
+                    "from_version": p.from_version,
+                    "to_version": p.to_version,
+                    "stages": len(p.stages),
+                    "pr_strategy": p.pr_strategy,
+                }
+                for p in plans
+            ],
+        }
+
+    # ── 16. send_teams_notification (v0.15.0) ─────────────────────────
+
+    @mcp.tool()
+    async def send_teams_notification(
+        message_type: str = "scan_complete",
+        payload: str = "{}",
+        ctx: Context = None,  # type: ignore[assignment]
+    ) -> dict:
+        """Send an Adaptive Card notification to Microsoft Teams.
+
+        Args:
+            message_type: One of: scan_complete, pr_created,
+                approval_needed, verification_failed.
+            payload: JSON string with card payload fields.
+        """
+        import json as _json
+
+        from codecustodian.config.schema import ChatOpsConfig
+        from codecustodian.integrations.teams_chatops import TeamsConnector
+        from codecustodian.models import ChatOpsNotification
+
+        try:
+            data = _json.loads(payload)
+        except _json.JSONDecodeError:
+            return {"error": "Invalid JSON payload"}
+
+        config = ChatOpsConfig(enabled=True)
+        notification = ChatOpsNotification(
+            message_type=message_type,
+            payload=data,
+        )
+
+        if ctx:
+            await ctx.info(f"Sending {message_type} notification to Teams…")
+
+        connector = TeamsConnector(config=config)
+        try:
+            ok = await connector.send(notification)
+            return {
+                "delivered": ok,
+                "notification_id": notification.id,
+                "message_type": message_type,
+            }
+        finally:
+            await connector.close()

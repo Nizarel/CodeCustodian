@@ -36,6 +36,7 @@ from codecustodian.planner.prompts import (
     truncate_context,
 )
 from codecustodian.planner.skills import SkillDefinition, SkillRegistry
+from codecustodian.planner.test_synthesizer import TestSynthesizer
 from codecustodian.planner.tools import get_all_tools
 
 __all__ = [
@@ -46,6 +47,7 @@ __all__ = [
     "Planner",
     "SkillDefinition",
     "SkillRegistry",
+    "TestSynthesizer",
     "ToolAuditEntry",
     "UsageAccumulator",
     "build_alternatives_prompt",

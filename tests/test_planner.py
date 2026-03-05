@@ -629,7 +629,7 @@ class TestTools:
 
     def test_get_all_tools_count(self):
         tools = get_all_tools()
-        assert len(tools) == 7
+        assert len(tools) == 9
 
 
 # ═══════════════════════════════════════════════════════════════════════════

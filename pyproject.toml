@@ -1,6 +1,6 @@
 [project]
 name = "codecustodian"
-version = "0.13.0"
+version = "0.15.0"
 description = "Autonomous AI agent for technical debt management powered by GitHub Copilot SDK"
 readme = "README.md"
 license = { text = "MIT" }
@@ -55,6 +55,13 @@ dependencies = [
     # ── Utilities ──
     "httpx>=0.25.0",
     "tinydb>=4.8.0",
+
+    # ── v0.15.0: Agentic Migrations ──
+    "networkx>=3.2",
+
+    # ── v0.15.0: ChatOps (Teams) ──
+    "botbuilder-core>=4.14.0",
+    "botbuilder-integration-aiohttp>=4.14.0",
 ]
 
 [project.optional-dependencies]

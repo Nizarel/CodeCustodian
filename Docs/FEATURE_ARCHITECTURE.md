@@ -26,6 +26,9 @@
 17. [Observability Architecture](#17-observability-architecture)
 18. [SDK Integration Map](#18-sdk-integration-map)
 19. [Planned Architecture Extensions](#19-planned-architecture-extensions)
+20. [SDK Showcase — Domain Skills, Custom Agents, Multi-Session](#20-sdk-showcase--domain-skills-custom-agents-multi-session)
+21. [Production Intelligence & SDK Hardening (v0.14.0)](#21-production-intelligence--sdk-hardening-v0140)
+22. [AI Test Synthesis, Agentic Migrations & ChatOps (v0.15.0)](#22-ai-test-synthesis-agentic-migrations--chatops-v0150)
 
 ---
 
@@ -2746,11 +2749,300 @@ and enhanced dashboard resources.
 | **Blast Radius Analysis** *(planned)* | `intelligence/blast_radius.py`, `executor/safety_checks.py` | networkx |
 | **Architectural Drift** *(planned)* | `scanner/architectural_drift.py` | AST |
 | **Enhanced Onboarding** | `onboarding/analyzer.py`, `onboarding/onboard.py` | — |
-| **AI Test Synthesis** *(planned)* | `planner/planner.py` (Turn 4), `planner/copilot_client.py` | Copilot SDK |
-| **Agentic Migrations** *(planned)* | `intelligence/migrations.py` | Copilot SDK |
-| **ChatOps** *(planned)* | `integrations/teams_chatops.py`, `integrations/slack_chatops.py` | botbuilder-core, slack-bolt |
+| **AI Test Synthesis** | `planner/test_synthesizer.py`, `planner/tools.py` | Copilot SDK |
+| **Agentic Migrations** | `intelligence/migrations.py` | Copilot SDK, networkx |
+| **ChatOps (Teams)** | `integrations/teams_chatops.py` | httpx |
 | **Knowledge Graph** *(planned)* | `intelligence/codebase_graph.py`, `planner/tools.py` | networkx |
 | **AI Slop Detector** *(planned)* | `scanner/ai_code_quality.py` | AST |
+
+---
+
+## 22. AI Test Synthesis, Agentic Migrations & ChatOps (v0.15.0)
+
+**Version:** 0.15.0 | **Tests:** 62 new tests in `test_phase10_v015.py` + updated assertions in 3 existing test files
+
+This release implements the three Phase 13 features: AI-powered regression test
+generation, multi-stage framework migration with networkx DAG ordering, and Teams
+ChatOps via Adaptive Cards. The MCP surface expands to 16 tools / 7 prompts,
+with 12 agent profiles and 13 domain skills.
+
+### 22.1 AI Test Synthesis
+
+**Module:** `planner/test_synthesizer.py` | **Model:** `TestSynthesisResult`
+
+Generates pytest regression tests for findings using the Copilot SDK, validates
+them via `ast.parse`, and executes them in a subprocess to verify correctness.
+
+```mermaid
+graph TB
+    subgraph "Input"
+        F[Finding]
+        CTX[CodeContext<br/>source_code, file_path]
+    end
+
+    subgraph "AI Generation"
+        SDK[Copilot SDK Session<br/>test-synthesizer agent]
+        PROMPT[System prompt:<br/>generate pytest for finding]
+    end
+
+    subgraph "Validation Pipeline"
+        STRIP[Strip markdown fencing<br/>_strip_fencing]
+        AST[ast.parse validation<br/>_check_syntax]
+        COUNT[Count test functions<br/>_count_tests]
+        EXEC[Subprocess execution<br/>pytest --tb=short]
+    end
+
+    subgraph "Output"
+        TSR[TestSynthesisResult<br/>test_code, passed,<br/>validation_errors]
+    end
+
+    F --> SDK
+    CTX --> SDK
+    SDK --> STRIP --> AST
+    AST -->|valid| COUNT --> EXEC --> TSR
+    AST -->|invalid| TSR
+
+    style SDK fill:#0078d4,color:#fff
+    style TSR fill:#0078d4,color:#fff
+```
+
+**Key Methods:**
+
+| Method | Purpose |
+|--------|---------|
+| `synthesize(finding, context, session)` | End-to-end: AI → validate → execute → result |
+| `synthesize_batch(findings, contexts, session)` | Batch synthesis with per-item error handling |
+| `_ask_ai(finding, context, session)` | Send prompt to Copilot SDK, extract code |
+| `_strip_fencing(raw)` | Remove markdown code fences from AI response |
+| `_check_syntax(code)` | `ast.parse` validation, returns errors list |
+| `_count_tests(code)` | Count `def test_*` functions via AST |
+| `_run_test(code)` | Write temp file, run `pytest --tb=short` in subprocess |
+
+**New SDK Tools (9 total):**
+
+| Tool | Purpose |
+|------|---------|
+| `check_test_syntax` | Validate Python code via `ast.parse` + count test functions |
+| `run_pytest_subset` | Execute a specific test file with pytest in subprocess |
+
+**Configuration:**
+
+```yaml
+test_synthesis:
+  enabled: true
+  max_per_run: 20
+  timeout_per_test: 30
+  require_passing_original: true
+```
+
+### 22.2 Agentic Migrations
+
+**Module:** `intelligence/migrations.py` | **Models:** `MigrationStage`, `MigrationPlan`, `MigrationPlaybook`
+
+Orchestrates multi-stage framework migrations using networkx DAG for dependency
+ordering. Supports playbook-based patterns and AI-generated migration stages.
+
+```mermaid
+graph TB
+    subgraph "Planning"
+        DETECT[_detect_framework<br/>keyword matching]
+        PLAYBOOK[_load_playbook<br/>from config]
+        AI[_ask_ai_for_stages<br/>Copilot SDK]
+        PARSE[_parse_stages<br/>JSON parsing]
+    end
+
+    subgraph "DAG Ordering"
+        NX[networkx DiGraph]
+        TOPO[topological_sort<br/>dependency resolution]
+    end
+
+    subgraph "Execution"
+        ITER[Iterate stages<br/>in topo order]
+        APPLY[Apply file changes]
+        VERIFY[Run verifier]
+        ROLLBACK[Rollback on failure<br/>skip dependents]
+    end
+
+    subgraph "Output"
+        MP[MigrationPlan<br/>stages, breaking_changes,<br/>complexity, pr_strategy]
+    end
+
+    DETECT --> PLAYBOOK
+    DETECT --> AI
+    PLAYBOOK --> PARSE
+    AI --> PARSE
+    PARSE --> NX --> TOPO
+    TOPO --> ITER --> APPLY --> VERIFY
+    VERIFY -->|pass| ITER
+    VERIFY -->|fail| ROLLBACK
+    ITER --> MP
+
+    style NX fill:#0078d4,color:#fff
+    style MP fill:#0078d4,color:#fff
+```
+
+**Key Methods:**
+
+| Method | Purpose |
+|--------|---------|
+| `plan_migration(findings, session)` | Detect framework → load playbook/AI → build DAG plan |
+| `execute_plan(plan, executor, verifier)` | Topo-sort stages → apply → verify → rollback on failure |
+| `_detect_framework(findings)` | Keyword match for flask/django/fastapi/requests/sqlalchemy |
+| `_load_playbook(framework)` | Load playbook config with patterns and guide URL |
+| `_ask_ai_for_stages(framework, findings, session)` | Copilot SDK multi-turn: generate migration stages JSON |
+| `_topological_sort(stages)` | `nx.DiGraph` + `nx.topological_sort` for dependency ordering |
+| `_estimate_complexity(stages)` | simple (≤10 files) / moderate / complex / expert-only (>25) |
+
+**Configuration:**
+
+```yaml
+migrations:
+  enabled: true
+  pr_strategy: staged  # staged | single | draft-then-merge
+  max_files_per_stage: 10
+  playbooks:
+    flask:
+      guide_url: "https://flask.palletsprojects.com/en/3.0.x/changes/"
+      patterns:
+        - pattern: "from flask.ext"
+          replacement: "from flask"
+```
+
+### 22.3 ChatOps — Teams Notifications
+
+**Module:** `integrations/teams_chatops.py` | **Model:** `ChatOpsNotification`
+
+Delivers Adaptive Card notifications to Microsoft Teams via incoming webhook.
+Supports 5 notification types with interactive approve/reject actions.
+
+```mermaid
+graph TB
+    subgraph "Notification Sources"
+        SCAN[Scan Complete]
+        PR[PR Created]
+        APR[Approval Needed]
+        FAIL[Verification Failed]
+        MIG[Migration Update]
+    end
+
+    subgraph "Card Builders"
+        SC[build_scan_complete_card]
+        PC[build_pr_created_card]
+        AC[build_approval_needed_card<br/>with ActionSet]
+        FC[build_verification_failed_card]
+        MC[build_migration_card]
+    end
+
+    subgraph "Delivery"
+        TC[TeamsConnector<br/>httpx.AsyncClient]
+        WH[Teams Webhook URL]
+    end
+
+    SCAN --> SC --> TC
+    PR --> PC --> TC
+    APR --> AC --> TC
+    FAIL --> FC --> TC
+    MIG --> MC --> TC
+    TC -->|POST JSON| WH
+
+    style TC fill:#0078d4,color:#fff
+```
+
+**Card Types:**
+
+| Type | Builder | Interactive |
+|------|---------|------------|
+| `scan_complete` | `build_scan_complete_card` | No |
+| `pr_created` | `build_pr_created_card` | No |
+| `approval_needed` | `build_approval_needed_card` | Yes — Approve / Reject buttons |
+| `verification_failed` | `build_verification_failed_card` | No |
+| `migration_update` | `build_migration_card` | No |
+
+**Configuration:**
+
+```yaml
+chatops:
+  enabled: true
+  connector: teams
+  teams_webhook_url: "${TEAMS_WEBHOOK_URL}"
+  crunch_time_digest: true
+  notification_channels:
+    - scan_complete
+    - pr_created
+    - approval_needed
+```
+
+### 22.4 New Agent Profiles (12 Total)
+
+**Module:** `planner/agents.py` | **Total agents:** 12
+
+Three new agents bring specialized capabilities for test generation, framework
+migration, and notification composition.
+
+| Agent | Role | Model Preference | Skills |
+|-------|------|-----------------|--------|
+| `test-synthesizer` | Generate regression tests for findings | fast | test-synthesis |
+| `migration-engineer` | Plan and execute multi-stage framework migrations | reasoning | framework-migrations, api-migration |
+| `notification-composer` | Build Adaptive Card payloads for Teams/Slack | fast | chatops-delivery |
+
+**New Skills (`.copilot_skills/`):**
+
+| Skill | Purpose |
+|-------|---------|
+| `test-synthesis` | pytest generation patterns, AST validation, subprocess execution |
+| `framework-migrations` | Breaking change patterns, semver analysis, DAG stage planning |
+| `chatops-delivery` | Adaptive Card schemas, Teams webhook format, notification routing |
+
+### 22.5 MCP Expansion (16 Tools / 7 Prompts)
+
+**New Tools (4 added):**
+
+| Tool | Parameters | Returns |
+|------|-----------|---------|
+| `synthesize_tests` | `finding_id`, `max_tests` | Generated test code with pass/fail status |
+| `plan_migration` | `framework`, `repo_path` | Multi-stage migration plan with DAG ordering |
+| `get_migration_status` | `migration_id` | Current status of all migration stages |
+| `send_teams_notification` | `message_type`, `payload` | Delivery confirmation |
+
+**New Prompts (2 added):**
+
+| Prompt | Arguments | Purpose |
+|--------|-----------|---------|
+| `migration_assessment` | `framework`, `from_version`, `to_version` | Assess migration complexity and breaking changes |
+| `test_coverage_gap` | `file_path`, `finding_count` | Recommend test coverage improvements for files |
+
+**Complete Tool Reference (v0.15.0):**
+
+| # | Tool | Category | Added |
+|---|------|----------|-------|
+| 1 | `scan_repository` | Scanning | v0.8.0 |
+| 2 | `get_scan_results` | Scanning | v0.8.0 |
+| 3 | `plan_refactoring` | Planning | v0.8.0 |
+| 4 | `execute_plan` | Execution | v0.8.0 |
+| 5 | `get_finding_details` | Analysis | v0.10.0 |
+| 6 | `get_blast_radius` | Analysis | v0.10.0 |
+| 7 | `get_business_impact` | Intelligence | v0.11.0 |
+| 8 | `get_approval_status` | Governance | v0.11.0 |
+| 9 | `get_policy_violations` | Governance | v0.11.0 |
+| 10 | `get_debt_forecast` | Intelligence | v0.14.0 |
+| 11 | `check_pypi_versions` | Intelligence | v0.14.0 |
+| 12 | `get_reachability_analysis` | Analysis | v0.14.0 |
+| 13 | `synthesize_tests` | Testing | v0.15.0 |
+| 14 | `plan_migration` | Migration | v0.15.0 |
+| 15 | `get_migration_status` | Migration | v0.15.0 |
+| 16 | `send_teams_notification` | ChatOps | v0.15.0 |
+
+**Complete Prompt Reference (v0.15.0):**
+
+| # | Prompt | Added |
+|---|--------|-------|
+| 1 | `analyze_debt` | v0.8.0 |
+| 2 | `plan_sprint` | v0.10.0 |
+| 3 | `security_audit` | v0.11.0 |
+| 4 | `executive_summary` | v0.11.0 |
+| 5 | `forecast_report` | v0.14.0 |
+| 6 | `migration_assessment` | v0.15.0 |
+| 7 | `test_coverage_gap` | v0.15.0 |
 
 ---
 

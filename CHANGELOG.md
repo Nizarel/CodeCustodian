@@ -6,6 +6,71 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
 
+## [0.15.0] — 2026-03-05
+
+### Added — Phase 13: AI Test Synthesis, Agentic Migrations & ChatOps
+
+#### AI Test Synthesis
+- `TestSynthesizer` in `planner/test_synthesizer.py`: uses Copilot SDK to generate
+  pytest regression tests for findings, validates via `ast.parse`, executes in
+  subprocess, and returns `TestSynthesisResult` with pass/fail status
+- `TestSynthesisResult` Pydantic model with test_code, test_count, passed flags,
+  validation_errors, and discard reason tracking
+- `TestSynthesisConfig` in `config/schema.py` with max_per_run, timeout_per_test,
+  require_passing_original settings
+- 2 new SDK tools: `check_test_syntax` (AST validation + test counting),
+  `run_pytest_subset` (subprocess pytest execution) — total 9 SDK tools
+- `test-synthesizer` agent profile (fast model, test-synthesis skill)
+- `test-synthesis` domain skill (`.copilot_skills/test-synthesis/SKILL.md`)
+
+#### Agentic Migrations
+- `MigrationEngine` in `intelligence/migrations.py`: multi-stage framework
+  migration with networkx DAG for topological dependency ordering
+- `MigrationStage`, `MigrationPlan`, `MigrationPlaybook` Pydantic models
+- `MigrationsConfig` with playbook support (pattern/replacement pairs),
+  pr_strategy (staged/single/draft-then-merge), max_files_per_stage
+- Playbook-based pattern matching OR AI-generated stages via Copilot SDK
+- Execution engine: iterate stages in topo order → apply → verify → rollback
+  dependents on failure (rolled_back status propagation)
+- `migration-engineer` agent profile (reasoning model, framework-migrations skill)
+- `framework-migrations` domain skill (`.copilot_skills/framework-migrations/SKILL.md`)
+
+#### ChatOps — Teams Notifications
+- `TeamsConnector` in `integrations/teams_chatops.py`: Adaptive Card delivery
+  to Microsoft Teams via incoming webhook (httpx async)
+- 5 card builders: scan_complete, pr_created, approval_needed (with approve/reject
+  ActionSet), verification_failed, migration_update
+- `ChatOpsNotification` Pydantic model with message_type validator, adaptive_card_json
+- `ChatOpsConfig` with connector, teams_webhook_url, crunch_time_digest,
+  notification_channels
+- `notification-composer` agent profile (fast model, chatops-delivery skill)
+- `chatops-delivery` domain skill (`.copilot_skills/chatops-delivery/SKILL.md`)
+
+#### MCP Expansion (12 → 16 tools, 5 → 7 prompts)
+- `synthesize_tests` tool: generate regression tests for a finding
+- `plan_migration` tool: create multi-stage migration plan
+- `get_migration_status` tool: check migration stage progress
+- `send_teams_notification` tool: deliver Adaptive Card to Teams
+- `migration_assessment` prompt: assess migration complexity
+- `test_coverage_gap` prompt: recommend test improvements for files
+- Migration storage in MCP cache (store/get/list_migrations)
+
+#### Agent & Skill Expansion (9 → 12 agents, 10 → 13 skills)
+- 3 new agent profiles: test-synthesizer, migration-engineer, notification-composer
+- 3 new domain skills: test-synthesis, framework-migrations, chatops-delivery
+- Updated FINDING_TYPE_SKILL_MAP for DEPRECATED_API and DEPENDENCY_UPGRADE
+
+#### Dependencies
+- Added `networkx>=3.2` for DAG-based migration ordering
+- Added `botbuilder-core>=4.14.0` and `botbuilder-integration-aiohttp>=4.14.0`
+
+#### Tests
+- 62 new tests in `test_phase10_v015.py` covering all v0.15.0 features
+- Updated tool count (16), prompt count (7), agent count (12) assertions
+- Total: 826 unit/integration tests passing
+
+---
+
 ## [0.14.0] — 2026-03-04
 
 ### Added — Phase 14: Production Intelligence & SDK Hardening

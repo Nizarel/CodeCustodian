@@ -55,9 +55,9 @@
 - Azure Container Apps deployment (Dockerfile + Bicep + CI/CD)
 - Azure Monitor / App Insights (OpenTelemetry)
 - Azure DevOps integration (work items)
-- MCP server (FastMCP) — works with Copilot Chat (12 tools, 5 prompts)
+- MCP server (FastMCP) — works with Copilot Chat (16 tools, 7 prompts)
 - Work IQ MCP integration
-- GitHub Copilot SDK as AI engine (9 agent profiles, 10 domain skills)
+- GitHub Copilot SDK as AI engine (12 agent profiles, 13 domain skills)
 - GitHub Actions (4 workflows: ci, deploy-azure, codecustodian, security-scan)
 
 **What to build to maximize score:**
@@ -73,7 +73,7 @@
 ### 3. Operational Readiness — 15 pts
 
 **What we have:**
-- CI workflow: lint (ruff, 0 errors) → test (676 tests, 82%+ cov, 80% gate) → security (bandit)
+- CI workflow: lint (ruff, 0 errors) → test (826 tests, 82%+ cov, 80% gate) → security (bandit)
 - Deploy workflow: test → build/push → Bicep deploy → MCP smoke test
 - Security scan workflow: Bandit + Trivy (weekly schedule)
 - Docker multi-stage build (non-root user, healthcheck)
@@ -163,7 +163,7 @@ analysis and secret detection), verified by automated tests and linting, and sub
 as pull requests with full AI reasoning — keeping humans in control.
 
 Built on **FastMCP v2**, CodeCustodian integrates as an MCP server in VS Code Copilot Chat
-with 12 tools, 5 prompts, and 9 agent profiles (including advisory analysts for debt
+with 16 tools, 7 prompts, and 12 agent profiles (including advisory analysts for debt
 forecasting and code reachability). It deploys to **Azure Container Apps** with
 **Key Vault** secrets, **Azure Monitor** observability, and **Azure DevOps** work item
 integration.
@@ -172,7 +172,7 @@ Enterprise features include budget management, SLA reporting, HTML ROI reports, 
 approval workflows, predictive debt forecasting, live PyPI intelligence, and a feedback
 loop that learns from PR outcomes.
 
-**864 tests, 82%+ coverage, 4 CI/CD workflows, 0 lint errors, Responsible AI policy.**
+**826 tests, 82%+ coverage, 4 CI/CD workflows, 0 lint errors, Responsible AI policy.**
 
 ---
 
@@ -186,10 +186,10 @@ loop that learns from PR outcomes.
 | 1:10-1:30 | **Finding Deep-Dive** | Run `codecustodian finding "sql injection"` → show detailed view with CWE, exploit scenario, compliance refs. |
 | 1:30-1:50 | **Dry-Run + Diff Preview** | Run `codecustodian run --dry-run --max-prs 1` → show diff preview of proposed changes before any code is touched. |
 | 1:50-2:05 | **Safety** | Show 7-point safety system: blast radius gate, secret detection, confidence-gated behavior. eval() blocked. |
-| 2:05-2:20 | **MCP in VS Code** | Open Copilot Chat → use `get_debt_forecast` tool to show trend prediction → use `check_pypi_versions` to show live dependency intelligence → use `get_reachability_analysis` to show dead code detection. "12 tools, 5 prompts, 9 agents." |
+| 2:05-2:20 | **MCP in VS Code** | Open Copilot Chat → use `get_debt_forecast` tool to show trend prediction → use `check_pypi_versions` to show live dependency intelligence → use `get_reachability_analysis` to show dead code detection. "16 tools, 7 prompts, 12 agents." |
 | 2:20-2:35 | **Enterprise** | HTML ROI report, budget dashboard, SLA metrics, audit log. "Enterprise-ready from day one." |
 | 2:35-2:50 | **Azure Integration** | Architecture diagram: Key Vault + Container Apps + Monitor + DevOps + GitHub Actions + Copilot SDK |
-| 2:50-3:00 | **Close** | "CodeCustodian: your autonomous guardian against technical debt. 864 tests. Zero lint errors. Production-ready." |
+| 2:50-3:00 | **Close** | "CodeCustodian: your autonomous guardian against technical debt. 826 tests. Zero lint errors. Production-ready." |
 
 ---
 
@@ -199,13 +199,13 @@ loop that learns from PR outcomes.
 graph TB
     subgraph "Developer Experience"
         CLI["CLI (14+ commands)"]
-        MCP["MCP Server (FastMCP v2)\n12 tools, 5 prompts"]
+        MCP["MCP Server (FastMCP v2)\n16 tools, 7 prompts"]
         VSCode["VS Code Copilot Chat"]
     end
 
     subgraph "CodeCustodian Pipeline"
         SCAN["Scanner\n7 built-in scanners"]
-        PLAN["Planner\nGitHub Copilot SDK\n9 agent profiles"]
+        PLAN["Planner\nGitHub Copilot SDK\n12 agent profiles"]
         EXEC["Executor\nAtomic + Rollback"]
         VERIFY["Verifier\npytest + ruff + bandit"]
         PR["PR Creator\nGitHub API"]

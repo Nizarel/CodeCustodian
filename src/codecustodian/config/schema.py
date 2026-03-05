@@ -535,6 +535,53 @@ class OnboardingConfig(BaseModel):
     health_check: bool = True
 
 
+class TestSynthesisConfig(BaseModel):
+    """AI test synthesis configuration."""
+
+    enabled: bool = False
+    max_per_run: int = Field(default=3, ge=1, description="Max tests to synthesize per pipeline run")
+    timeout_per_test: int = Field(default=30, ge=5, description="Timeout in seconds for running each generated test")
+    require_passing_original: bool = True
+
+
+class MigrationPlaybookPatternConfig(BaseModel):
+    """A single find/replace pattern within a migration playbook."""
+
+    pattern: str
+    replacement: str
+
+
+class MigrationPlaybookConfig(BaseModel):
+    """A named migration playbook with patterns and guide URL."""
+
+    guide_url: str = ""
+    patterns: list[MigrationPlaybookPatternConfig] = Field(default_factory=list)
+
+
+class MigrationsConfig(BaseModel):
+    """Agentic migration configuration."""
+
+    enabled: bool = False
+    pr_strategy: str = Field(default="staged", description="single | staged")
+    max_files_per_stage: int = Field(default=10, ge=1)
+    playbooks: dict[str, MigrationPlaybookConfig] = Field(default_factory=dict)
+
+
+class ChatOpsConfig(BaseModel):
+    """ChatOps connector configuration (Teams)."""
+
+    enabled: bool = False
+    connector: str = Field(default="teams", description="teams")
+    teams_webhook_url: str = ""
+    bot_app_id: str = ""
+    bot_app_password: str = ""
+    crunch_time_digest: bool = True
+    notification_channels: dict[str, str] = Field(
+        default_factory=dict,
+        description="Mapping of message_type → channel/webhook URL override",
+    )
+
+
 # ── Root Config ────────────────────────────────────────────────────────────
 
 
@@ -559,6 +606,10 @@ class CodeCustodianConfig(BaseModel):
     # ── NEW — v0.14.0 config sections ────────────────────────────────
     forecasting: ForecastingConfig = Field(default_factory=ForecastingConfig)
     onboarding: OnboardingConfig = Field(default_factory=OnboardingConfig)
+    # ── NEW — v0.15.0 config sections ────────────────────────────────
+    test_synthesis: TestSynthesisConfig = Field(default_factory=TestSynthesisConfig)
+    migrations: MigrationsConfig = Field(default_factory=MigrationsConfig)
+    chatops: ChatOpsConfig = Field(default_factory=ChatOpsConfig)
 
     @classmethod
     def from_file(cls, path: str | Path) -> CodeCustodianConfig:

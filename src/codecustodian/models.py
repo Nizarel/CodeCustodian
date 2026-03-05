@@ -512,3 +512,131 @@ class ReachabilityResult(BaseModel):
         if v not in allowed:
             raise ValueError(f"reachability_tag must be one of {allowed}")
         return v
+
+
+# ── v0.15.0: AI Test Synthesis ─────────────────────────────────────────────
+
+
+class TestSynthesisResult(BaseModel):
+    """Result of AI-generated test synthesis for a finding."""
+
+    model_config = ConfigDict(extra="ignore", validate_assignment=True)
+
+    finding_id: str
+    test_code: str = ""
+    test_file_path: str = ""
+    test_count: int = 0
+    passed_original: bool = False
+    passed_refactored: bool | None = Field(
+        default=None, description="None until refactored code is verified"
+    )
+    validation_errors: list[str] = Field(default_factory=list)
+    discarded: bool = False
+    discard_reason: str = ""
+
+
+# ── v0.15.0: Agentic Migrations ───────────────────────────────────────────
+
+
+class MigrationStage(BaseModel):
+    """A single stage within a multi-stage framework migration."""
+
+    model_config = ConfigDict(extra="ignore", validate_assignment=True)
+
+    name: str
+    description: str = ""
+    order: int = 0
+    depends_on: list[str] = Field(default_factory=list)
+    file_changes: list[FileChange] = Field(default_factory=list)
+    files_affected: list[str] = Field(default_factory=list)
+    patterns: list[dict[str, str]] = Field(
+        default_factory=list, description="Find/replace pattern pairs"
+    )
+    status: str = Field(default="pending", description="pending | running | passed | failed | rolled_back")
+
+    @field_validator("status")
+    @classmethod
+    def _validate_status(cls, v: str) -> str:
+        allowed = {"pending", "running", "passed", "failed", "rolled_back"}
+        if v not in allowed:
+            raise ValueError(f"status must be one of {allowed}")
+        return v
+
+
+class MigrationPlan(BaseModel):
+    """Multi-stage framework migration plan."""
+
+    model_config = ConfigDict(extra="ignore", validate_assignment=True)
+
+    id: str = Field(default_factory=lambda: uuid.uuid4().hex[:12])
+    framework: str
+    from_version: str
+    to_version: str
+    migration_guide_url: str = ""
+    stages: list[MigrationStage] = Field(default_factory=list)
+    breaking_changes: list[str] = Field(default_factory=list)
+    estimated_complexity: str = Field(
+        default="simple", description="simple | complex | expert-only"
+    )
+    pr_strategy: str = Field(default="staged", description="single | staged")
+    total_files_affected: int = 0
+    created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
+
+    @field_validator("estimated_complexity")
+    @classmethod
+    def _validate_complexity(cls, v: str) -> str:
+        allowed = {"simple", "complex", "expert-only"}
+        if v not in allowed:
+            raise ValueError(f"estimated_complexity must be one of {allowed}")
+        return v
+
+    @field_validator("pr_strategy")
+    @classmethod
+    def _validate_pr_strategy(cls, v: str) -> str:
+        allowed = {"single", "staged"}
+        if v not in allowed:
+            raise ValueError(f"pr_strategy must be one of {allowed}")
+        return v
+
+
+class MigrationPlaybook(BaseModel):
+    """Reusable migration playbook with find/replace patterns."""
+
+    model_config = ConfigDict(extra="ignore")
+
+    name: str
+    framework: str
+    from_version: str = ""
+    to_version: str = ""
+    guide_url: str = ""
+    patterns: list[dict[str, str]] = Field(
+        default_factory=list,
+        description="List of {pattern, replacement} dicts",
+    )
+
+
+# ── v0.15.0: ChatOps ──────────────────────────────────────────────────────
+
+
+class ChatOpsNotification(BaseModel):
+    """A notification to be sent via ChatOps (Teams)."""
+
+    model_config = ConfigDict(extra="ignore")
+
+    id: str = Field(default_factory=lambda: uuid.uuid4().hex[:12])
+    message_type: str = Field(
+        description="pr_created | approval_needed | scan_complete | verification_failed"
+    )
+    channel: str = ""
+    payload: dict[str, Any] = Field(default_factory=dict)
+    adaptive_card_json: dict[str, Any] = Field(default_factory=dict)
+    delivered: bool = False
+    created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
+
+    @field_validator("message_type")
+    @classmethod
+    def _validate_message_type(cls, v: str) -> str:
+        allowed = {"pr_created", "approval_needed", "scan_complete", "verification_failed"}
+        if v not in allowed:
+            raise ValueError(f"message_type must be one of {allowed}")
+        return v
