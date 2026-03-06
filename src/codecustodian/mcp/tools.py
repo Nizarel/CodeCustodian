@@ -1,10 +1,10 @@
 """MCP tool definitions for the CodeCustodian server.
 
-Sixteen tools exposed via FastMCP covering the full pipeline:
+Seventeen tools exposed via FastMCP covering the full pipeline:
 scan → plan → apply → verify → PR, plus read-only analytics,
 blast-radius impact analysis, debt forecasting, live PyPI checks,
 code reachability analysis, AI test synthesis, agentic migrations,
-and Teams ChatOps notifications.
+Teams ChatOps notifications, and remote repository scanning.
 
 All tools use ``Context`` for progress reporting and logging, and carry
 ``ToolAnnotations`` to communicate intent to MCP clients.
@@ -916,3 +916,70 @@ def register_tools(mcp: FastMCP) -> None:
             }
         finally:
             await connector.close()
+
+    # ── 17. scan_remote_repository (v0.15.0) ──────────────────────────
+
+    @mcp.tool(annotations=ToolAnnotations(readOnlyHint=True))
+    async def scan_remote_repository(
+        url: str,
+        scanners: str = "all",
+        config_path: str = ".codecustodian.yml",
+        ctx: Context = None,  # type: ignore[assignment]
+    ) -> dict:
+        """Clone a public Git repository and scan it for technical debt.
+
+        The repo is shallow-cloned into a temporary directory, scanned,
+        and the clone is automatically cleaned up afterwards.
+
+        Args:
+            url: HTTPS clone URL of a public Git repository.
+            scanners: Comma-separated scanner names, or ``'all'``.
+            config_path: Path to configuration YAML (inside the cloned repo).
+        """
+        from codecustodian.executor.repo_cloner import cloned_repo
+
+        if ctx:
+            await ctx.info(f"Cloning {url}…")
+
+        async with cloned_repo(url) as repo_path:
+            if ctx:
+                await ctx.info("Clone complete — scanning…")
+
+            # Re-use the scan_repository logic inline
+            from codecustodian.config.schema import CodeCustodianConfig
+            from codecustodian.mcp.cache import scan_cache
+            from codecustodian.scanner.registry import get_default_registry
+
+            config_file = repo_path / config_path
+            try:
+                config = CodeCustodianConfig.from_file(str(config_file))
+            except Exception:
+                config = None
+
+            registry = get_default_registry(config)
+
+            if scanners == "all":
+                enabled = registry.get_enabled()
+            else:
+                names = [s.strip() for s in scanners.split(",")]
+                enabled = [s for s in registry.get_enabled() if s.name in names]
+
+            findings = []
+            for scanner_instance in enabled:
+                findings.extend(scanner_instance.scan(str(repo_path)))
+
+            scan_cache.clear()
+            for f in findings:
+                scan_cache[f.id] = f
+
+            if ctx:
+                await ctx.info(
+                    f"Remote scan complete — {len(findings)} findings from {url}"
+                )
+
+            return {
+                "url": url,
+                "total_findings": len(findings),
+                "scanners_run": [s.name for s in enabled],
+                **_summarize_findings(findings),
+            }

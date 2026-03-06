@@ -670,6 +670,7 @@ def validate_config(path: str) -> None:
 @app.command()
 def scan(
     repo_path: str = typer.Option(".", "--repo-path", "-r", help="Repository path"),
+    url: str = typer.Option("", "--url", "-u", help="Clone and scan a remote Git repo (HTTPS)"),
     scanner: str = typer.Option("all", "--scanner", "-s", help="Scanner to run"),
     config: str = typer.Option(
         ".codecustodian.yml", "--config", "-c", help="Configuration file path"
@@ -680,10 +681,27 @@ def scan(
         help="Output format: table, json, csv, or sarif",
     ),
 ) -> None:
-    """Run scanners without creating PRs."""
+    """Run scanners without creating PRs.
+
+    Pass ``--url`` to shallow-clone a public Git repository and scan it.
+    The clone is automatically cleaned up after scanning.
+    """
     output_format = output_format.lower()
     if output_format not in {"table", "json", "csv", "sarif"}:
         raise typer.BadParameter("--output-format must be one of: table, json, csv, sarif")
+
+    if url:
+        from codecustodian.executor.repo_cloner import cleanup_clone, clone_repo
+
+        clone_path = clone_repo(url)
+        try:
+            findings = _scan_findings(str(clone_path), config, scanner)
+            _print_findings(findings, output_format, repo_root=str(clone_path))
+            if output_format == "table":
+                _print_scan_summary(findings)
+        finally:
+            cleanup_clone(clone_path)
+        return
 
     findings = _scan_findings(repo_path, config, scanner)
 

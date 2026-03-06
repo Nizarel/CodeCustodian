@@ -91,6 +91,7 @@ class TestMCPServerStructure:
             "plan_migration",
             "get_migration_status",
             "send_teams_notification",
+            "scan_remote_repository",
         }
         assert expected == names
 

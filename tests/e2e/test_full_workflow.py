@@ -8,7 +8,7 @@ Covers all features of CodeCustodian for the demo preparation:
   - Enterprise features: ROI, SLA, Budget, Audit, RBAC, approval, multi-tenant
   - Safety checks: eval/exec/secret/path-traversal blocking
   - Feedback & historical pattern learning loop
-  - Local MCP server: all 8 tools, 7 resources, 4 prompts
+  - Local MCP server: all 17 tools, 7 resources, 7 prompts
 
 Run with:
     pytest tests/e2e/test_full_workflow.py -v -m e2e
@@ -838,8 +838,8 @@ class TestMCPServerLocal:
     """Verify the local MCP server exposes all tools, resources and prompts (Phase 2.7)."""
 
     @pytest.mark.e2e
-    def test_mcp_list_tools_returns_nine(self) -> None:
-        """MCP server exposes exactly 9 tools."""
+    def test_mcp_list_tools_returns_seventeen(self) -> None:
+        """MCP server exposes exactly 17 tools."""
         from fastmcp import Client
 
         from codecustodian.mcp.server import mcp
@@ -855,6 +855,8 @@ class TestMCPServerLocal:
             "apply_refactoring", "verify_changes", "create_pull_request",
             "calculate_roi", "get_business_impact", "get_blast_radius",
             "get_debt_forecast", "check_pypi_versions", "get_reachability_analysis",
+            "synthesize_tests", "plan_migration", "get_migration_status",
+            "send_teams_notification", "scan_remote_repository",
         }
         assert expected == tool_names, f"Missing tools: {expected - tool_names}"
 
@@ -1027,8 +1029,8 @@ class TestMCPServerLocal:
         assert "by_type" in data
 
     @pytest.mark.e2e
-    def test_mcp_prompts_list_returns_four(self) -> None:
-        """MCP server registers exactly 4 prompts."""
+    def test_mcp_prompts_list_returns_seven(self) -> None:
+        """MCP server registers exactly 7 prompts."""
         from fastmcp import Client
 
         from codecustodian.mcp.server import mcp
@@ -1039,7 +1041,11 @@ class TestMCPServerLocal:
 
         prompts = asyncio.run(_run())
         prompt_names = {p.name for p in prompts}
-        expected = {"refactor_finding", "scan_summary", "roi_report", "onboard_repo", "forecast_report"}
+        expected = {
+            "refactor_finding", "scan_summary", "roi_report",
+            "onboard_repo", "forecast_report",
+            "migration_assessment", "test_coverage_gap",
+        }
         assert expected == prompt_names, f"Missing prompts: {expected - prompt_names}"
 
     @pytest.mark.e2e
