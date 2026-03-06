@@ -62,6 +62,8 @@ CodeCustodian automates this maintenance work:
 | **Code Smells** | Complexity and maintainability issues | Functions with cyclomatic complexity >10 |
 | **Security Patterns** | Outdated security practices | MD5 hashing, hardcoded secrets |
 | **Type Coverage** | Missing type annotations | Untyped function parameters |
+| **Architectural Drift** | Structural design violations | Circular imports, forbidden layer crossings |
+| **Dependency Upgrades** | Stale or risky dependency constraints | Outdated pins and upgrade recommendations |
 
 ### 🧠 GitHub Copilot SDK Integration
 
@@ -92,7 +94,7 @@ CodeCustodian automates this maintenance work:
 ### 📊 Enterprise Features
 
 - 📈 **Analytics dashboard** (tech debt trends, PR metrics)
-- 🔔 **Slack/email notifications**
+- 🔔 **Teams ChatOps, Slack, and email notifications**
 - 👥 **Multi-repository management**
 - 🎛️ **Configuration UI** (no YAML editing required)
 - 🔐 **SOC 2 ready** (audit trails, encryption, RBAC)

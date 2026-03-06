@@ -59,7 +59,7 @@
 - Work IQ MCP integration
 - **ChatOps → Teams notifications enriched with Work IQ** (pipeline-integrated, Azure-deployed)
 - GitHub Copilot SDK as AI engine (12 agent profiles, 13 domain skills)
-- GitHub Actions (4 workflows: ci, deploy-azure, codecustodian, security-scan)
+- GitHub Actions (6 workflows: ci, ci-self-heal, deploy-azure, codecustodian, pr-review-bot, security-scan)
 
 **What to build to maximize score:**
 
@@ -75,7 +75,7 @@
 ### 3. Operational Readiness — 15 pts
 
 **What we have:**
-- CI workflow: lint (ruff, 0 errors) → test (826 tests, 82%+ cov, 80% gate) → security (bandit)
+- CI workflow: lint (ruff, 0 errors) → test (949 tests, 82%+ cov, 80% gate) → security (bandit)
 - Deploy workflow: test → build/push → Bicep deploy → MCP smoke test
 - Security scan workflow: Bandit + Trivy (weekly schedule)
 - Docker multi-stage build (non-root user, healthcheck)
@@ -174,7 +174,7 @@ Enterprise features include budget management, SLA reporting, HTML ROI reports, 
 approval workflows, predictive debt forecasting, AI test synthesis, agentic migrations,
 and a feedback loop that learns from PR outcomes.
 
-**849 tests, 82%+ coverage, 4 CI/CD workflows, 0 lint errors, Responsible AI policy.**
+**949 tests, 82%+ coverage, 6 CI/CD workflows, 0 lint errors, Responsible AI policy.**
 
 ---
 
@@ -192,7 +192,41 @@ and a feedback loop that learns from PR outcomes.
 | 1:55-2:15 | **MCP in VS Code** | Open Copilot Chat → use `get_debt_forecast` tool to show trend prediction → use `send_teams_notification` with Work IQ enrichment. "17 tools, 7 prompts, 12 agents." |
 | 2:15-2:30 | **Enterprise** | HTML ROI report, budget dashboard, SLA metrics, audit log. "Enterprise-ready from day one." |
 | 2:30-2:45 | **Azure Integration** | Architecture diagram: Key Vault + Container Apps + Monitor + DevOps + Teams ChatOps + Work IQ + GitHub Actions + Copilot SDK |
-| 2:45-3:00 | **Close** | "CodeCustodian: your autonomous guardian against technical debt. 849 tests. Zero lint errors. Production-ready." |
+| 2:45-3:00 | **Close** | "CodeCustodian: your autonomous guardian against technical debt. 949 tests. Zero lint errors. Production-ready." |
+
+## Final Speaking Script (3 Minutes)
+
+### 0:00-0:20 — Hook
+
+"Engineering teams lose roughly forty percent of their time to maintenance work: deprecated APIs, stale TODOs, security risks, and architecture drift. CodeCustodian is an autonomous AI agent that takes that work off the team’s plate."
+
+### 0:20-0:45 — What It Does
+
+"It scans a codebase, prioritizes findings, plans safe fixes with GitHub Copilot SDK, applies changes atomically, verifies them with tests and linting, and then creates pull requests with full reasoning. Humans stay in control, but the grunt work is automated."
+
+### 0:45-1:10 — Live Scan
+
+"Here I’m scanning a seeded enterprise sample app. In a few seconds, CodeCustodian finds real technical debt across security, deprecated APIs, TODOs, type coverage, and maintainability issues, and it ranks them by business impact and remediation priority."
+
+### 1:10-1:30 — Deep-Dive + Safe Execution
+
+"Now I can drill into a finding like SQL injection, see CWE context, exploit scenario, and compliance notes, then switch to dry-run mode to preview the exact diff before any file changes are made. This is proposal-first and safety-first by design."
+
+### 1:30-1:55 — ChatOps + Azure
+
+"Every important event can notify the team automatically. CodeCustodian is deployed on Azure Container Apps, stores secrets in Azure Key Vault, and sends a live Teams Adaptive Card through ChatOps. This notification path is working end-to-end in Azure right now."
+
+### 1:55-2:15 — MCP in VS Code
+
+"It also exposes an MCP server for Copilot Chat in VS Code. The current surface includes 17 tools and 7 prompts, so I can ask Copilot for debt forecasts, migration planning, reachability analysis, or even trigger Teams notifications directly from chat."
+
+### 2:15-2:35 — Enterprise Value
+
+"This is not just a scanner. It includes ROI reporting, SLA tracking, budget management, approval workflows, audit logging, predictive forecasting, AI-generated regression tests, and migration planning. That makes it usable as an enterprise operational system, not just a demo toy."
+
+### 2:35-3:00 — Close
+
+"CodeCustodian combines GitHub Copilot SDK, FastMCP, Azure deployment, and Teams ChatOps into one production-ready technical debt platform. Today it is validated by 949 passing tests, zero lint errors, and a live Azure deployment. That is CodeCustodian: your autonomous guardian against technical debt." 
 
 ---
 
@@ -202,7 +236,7 @@ and a feedback loop that learns from PR outcomes.
 graph TB
     subgraph "Developer Experience"
         CLI["CLI (14+ commands)"]
-        MCP["MCP Server (FastMCP v2)\n16 tools, 7 prompts"]
+        MCP["MCP Server (FastMCP v2)\n17 tools, 7 prompts"]
         VSCode["VS Code Copilot Chat"]
     end
 
@@ -226,7 +260,7 @@ graph TB
         ACA["Azure Container Apps\nDeployment"]
         MON["Azure Monitor\nOpenTelemetry"]
         ADO["Azure DevOps\nWork Items"]
-        GHA["GitHub Actions\nCI/CD (4 workflows)"]
+        GHA["GitHub Actions\nCI/CD (6 workflows)"]
         COPILOT["GitHub Copilot SDK\nAI Reasoning"]
     end
 
