@@ -690,3 +690,217 @@ class TestV15Skills:
         for name in ("test-synthesis", "framework-migrations", "chatops-delivery"):
             skill_file = skills_dir / name / "SKILL.md"
             assert skill_file.exists(), f"Missing {skill_file}"
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# Pipeline ChatOps + Work IQ integration
+# ═══════════════════════════════════════════════════════════════════════════
+
+
+class TestPipelineChatOps:
+    """Test ChatOps notifications wired into the pipeline with Work IQ enrichment."""
+
+    @pytest.mark.asyncio
+    async def test_pipeline_initializes_chatops_when_enabled(self):
+        from codecustodian.config.schema import CodeCustodianConfig
+        from codecustodian.pipeline import Pipeline
+
+        config = CodeCustodianConfig()
+        config.chatops.enabled = True
+        config.chatops.teams_webhook_url = "https://webhook.example.com"
+
+        pipeline = Pipeline(config=config, repo_path="/tmp/test")
+        assert pipeline._chatops is not None
+
+    @pytest.mark.asyncio
+    async def test_pipeline_no_chatops_when_disabled(self):
+        from codecustodian.config.schema import CodeCustodianConfig
+        from codecustodian.pipeline import Pipeline
+
+        config = CodeCustodianConfig()
+        config.chatops.enabled = False
+
+        pipeline = Pipeline(config=config, repo_path="/tmp/test")
+        assert pipeline._chatops is None
+
+    @pytest.mark.asyncio
+    async def test_notify_scan_complete_sends_card(self):
+        from codecustodian.config.schema import CodeCustodianConfig
+        from codecustodian.models import Finding, FindingType, SeverityLevel
+        from codecustodian.pipeline import Pipeline
+
+        config = CodeCustodianConfig()
+        config.chatops.enabled = True
+        config.chatops.teams_webhook_url = "https://webhook.example.com"
+
+        pipeline = Pipeline(config=config, repo_path="/tmp/test")
+
+        # Mock the connector
+        mock_connector = AsyncMock()
+        mock_connector.send = AsyncMock(return_value=True)
+        pipeline._chatops = mock_connector
+
+        # Populate findings
+        pipeline._result.findings = [
+            Finding(type=FindingType.SECURITY, severity=SeverityLevel.CRITICAL,
+                    file="a.py", line=1, description="sql injection"),
+            Finding(type=FindingType.CODE_SMELL, severity=SeverityLevel.LOW,
+                    file="b.py", line=2, description="long function"),
+        ]
+
+        await pipeline._notify_scan_complete()
+        mock_connector.send.assert_called_once()
+        notification = mock_connector.send.call_args[0][0]
+        assert notification.message_type == "scan_complete"
+        assert notification.payload["total_findings"] == 2
+        assert notification.payload["critical"] == 1
+        assert notification.payload["high"] == 0
+
+    @pytest.mark.asyncio
+    async def test_notify_scan_complete_enriches_with_work_iq(self):
+        from codecustodian.config.schema import CodeCustodianConfig
+        from codecustodian.integrations.work_iq import SprintContext
+        from codecustodian.pipeline import Pipeline
+
+        config = CodeCustodianConfig()
+        config.chatops.enabled = True
+        config.chatops.teams_webhook_url = "https://webhook.example.com"
+        config.work_iq.enabled = True
+
+        pipeline = Pipeline(config=config, repo_path="/tmp/test")
+
+        mock_connector = AsyncMock()
+        mock_connector.send = AsyncMock(return_value=True)
+        pipeline._chatops = mock_connector
+
+        # Mock Work IQ to return sprint context
+        mock_work_iq = AsyncMock()
+        mock_work_iq.get_sprint_context = AsyncMock(return_value=SprintContext(
+            sprint_name="Sprint 42",
+            days_remaining=5,
+            capacity_pct=72.0,
+        ))
+        pipeline._work_iq = mock_work_iq
+
+        pipeline._result.findings = []
+
+        await pipeline._notify_scan_complete()
+        mock_connector.send.assert_called_once()
+        notification = mock_connector.send.call_args[0][0]
+        assert notification.payload["sprint_name"] == "Sprint 42"
+        assert notification.payload["sprint_days_remaining"] == 5
+
+    @pytest.mark.asyncio
+    async def test_notify_pr_created_includes_expert(self):
+        from codecustodian.config.schema import CodeCustodianConfig
+        from codecustodian.models import (
+            Finding,
+            FindingType,
+            PullRequestInfo,
+            RefactoringPlan,
+            SeverityLevel,
+        )
+        from codecustodian.pipeline import Pipeline
+
+        config = CodeCustodianConfig()
+        config.chatops.enabled = True
+        config.chatops.teams_webhook_url = "https://webhook.example.com"
+
+        pipeline = Pipeline(config=config, repo_path="/tmp/test")
+
+        mock_connector = AsyncMock()
+        mock_connector.send = AsyncMock(return_value=True)
+        pipeline._chatops = mock_connector
+
+        finding = Finding(
+            type=FindingType.SECURITY, severity=SeverityLevel.HIGH,
+            file="c.py", line=10, description="xss",
+        )
+        finding.metadata["work_iq_expert"] = {"name": "Alice", "email": "alice@example.com"}
+
+        plan = RefactoringPlan(
+            finding_id=finding.id,
+            summary="Fix XSS vulnerability",
+            description="Fix XSS",
+            confidence_score=9,
+            changes=[],
+        )
+        pr = PullRequestInfo(
+            number=42,
+            url="https://github.com/test/repo/pull/42",
+            title="fix: XSS in c.py",
+            branch="fix/xss-c-py",
+        )
+
+        await pipeline._notify_pr_created(pr, finding, plan)
+        mock_connector.send.assert_called_once()
+        notification = mock_connector.send.call_args[0][0]
+        assert notification.message_type == "pr_created"
+        assert notification.payload["assigned_expert"] == "Alice"
+        assert notification.payload["confidence"] == 9
+
+    @pytest.mark.asyncio
+    async def test_notify_verification_failed(self):
+        from codecustodian.config.schema import CodeCustodianConfig
+        from codecustodian.models import Finding, FindingType, SeverityLevel
+        from codecustodian.pipeline import Pipeline
+
+        config = CodeCustodianConfig()
+        config.chatops.enabled = True
+        config.chatops.teams_webhook_url = "https://webhook.example.com"
+
+        pipeline = Pipeline(config=config, repo_path="/tmp/test")
+
+        mock_connector = AsyncMock()
+        mock_connector.send = AsyncMock(return_value=True)
+        pipeline._chatops = mock_connector
+
+        finding = Finding(
+            type=FindingType.CODE_SMELL, severity=SeverityLevel.MEDIUM,
+            file="d.py", line=5, description="complex method",
+        )
+
+        await pipeline._notify_verification_failed(finding, ["lint error", "test failed"])
+        mock_connector.send.assert_called_once()
+        notification = mock_connector.send.call_args[0][0]
+        assert notification.message_type == "verification_failed"
+        assert notification.payload["finding_id"] == finding.id
+        assert len(notification.payload["errors"]) == 2
+
+    @pytest.mark.asyncio
+    async def test_notify_silently_fails_when_connector_errors(self):
+        from codecustodian.config.schema import CodeCustodianConfig
+        from codecustodian.models import ChatOpsNotification
+        from codecustodian.pipeline import Pipeline
+
+        config = CodeCustodianConfig()
+        config.chatops.enabled = True
+        config.chatops.teams_webhook_url = "https://webhook.example.com"
+
+        pipeline = Pipeline(config=config, repo_path="/tmp/test")
+
+        mock_connector = AsyncMock()
+        mock_connector.send = AsyncMock(side_effect=Exception("Network error"))
+        pipeline._chatops = mock_connector
+
+        notification = ChatOpsNotification(
+            message_type="scan_complete", payload={"total_findings": 0, "critical": 0, "high": 0},
+        )
+        # Should not raise — just log warning
+        await pipeline._notify(notification)
+
+    @pytest.mark.asyncio
+    async def test_notify_noop_when_chatops_disabled(self):
+        from codecustodian.config.schema import CodeCustodianConfig
+        from codecustodian.models import ChatOpsNotification
+        from codecustodian.pipeline import Pipeline
+
+        config = CodeCustodianConfig()
+        pipeline = Pipeline(config=config, repo_path="/tmp/test")
+        assert pipeline._chatops is None
+
+        notification = ChatOpsNotification(
+            message_type="scan_complete", payload={"total_findings": 0, "critical": 0, "high": 0},
+        )
+        # Should do nothing without errors
+        await pipeline._notify(notification)

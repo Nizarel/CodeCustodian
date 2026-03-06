@@ -28,10 +28,12 @@ from codecustodian.exceptions import (
     PlannerError,
     VerifierError,
 )
+from codecustodian.integrations.teams_chatops import TeamsConnector
 from codecustodian.integrations.work_iq import WorkIQContextProvider
 from codecustodian.intelligence.business_impact import BusinessImpactScorer
 from codecustodian.logging import get_logger
 from codecustodian.models import (
+    ChatOpsNotification,
     CodeContext,
     ExecutionResult,
     Finding,
@@ -40,6 +42,7 @@ from codecustodian.models import (
     ProposalResult,
     PullRequestInfo,
     RefactoringPlan,
+    SeverityLevel,
     VerificationResult,
 )
 
@@ -95,6 +98,11 @@ class Pipeline:
         self._sla_reporter: SLAReporter | None = None
         if getattr(self.config, "sla", None) and self.config.sla.enabled:
             self._sla_reporter = SLAReporter(db_path=self.config.sla.db_path)
+
+        # v0.15.0: ChatOps (Teams) — enriched with Work IQ context
+        self._chatops: TeamsConnector | None = None
+        if getattr(self.config, "chatops", None) and self.config.chatops.enabled:
+            self._chatops = TeamsConnector(config=self.config.chatops)
 
     async def run(self) -> PipelineResult:
         """Execute the full pipeline and return aggregated results."""
@@ -167,8 +175,93 @@ class Pipeline:
                 except Exception as sla_exc:
                     logger.warning("SLA recording failed: %s", sla_exc)
 
+            # v0.15.0: ChatOps — send scan_complete notification to Teams
+            await self._notify_scan_complete()
+
+            # Cleanup ChatOps connector
+            if self._chatops is not None:
+                await self._chatops.close()
+
             logger.info("Pipeline finished in %.1fs", elapsed)
             return self._result
+
+    # ── ChatOps notification helpers (v0.15.0) ──────────────────────────
+
+    async def _notify(self, notification: ChatOpsNotification) -> None:
+        """Send a ChatOps notification if the connector is enabled."""
+        if self._chatops is None:
+            return
+        try:
+            await self._chatops.send(notification)
+        except Exception as exc:
+            logger.warning("ChatOps notification failed: %s", exc)
+
+    async def _notify_scan_complete(self) -> None:
+        """Send scan_complete summary to Teams with Work IQ sprint context."""
+        if self._chatops is None:
+            return
+
+        findings = self._result.findings
+        critical = sum(1 for f in findings if f.severity == SeverityLevel.CRITICAL)
+        high = sum(1 for f in findings if f.severity == SeverityLevel.HIGH)
+
+        payload: dict = {
+            "total_findings": len(findings),
+            "critical": critical,
+            "high": high,
+            "repo": self.repo_path,
+        }
+
+        # Enrich with Work IQ sprint context
+        if self._work_iq is not None:
+            try:
+                sprint = await self._work_iq.get_sprint_context()
+                payload["sprint_name"] = sprint.sprint_name
+                payload["sprint_days_remaining"] = sprint.days_remaining
+                payload["sprint_capacity_pct"] = sprint.capacity_pct
+            except Exception:
+                pass
+
+        notification = ChatOpsNotification(
+            message_type="scan_complete",
+            payload=payload,
+        )
+        await self._notify(notification)
+
+    async def _notify_pr_created(
+        self, pr: PullRequestInfo, finding: Finding, plan: RefactoringPlan,
+    ) -> None:
+        """Send pr_created notification enriched with Work IQ expert info."""
+        payload: dict = {
+            "pr_url": pr.url,
+            "pr_title": pr.title,
+            "finding_count": 1,
+            "confidence": plan.confidence_score,
+        }
+
+        # Enrich with Work IQ expert info
+        expert_info = finding.metadata.get("work_iq_expert")
+        if expert_info:
+            payload["assigned_expert"] = expert_info.get("name", "")
+
+        notification = ChatOpsNotification(
+            message_type="pr_created",
+            payload=payload,
+        )
+        await self._notify(notification)
+
+    async def _notify_verification_failed(
+        self, finding: Finding, errors: list[str],
+    ) -> None:
+        """Send verification_failed notification to Teams."""
+        notification = ChatOpsNotification(
+            message_type="verification_failed",
+            payload={
+                "finding_id": finding.id,
+                "errors": errors[:5],
+            },
+        )
+        await self._notify(notification)
 
     # ── PR sizing / splitting (BR-PLN-002) ─────────────────────────────
 
@@ -414,8 +507,12 @@ class Pipeline:
                 pr = await self._create_pr(finding, plan, execution, verification)
                 if pr:
                     self._result.pull_requests.append(pr)
+                    await self._notify_pr_created(pr, finding, plan)
             else:
                 # Downgrade to proposal if verification fails (BR-QA-002)
+                await self._notify_verification_failed(
+                    finding, verification.failures,
+                )
                 logger.warning(
                     "Verification failed for %s — downgrading to proposal and rolling back",
                     finding.id,

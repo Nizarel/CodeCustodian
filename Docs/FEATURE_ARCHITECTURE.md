@@ -2972,6 +2972,31 @@ chatops:
     - approval_needed
 ```
 
+#### Pipeline Integration (v0.15.0+)
+
+ChatOps notifications are wired directly into the pipeline orchestrator
+(`pipeline.py`). The `TeamsConnector` is initialized when `chatops.enabled` is
+`True` and sends notifications at three pipeline lifecycle points:
+
+| Event | Triggered After | Work IQ Enrichment |
+|-------|----------------|-------------------|
+| `scan_complete` | Full scan + prioritize | Sprint name, days remaining, capacity % |
+| `pr_created` | Successful PR creation | Expert name from Work IQ `search_people` |
+| `verification_failed` | Verification rollback | — |
+
+When Work IQ is also enabled (`work_iq.enabled: true`), the `scan_complete`
+card automatically includes sprint context (capacity, code-freeze status) from
+the `@microsoft/workiq` MCP server — giving teams actionable context alongside
+the findings summary.
+
+**Azure Deployment:** The `TEAMS_WEBHOOK_URL` environment variable is injected
+into the Container App via Azure Key Vault (see `infra/modules/container-app.bicep`).
+The `CHATOPS_ENABLED` env var activates notification delivery in production.
+
+**MCP Tool:** `send_teams_notification` supports an `enrich_with_work_iq`
+parameter that queries the Work IQ MCP server for sprint context and appends it
+to the Adaptive Card payload.
+
 ### 22.4 New Agent Profiles (12 Total)
 
 **Module:** `planner/agents.py` | **Total agents:** 12

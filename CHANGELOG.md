@@ -6,6 +6,39 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
 
+## [0.15.1] — 2026-03-06
+
+### Added — Competition Sprint: Remote Scanning, ChatOps Pipeline & Azure
+
+#### Remote Repository Scanning
+- `RepoCloner` in `scanner/repo_cloner.py`: clone any public Git URL to temp dir,
+  scan, and clean up automatically
+- `--url` CLI flag on `scan` and `run` commands for remote repo scanning
+- `scan_remote_repository` MCP tool (17 total tools)
+
+#### ChatOps Pipeline Integration
+- Pipeline now sends Teams Adaptive Cards on scan_complete, pr_created, and
+  verification_failed events automatically when `chatops.enabled` is set
+- Work IQ sprint context enrichment on scan notifications (sprint name, goals,
+  velocity, top risks) via `WorkIQContextProvider`
+- Work IQ expert enrichment on PR-created notifications (expert contact from
+  finding metadata)
+- `send_teams_notification` MCP tool enhanced with `enrich_with_work_iq` parameter
+- Silent failure handling — ChatOps errors never block the pipeline
+
+#### Azure Deployment Updates
+- `TEAMS_WEBHOOK_URL` and `CHATOPS_ENABLED` env vars in container-app.bicep
+- `teamsWebhookUrl` secure parameter in main.bicep (from Key Vault)
+- Deployed v0.15.0 image to Azure Container Apps (revision 0000009)
+
+#### Tests & Docs
+- 8 new ChatOps pipeline integration tests in `test_phase10_v015.py`
+- 15 new remote repo cloner tests
+- Updated e2e assertions: 17 tools, 7 prompts
+- Total: 849 tests passing, 0 failures
+
+---
+
 ## [0.15.0] — 2026-03-05
 
 ### Added — Phase 13: AI Test Synthesis, Agentic Migrations & ChatOps

@@ -877,16 +877,23 @@ def register_tools(mcp: FastMCP) -> None:
     async def send_teams_notification(
         message_type: str = "scan_complete",
         payload: str = "{}",
+        enrich_with_work_iq: bool = False,
         ctx: Context = None,  # type: ignore[assignment]
     ) -> dict:
         """Send an Adaptive Card notification to Microsoft Teams.
+
+        Optionally enriches the notification with Work IQ sprint context
+        (expert lookup, sprint status) when ``enrich_with_work_iq`` is True.
 
         Args:
             message_type: One of: scan_complete, pr_created,
                 approval_needed, verification_failed.
             payload: JSON string with card payload fields.
+            enrich_with_work_iq: When True, queries Work IQ MCP server
+                for sprint context and appends it to the card payload.
         """
         import json as _json
+        import os as _os
 
         from codecustodian.config.schema import ChatOpsConfig
         from codecustodian.integrations.teams_chatops import TeamsConnector
@@ -897,7 +904,29 @@ def register_tools(mcp: FastMCP) -> None:
         except _json.JSONDecodeError:
             return {"error": "Invalid JSON payload"}
 
-        config = ChatOpsConfig(enabled=True)
+        # Enrich with Work IQ sprint context if requested
+        work_iq_context: dict = {}
+        if enrich_with_work_iq:
+            try:
+                from codecustodian.integrations.work_iq import WorkIQContextProvider
+
+                provider = WorkIQContextProvider()
+                sprint = await provider.get_sprint_context()
+                work_iq_context = {
+                    "sprint_name": sprint.sprint_name,
+                    "days_remaining": sprint.days_remaining,
+                    "capacity_pct": sprint.capacity_pct,
+                    "is_code_freeze": sprint.is_code_freeze,
+                }
+                data["work_iq_sprint"] = work_iq_context
+            except Exception as exc:
+                work_iq_context = {"error": str(exc)}
+
+            if ctx:
+                await ctx.info("Enriched notification with Work IQ sprint context")
+
+        webhook_url = _os.environ.get("TEAMS_WEBHOOK_URL", "")
+        config = ChatOpsConfig(enabled=True, teams_webhook_url=webhook_url)
         notification = ChatOpsNotification(
             message_type=message_type,
             payload=data,
@@ -913,6 +942,7 @@ def register_tools(mcp: FastMCP) -> None:
                 "delivered": ok,
                 "notification_id": notification.id,
                 "message_type": message_type,
+                "work_iq_enriched": bool(work_iq_context),
             }
         finally:
             await connector.close()

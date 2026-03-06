@@ -1,7 +1,7 @@
 """Post-deployment end-to-end tests for the Azure-hosted MCP server.
 
 These tests validate the live deployment at:
-    https://codecustodian-prod-app.greenforest-c49f3fb9.eastus2.azurecontainerapps.io
+    https://codecustodian-dev-app.delightfuldesert-11a0292b.eastus2.azurecontainerapps.io
 
 Run with:
     pytest tests/e2e/test_azure_deployment.py -v -m azure_e2e
@@ -20,7 +20,7 @@ import pytest
 
 FQDN = os.environ.get(
     "CODECUSTODIAN_FQDN",
-    "codecustodian-prod-app.greenforest-c49f3fb9.eastus2.azurecontainerapps.io",
+    "codecustodian-dev-app.delightfuldesert-11a0292b.eastus2.azurecontainerapps.io",
 )
 BASE_URL = f"https://{FQDN}"
 MCP_URL = f"{BASE_URL}/mcp"
@@ -31,6 +31,14 @@ MCP_HEADERS = {
 }
 
 pytestmark = pytest.mark.azure_e2e
+
+_RUN_AZURE_E2E = os.environ.get("RUN_AZURE_E2E", "").lower() in ("1", "true", "yes")
+
+if not _RUN_AZURE_E2E:
+    pytestmark = [
+        pytest.mark.azure_e2e,
+        pytest.mark.skip(reason="Set RUN_AZURE_E2E=1 to run live Azure e2e tests"),
+    ]
 
 # ── Helpers ────────────────────────────────────────────────────────────────
 
@@ -180,9 +188,9 @@ class TestMCPProtocol:
 
 
 class TestMCPTools:
-    """FR-API-001: All 8 MCP tools reachable and functional."""
+    """FR-API-001: All 17 MCP tools reachable and functional."""
 
-    def test_tools_list_returns_all_eight(self) -> None:
+    def test_tools_list_returns_all_seventeen(self) -> None:
         with httpx.Client() as client:
             session_id = _mcp_session(client)
             result = _mcp_call(client, session_id, "tools/list")
@@ -197,6 +205,15 @@ class TestMCPTools:
                 "create_pull_request",
                 "calculate_roi",
                 "get_business_impact",
+                "get_blast_radius",
+                "get_debt_forecast",
+                "check_pypi_versions",
+                "get_reachability_analysis",
+                "synthesize_tests",
+                "plan_migration",
+                "get_migration_status",
+                "send_teams_notification",
+                "scan_remote_repository",
             }
             assert expected == tool_names, f"Missing: {expected - tool_names}"
 
@@ -313,7 +330,7 @@ class TestMCPResources:
 class TestMCPPrompts:
     """MCP prompts are registered and accessible."""
 
-    def test_prompts_list_returns_four(self) -> None:
+    def test_prompts_list_returns_seven(self) -> None:
         with httpx.Client() as client:
             session_id = _mcp_session(client)
             result = _mcp_call(client, session_id, "prompts/list")
@@ -324,6 +341,9 @@ class TestMCPPrompts:
                 "scan_summary",
                 "roi_report",
                 "onboard_repo",
+                "forecast_report",
+                "migration_assessment",
+                "test_coverage_gap",
             }
             assert expected == names, f"Missing prompts: {expected - names}"
 

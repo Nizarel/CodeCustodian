@@ -55,8 +55,9 @@
 - Azure Container Apps deployment (Dockerfile + Bicep + CI/CD)
 - Azure Monitor / App Insights (OpenTelemetry)
 - Azure DevOps integration (work items)
-- MCP server (FastMCP) — works with Copilot Chat (16 tools, 7 prompts)
+- MCP server (FastMCP) — works with Copilot Chat (17 tools, 7 prompts)
 - Work IQ MCP integration
+- **ChatOps → Teams notifications enriched with Work IQ** (pipeline-integrated, Azure-deployed)
 - GitHub Copilot SDK as AI engine (12 agent profiles, 13 domain skills)
 - GitHub Actions (4 workflows: ci, deploy-azure, codecustodian, security-scan)
 
@@ -67,8 +68,9 @@
 | B1. **MCP live demo in VS Code Copilot Chat** | HIGH — unique differentiator, already built | Low (just demo) |
 | B2. **Architecture diagram showing all Azure touchpoints** | HIGH — visual proof of deep integration | Low |
 | B3. **Azure Monitor dashboard screenshot/setup** | MEDIUM — shows observability is real | Medium |
+| B4. **ChatOps demo — Teams notification in demo script** | HIGH — shows real pipeline integration w/ Work IQ | DONE ✅ |
 
-**Key message:** CodeCustodian touches 6 Azure/Microsoft services: Key Vault, Container Apps, Monitor, DevOps, GitHub Copilot SDK, MCP protocol. Plus GitHub Actions for CI/CD.
+**Key message:** CodeCustodian touches 7 Azure/Microsoft services: Key Vault, Container Apps, Monitor, DevOps, Teams (ChatOps), GitHub Copilot SDK, MCP protocol. Plus GitHub Actions for CI/CD and Work IQ MCP for organizational intelligence.
 
 ### 3. Operational Readiness — 15 pts
 
@@ -163,16 +165,16 @@ analysis and secret detection), verified by automated tests and linting, and sub
 as pull requests with full AI reasoning — keeping humans in control.
 
 Built on **FastMCP v2**, CodeCustodian integrates as an MCP server in VS Code Copilot Chat
-with 16 tools, 7 prompts, and 12 agent profiles (including advisory analysts for debt
+with 17 tools, 7 prompts, and 12 agent profiles (including advisory analysts for debt
 forecasting and code reachability). It deploys to **Azure Container Apps** with
-**Key Vault** secrets, **Azure Monitor** observability, and **Azure DevOps** work item
-integration.
+**Key Vault** secrets, **Azure Monitor** observability, **Azure DevOps** work items,
+and **Teams ChatOps** notifications enriched with **Work IQ** sprint intelligence.
 
 Enterprise features include budget management, SLA reporting, HTML ROI reports, RBAC,
-approval workflows, predictive debt forecasting, live PyPI intelligence, and a feedback
-loop that learns from PR outcomes.
+approval workflows, predictive debt forecasting, AI test synthesis, agentic migrations,
+and a feedback loop that learns from PR outcomes.
 
-**826 tests, 82%+ coverage, 4 CI/CD workflows, 0 lint errors, Responsible AI policy.**
+**849 tests, 82%+ coverage, 4 CI/CD workflows, 0 lint errors, Responsible AI policy.**
 
 ---
 
@@ -180,16 +182,17 @@ loop that learns from PR outcomes.
 
 | Time | Segment | Content |
 |------|---------|---------|
-| 0:00-0:20 | **Hook** | "Engineering teams spend 40% of their time on maintenance. What if an AI agent handled it autonomously?" |
-| 0:20-0:40 | **Problem** | Show a real codebase with deprecated APIs, old TODOs, code smells. "This is technical debt." |
-| 0:40-1:10 | **Live Demo: Scan** | Run `codecustodian scan --repo-path demo/sample-enterprise-app` → show 60 findings with severity colors, bar chart, and ROI estimate. |
-| 1:10-1:30 | **Finding Deep-Dive** | Run `codecustodian finding "sql injection"` → show detailed view with CWE, exploit scenario, compliance refs. |
-| 1:30-1:50 | **Dry-Run + Diff Preview** | Run `codecustodian run --dry-run --max-prs 1` → show diff preview of proposed changes before any code is touched. |
-| 1:50-2:05 | **Safety** | Show 7-point safety system: blast radius gate, secret detection, confidence-gated behavior. eval() blocked. |
-| 2:05-2:20 | **MCP in VS Code** | Open Copilot Chat → use `get_debt_forecast` tool to show trend prediction → use `check_pypi_versions` to show live dependency intelligence → use `get_reachability_analysis` to show dead code detection. "16 tools, 7 prompts, 12 agents." |
-| 2:20-2:35 | **Enterprise** | HTML ROI report, budget dashboard, SLA metrics, audit log. "Enterprise-ready from day one." |
-| 2:35-2:50 | **Azure Integration** | Architecture diagram: Key Vault + Container Apps + Monitor + DevOps + GitHub Actions + Copilot SDK |
-| 2:50-3:00 | **Close** | "CodeCustodian: your autonomous guardian against technical debt. 826 tests. Zero lint errors. Production-ready." |
+| 0:00-0:15 | **Hook** | "Engineering teams spend 40% of their time on maintenance. What if an AI agent handled it autonomously?" |
+| 0:15-0:30 | **Problem** | Show a real codebase with deprecated APIs, old TODOs, code smells. "This is technical debt." |
+| 0:30-0:55 | **Live Demo: Scan** | Run `codecustodian scan --repo-path demo/sample-enterprise-app` → show 60 findings with severity colors, bar chart, and ROI estimate. |
+| 0:55-1:10 | **Finding Deep-Dive** | Run `codecustodian finding "sql injection"` → show detailed view with CWE, exploit scenario, compliance refs. |
+| 1:10-1:25 | **Dry-Run + Diff Preview** | Run `codecustodian run --dry-run --max-prs 1` → show diff preview of proposed changes before any code is touched. |
+| 1:25-1:40 | **ChatOps + Work IQ** | Show Teams Adaptive Card notification from scan results. "Every scan notifies your team — enriched with sprint context from Work IQ." Deployed on Azure Container Apps with webhook URL from Key Vault. |
+| 1:40-1:55 | **Safety** | Show 7-point safety system: blast radius gate, secret detection, confidence-gated behavior. eval() blocked. |
+| 1:55-2:15 | **MCP in VS Code** | Open Copilot Chat → use `get_debt_forecast` tool to show trend prediction → use `send_teams_notification` with Work IQ enrichment. "17 tools, 7 prompts, 12 agents." |
+| 2:15-2:30 | **Enterprise** | HTML ROI report, budget dashboard, SLA metrics, audit log. "Enterprise-ready from day one." |
+| 2:30-2:45 | **Azure Integration** | Architecture diagram: Key Vault + Container Apps + Monitor + DevOps + Teams ChatOps + Work IQ + GitHub Actions + Copilot SDK |
+| 2:45-3:00 | **Close** | "CodeCustodian: your autonomous guardian against technical debt. 849 tests. Zero lint errors. Production-ready." |
 
 ---
 

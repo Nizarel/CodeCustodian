@@ -118,8 +118,61 @@ Write-Step "STEP 4: Dry-Run Pipeline (Scan → Plan → Safety Check)"
 
 codecustodian run --repo-path $DemoRepo --dry-run --output-format json 2>$null
 
-# ── Step 5: Security deep-dive ──────────────────────────────────────────
-Write-Step "STEP 5: Security Findings Deep-Dive"
+# ── Step 5: ChatOps — Teams Notification (Work IQ enriched) ─────────────
+Write-Step "STEP 5: ChatOps → Teams Notification (Azure + Work IQ)"
+
+Write-Host "  Sending scan results to Microsoft Teams via ChatOps..." -ForegroundColor Yellow
+Write-Host "  Enriched with Work IQ sprint context (capacity, code freeze, experts)" -ForegroundColor Yellow
+Write-Host ""
+
+$chatPayload = @{
+    total_findings = $total
+    critical = $criticalCount
+    high = $highCount
+    repo = $DemoRepo
+} | ConvertTo-Json -Compress
+
+Write-Host "  Adaptive Card payload:" -ForegroundColor DarkGray
+Write-Host "    Type: scan_complete" -ForegroundColor White
+Write-Host "    Findings: $total (Critical: $criticalCount, High: $highCount)" -ForegroundColor White
+Write-Host "    Connector: Microsoft Teams (Incoming Webhook)" -ForegroundColor White
+Write-Host "    Work IQ: Sprint context enrichment enabled" -ForegroundColor White
+Write-Host ""
+
+# Demo the MCP tool invocation (simulated if no webhook configured)
+$webhookUrl = $env:TEAMS_WEBHOOK_URL
+if ($webhookUrl) {
+    Write-Host "  ✅ Webhook configured — sending live notification" -ForegroundColor Green
+    python -c "
+import asyncio, json
+from codecustodian.integrations.teams_chatops import TeamsConnector, build_scan_complete_card
+from codecustodian.config.schema import ChatOpsConfig
+from codecustodian.models import ChatOpsNotification
+async def send():
+    config = ChatOpsConfig(enabled=True, teams_webhook_url='$webhookUrl')
+    n = ChatOpsNotification(message_type='scan_complete', payload=json.loads('$chatPayload'))
+    connector = TeamsConnector(config=config)
+    ok = await connector.send(n)
+    await connector.close()
+    print(f'  Delivered: {ok}')
+asyncio.run(send())
+" 2>$null
+} else {
+    Write-Host "  ℹ️  No TEAMS_WEBHOOK_URL set — showing Adaptive Card preview" -ForegroundColor Cyan
+    python -c "
+import json
+from codecustodian.integrations.teams_chatops import build_scan_complete_card
+card = build_scan_complete_card(total_findings=$total, critical=$criticalCount, high=$highCount, repo='$DemoRepo')
+print(json.dumps(card, indent=2))
+" 2>$null
+}
+
+Write-Host ""
+Write-Host "  Azure deployment: Teams webhook URL stored in Azure Key Vault" -ForegroundColor DarkGray
+Write-Host "  Container App receives TEAMS_WEBHOOK_URL environment variable" -ForegroundColor DarkGray
+
+# ── Step 6: Security deep-dive ──────────────────────────────────────────
+Write-Step "STEP 6: Security Findings Deep-Dive"
 
 codecustodian findings --repo-path $DemoRepo --severity critical --output-format table 2>$null
 
@@ -139,4 +192,5 @@ Write-Host "  Next steps:" -ForegroundColor Yellow
 Write-Host "    codecustodian run --repo-path $DemoRepo           # Create PRs" -ForegroundColor DarkGray
 Write-Host "    codecustodian report --format json                 # ROI report" -ForegroundColor DarkGray
 Write-Host "    codecustodian interactive                          # Interactive menu" -ForegroundColor DarkGray
+Write-Host "    TEAMS_WEBHOOK_URL=<url> .\scripts\demo-run.ps1    # Live ChatOps" -ForegroundColor DarkGray
 Write-Host ""

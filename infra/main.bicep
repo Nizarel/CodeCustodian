@@ -17,6 +17,10 @@ param projectName string = 'codecustodian'
 @description('Container image tag')
 param imageTag string = 'latest'
 
+@description('Microsoft Teams incoming webhook URL for ChatOps notifications')
+@secure()
+param teamsWebhookUrl string = ''
+
 
 
 // ── Derived names ─────────────────────────────────────────────────────────
@@ -125,6 +129,7 @@ module containerApp 'modules/container-app.bicep' = {
     imageTag: imageTag
     appInsightsConnectionString: monitor.outputs.appInsightsConnectionString
     kvUri: keyvault.outputs.vaultUri
+    teamsWebhookUrl: teamsWebhookUrl
   }
 }
 

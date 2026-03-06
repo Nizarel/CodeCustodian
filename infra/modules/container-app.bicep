@@ -14,6 +14,7 @@ param managedIdentityClientId string
 param imageTag string = 'latest'
 param appInsightsConnectionString string = ''
 param kvUri string = ''
+param teamsWebhookUrl string = ''
 
 // ── Container Apps Environment ────────────────────────────────────────────
 
@@ -89,6 +90,14 @@ resource containerApp 'Microsoft.App/containerApps@2024-03-01' = {
             {
               name: 'AZURE_CLIENT_ID'
               value: managedIdentityClientId
+            }
+            {
+              name: 'TEAMS_WEBHOOK_URL'
+              value: teamsWebhookUrl
+            }
+            {
+              name: 'CHATOPS_ENABLED'
+              value: 'true'
             }
           ]
         }
