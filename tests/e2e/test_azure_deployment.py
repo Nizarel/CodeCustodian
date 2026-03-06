@@ -217,7 +217,7 @@ class TestMCPTools:
             }
             assert expected == tool_names, f"Missing: {expected - tool_names}"
 
-    def test_list_scanners_returns_five(self) -> None:
+    def test_list_scanners_returns_seven(self) -> None:
         with httpx.Client() as client:
             session_id = _mcp_session(client)
             result = _mcp_call(
@@ -240,14 +240,16 @@ class TestMCPTools:
                     if isinstance(parsed, list)
                     else parsed.get("result", [])
                 )
-            assert len(scanners) == 5
+            assert len(scanners) == 7
             names = {s["name"] for s in scanners}
             assert names == {
+                "architectural_drift",
                 "deprecated_apis",
                 "security_patterns",
                 "code_smells",
                 "todo_comments",
                 "type_coverage",
+                "dependency_upgrades",
             }
 
     def test_tool_annotations(self) -> None:

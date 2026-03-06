@@ -15,6 +15,22 @@ param imageTag string = 'latest'
 param appInsightsConnectionString string = ''
 param kvUri string = ''
 param teamsWebhookUrl string = ''
+param useKeyVaultSecret bool = false
+
+var teamsWebhookSecretUrl = '${kvUri}secrets/TEAMS-WEBHOOK-URL'
+var teamsWebhookEnv = useKeyVaultSecret
+  ? [
+      {
+        name: 'TEAMS_WEBHOOK_URL'
+        secretRef: 'teams-webhook-url'
+      }
+    ]
+  : [
+      {
+        name: 'TEAMS_WEBHOOK_URL'
+        value: teamsWebhookUrl
+      }
+    ]
 
 // ── Container Apps Environment ────────────────────────────────────────────
 
@@ -62,6 +78,15 @@ resource containerApp 'Microsoft.App/containerApps@2024-03-01' = {
         transport: 'http'
         allowInsecure: false
       }
+      secrets: useKeyVaultSecret
+        ? [
+            {
+              name: 'teams-webhook-url'
+              keyVaultUrl: teamsWebhookSecretUrl
+              identity: managedIdentityId
+            }
+          ]
+        : []
       registries: [
         {
           server: acrLoginServer
@@ -78,28 +103,29 @@ resource containerApp 'Microsoft.App/containerApps@2024-03-01' = {
             cpu: json('0.5')
             memory: '1Gi'
           }
-          env: [
-            {
-              name: 'APPLICATIONINSIGHTS_CONNECTION_STRING'
-              value: appInsightsConnectionString
-            }
-            {
-              name: 'AZURE_KEYVAULT_URI'
-              value: kvUri
-            }
-            {
-              name: 'AZURE_CLIENT_ID'
-              value: managedIdentityClientId
-            }
-            {
-              name: 'TEAMS_WEBHOOK_URL'
-              value: teamsWebhookUrl
-            }
-            {
-              name: 'CHATOPS_ENABLED'
-              value: 'true'
-            }
-          ]
+          env: concat(
+            [
+              {
+                name: 'APPLICATIONINSIGHTS_CONNECTION_STRING'
+                value: appInsightsConnectionString
+              }
+              {
+                name: 'AZURE_KEYVAULT_URI'
+                value: kvUri
+              }
+              {
+                name: 'AZURE_CLIENT_ID'
+                value: managedIdentityClientId
+              }
+            ],
+            teamsWebhookEnv,
+            [
+              {
+                name: 'CHATOPS_ENABLED'
+                value: 'true'
+              }
+            ]
+          )
         }
       ]
       scale: {

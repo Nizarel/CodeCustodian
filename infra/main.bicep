@@ -109,6 +109,7 @@ module keyvault 'modules/keyvault.bicep' = {
     location: location
     principalId: identity.outputs.principalId
     tenantId: tenant().tenantId
+    teamsWebhookUrl: teamsWebhookUrl
   }
 }
 
@@ -130,6 +131,7 @@ module containerApp 'modules/container-app.bicep' = {
     appInsightsConnectionString: monitor.outputs.appInsightsConnectionString
     kvUri: keyvault.outputs.vaultUri
     teamsWebhookUrl: teamsWebhookUrl
+    useKeyVaultSecret: !empty(teamsWebhookUrl)
   }
 }
 

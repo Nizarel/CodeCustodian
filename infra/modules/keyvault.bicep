@@ -4,6 +4,9 @@ param location string
 param principalId string
 param tenantId string
 
+@secure()
+param teamsWebhookUrl string = ''
+
 resource kv 'Microsoft.KeyVault/vaults@2023-07-01' = {
   name: kvName
   location: location
@@ -33,5 +36,15 @@ resource kvRoleAssignment 'Microsoft.Authorization/roleAssignments@2022-04-01' =
   }
 }
 
+resource teamsWebhookSecret 'Microsoft.KeyVault/vaults/secrets@2023-07-01' = if (!empty(teamsWebhookUrl)) {
+  parent: kv
+  name: 'TEAMS-WEBHOOK-URL'
+  properties: {
+    value: teamsWebhookUrl
+    contentType: 'text/plain'
+  }
+}
+
 output vaultUri string = kv.properties.vaultUri
 output kvId string = kv.id
+output kvName string = kv.name
