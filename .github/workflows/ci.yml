@@ -55,7 +55,7 @@ jobs:
       - name: Run tests
         run: |
           pytest \
-            --cov=src/codecustodian \
+            --cov=codecustodian \
             --cov-report=xml \
             --cov-report=term-missing \
             --cov-fail-under=80 \

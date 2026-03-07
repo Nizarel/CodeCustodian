@@ -1,6 +1,6 @@
 [project]
 name = "codecustodian"
-version = "0.15.1"
+version = "0.15.2"
 description = "Autonomous AI agent for technical debt management powered by GitHub Copilot SDK"
 readme = "README.md"
 license = { text = "MIT" }
@@ -108,7 +108,7 @@ exclude_dirs = ["tests", ".venv"]
 skips = ["B101"]
 
 [tool.coverage.run]
-source = ["src/codecustodian"]
+source = ["codecustodian"]
 omit = ["tests/*"]
 
 [tool.coverage.report]
