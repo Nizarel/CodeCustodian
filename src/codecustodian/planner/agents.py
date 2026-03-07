@@ -196,8 +196,13 @@ AGENT_REGISTRY: dict[str, AgentProfile] = {
         ),
         model_preference="fast",
         skill_names=["test-synthesis"],
-        tool_filter=["get_function_definition", "get_imports", "find_test_coverage",
-                      "run_pytest_subset", "check_test_syntax"],
+        tool_filter=[
+            "get_function_definition",
+            "get_imports",
+            "find_test_coverage",
+            "run_pytest_subset",
+            "check_test_syntax",
+        ],
     ),
     "migration-engineer": AgentProfile(
         name="migration-engineer",
@@ -280,10 +285,7 @@ def get_agent_tools(
         return all_tools
 
     allowed = set(profile.tool_filter)
-    return [
-        t for t in all_tools
-        if getattr(t, "__name__", getattr(t, "name", "")) in allowed
-    ]
+    return [t for t in all_tools if getattr(t, "__name__", getattr(t, "name", "")) in allowed]
 
 
 def list_agents() -> list[str]:

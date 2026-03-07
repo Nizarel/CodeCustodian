@@ -31,8 +31,9 @@ try:
 
         def wrapper(fn):  # type: ignore[no-untyped-def]
             tool_obj = sdk_decorator(fn)
-            tool_obj._impl = fn          # keep raw callable for testing
+            tool_obj._impl = fn  # keep raw callable for testing
             return tool_obj
+
         return wrapper
 
 except ImportError:  # pragma: no cover - SDK optional at import time
@@ -42,10 +43,12 @@ except ImportError:  # pragma: no cover - SDK optional at import time
         description: str = "",
     ):
         """No-op fallback when ``copilot`` is not installed."""
+
         def wrapper(fn):  # type: ignore[no-untyped-def]
             fn._tool_description = description
-            fn._impl = fn                # same attribute for uniformity
+            fn._impl = fn  # same attribute for uniformity
             return fn
+
         return wrapper
 
 
@@ -85,15 +88,16 @@ async def get_function_definition(params: GetFunctionParams) -> str:
         return f"Syntax error in {params.file_path}: {exc}"
 
     for node in ast.walk(tree):
-        if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)) and node.name == params.function_name:
-                lines = source.splitlines()
-                start = max(0, node.lineno - 6)
-                end_line = getattr(node, "end_lineno", node.lineno + 20)
-                end = min(len(lines), end_line + 5)
-                numbered = "\n".join(
-                    f"{i + 1:4d} | {lines[i]}" for i in range(start, end)
-                )
-                return numbered
+        if (
+            isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef))
+            and node.name == params.function_name
+        ):
+            lines = source.splitlines()
+            start = max(0, node.lineno - 6)
+            end_line = getattr(node, "end_lineno", node.lineno + 20)
+            end = min(len(lines), end_line + 5)
+            numbered = "\n".join(f"{i + 1:4d} | {lines[i]}" for i in range(start, end))
+            return numbered
 
     return f"Function '{params.function_name}' not found in {params.file_path}"
 
@@ -109,9 +113,7 @@ class GetImportsParams(BaseModel):
     file_path: str = Field(description="Path to the Python file")
 
 
-@define_tool(
-    description="Get all import statements from a Python file."
-)
+@define_tool(description="Get all import statements from a Python file.")
 async def get_imports(params: GetImportsParams) -> str:
     """Return a newline-delimited list of imports."""
     path = Path(params.file_path)
@@ -148,16 +150,10 @@ class SearchReferencesParams(BaseModel):
     """Parameters for ``search_references``."""
 
     symbol_name: str = Field(description="Symbol name to search for")
-    directory: str = Field(
-        default=".", description="Root directory to search in"
-    )
+    directory: str = Field(default=".", description="Root directory to search in")
 
 
-@define_tool(
-    description=(
-        "Find all references to a symbol across Python files in a directory."
-    )
-)
+@define_tool(description=("Find all references to a symbol across Python files in a directory."))
 async def search_references(params: SearchReferencesParams) -> str:
     """Return a summary of files and lines referencing the symbol."""
     root = Path(params.directory)
@@ -192,16 +188,10 @@ class FindTestCoverageParams(BaseModel):
     """Parameters for ``find_test_coverage``."""
 
     function_name: str = Field(description="Name of the function to find tests for")
-    test_directory: str = Field(
-        default="tests", description="Test directory to search"
-    )
+    test_directory: str = Field(default="tests", description="Test directory to search")
 
 
-@define_tool(
-    description=(
-        "Find test files and test functions that cover a given function name."
-    )
-)
+@define_tool(description=("Find test files and test functions that cover a given function name."))
 async def find_test_coverage(params: FindTestCoverageParams) -> str:
     """Return list of test files and matching test functions."""
     root = Path(params.test_directory)
@@ -218,10 +208,12 @@ async def find_test_coverage(params: FindTestCoverageParams) -> str:
             # Find specific test functions that reference it
             tree = ast.parse(source)
             for node in ast.walk(tree):
-                if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)) and node.name.startswith("test_"):
-                        func_body = ast.get_source_segment(source, node) or ""
-                        if params.function_name in func_body:
-                            results.append(f"{tf}::{node.name}")
+                if isinstance(
+                    node, (ast.FunctionDef, ast.AsyncFunctionDef)
+                ) and node.name.startswith("test_"):
+                    func_body = ast.get_source_segment(source, node) or ""
+                    if params.function_name in func_body:
+                        results.append(f"{tf}::{node.name}")
         except (SyntaxError, OSError):
             continue
 
@@ -240,15 +232,11 @@ class GetCallSitesParams(BaseModel):
     """Parameters for ``get_call_sites``."""
 
     function_name: str = Field(description="Function name to locate calls for")
-    directory: str = Field(
-        default=".", description="Root directory to search"
-    )
+    directory: str = Field(default=".", description="Root directory to search")
 
 
 @define_tool(
-    description=(
-        "Find all call sites for a function across Python files using AST analysis."
-    )
+    description=("Find all call sites for a function across Python files using AST analysis.")
 )
 async def get_call_sites(params: GetCallSitesParams) -> str:
     """Return file:line pairs where the function is called."""
@@ -266,16 +254,11 @@ async def get_call_sites(params: GetCallSitesParams) -> str:
 
         for node in ast.walk(tree):
             if isinstance(node, ast.Call) and (
-                (
-                    isinstance(node.func, ast.Name)
-                    and node.func.id == params.function_name
-                ) or (
-                    isinstance(node.func, ast.Attribute)
-                    and node.func.attr == params.function_name
-                )
+                (isinstance(node.func, ast.Name) and node.func.id == params.function_name)
+                or (isinstance(node.func, ast.Attribute) and node.func.attr == params.function_name)
             ):
-                    rel = py_file.relative_to(root)
-                    sites.append(f"{rel}:{node.lineno}")
+                rel = py_file.relative_to(root)
+                sites.append(f"{rel}:{node.lineno}")
 
     if not sites:
         return f"No call sites for '{params.function_name}' found."
@@ -295,11 +278,7 @@ class CheckTypeHintsParams(BaseModel):
     function_name: str = Field(description="Name of the function to inspect")
 
 
-@define_tool(
-    description=(
-        "Extract return type and parameter type annotations for a function."
-    )
-)
+@define_tool(description=("Extract return type and parameter type annotations for a function."))
 async def check_type_hints(params: CheckTypeHintsParams) -> str:
     """Return a summary of type annotations for the function."""
     path = Path(params.file_path)
@@ -349,14 +328,10 @@ class GetGitHistoryParams(BaseModel):
     """Parameters for ``get_git_history``."""
 
     file_path: str = Field(description="Path to the file to get history for")
-    max_count: int = Field(
-        default=10, ge=1, le=50, description="Maximum number of commits"
-    )
+    max_count: int = Field(default=10, ge=1, le=50, description="Maximum number of commits")
 
 
-@define_tool(
-    description="Get recent git commit history for a file."
-)
+@define_tool(description="Get recent git commit history for a file.")
 async def get_git_history(params: GetGitHistoryParams) -> str:
     """Return recent commit summaries for the given file."""
     try:
@@ -388,9 +363,7 @@ async def get_git_history(params: GetGitHistoryParams) -> str:
     if not commits_info:
         return f"No commit history found for {params.file_path}"
 
-    return f"Last {len(commits_info)} commit(s) for {params.file_path}:\n" + "\n".join(
-        commits_info
-    )
+    return f"Last {len(commits_info)} commit(s) for {params.file_path}:\n" + "\n".join(commits_info)
 
 
 # ═══════════════════════════════════════════════════════════════════════════

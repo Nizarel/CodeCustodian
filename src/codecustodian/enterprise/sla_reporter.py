@@ -172,9 +172,7 @@ class SLAReporter:
 
         # Time-to-PR: duration of runs that created PRs
         pr_durations = [
-            r.get("duration_seconds", 0.0)
-            for r in records
-            if r.get("prs_created", 0) > 0
+            r.get("duration_seconds", 0.0) for r in records if r.get("prs_created", 0) > 0
         ]
         avg_time_to_pr = statistics.mean(pr_durations) if pr_durations else 0.0
 
@@ -191,9 +189,9 @@ class SLAReporter:
 
         top_failures = [
             {"reason": reason, "count": count}
-            for reason, count in sorted(
-                failure_reasons.items(), key=lambda x: x[1], reverse=True
-            )[:5]
+            for reason, count in sorted(failure_reasons.items(), key=lambda x: x[1], reverse=True)[
+                :5
+            ]
         ]
 
         # Failure trend (compare recent half vs older half)
@@ -246,22 +244,30 @@ class SLAReporter:
         writer = csv.DictWriter(
             output,
             fieldnames=[
-                "run_id", "timestamp", "success", "duration_seconds",
-                "findings_count", "prs_created", "failure_reason", "team",
+                "run_id",
+                "timestamp",
+                "success",
+                "duration_seconds",
+                "findings_count",
+                "prs_created",
+                "failure_reason",
+                "team",
             ],
         )
         writer.writeheader()
         for r in records:
-            writer.writerow({
-                "run_id": r.get("run_id", ""),
-                "timestamp": r.get("timestamp", ""),
-                "success": r.get("success", False),
-                "duration_seconds": r.get("duration_seconds", 0),
-                "findings_count": r.get("findings_count", 0),
-                "prs_created": r.get("prs_created", 0),
-                "failure_reason": r.get("failure_reason", ""),
-                "team": r.get("team", ""),
-            })
+            writer.writerow(
+                {
+                    "run_id": r.get("run_id", ""),
+                    "timestamp": r.get("timestamp", ""),
+                    "success": r.get("success", False),
+                    "duration_seconds": r.get("duration_seconds", 0),
+                    "findings_count": r.get("findings_count", 0),
+                    "prs_created": r.get("prs_created", 0),
+                    "failure_reason": r.get("failure_reason", ""),
+                    "team": r.get("team", ""),
+                }
+            )
         return output.getvalue()
 
     def export_markdown(self, *, team: str = "", last_n: int = 0) -> str:
@@ -294,12 +300,14 @@ class SLAReporter:
             lines.extend([f"> **{report.alert}**", ""])
 
         if report.top_failure_reasons:
-            lines.extend([
-                "## Top Failure Reasons",
-                "",
-                "| Reason | Count |",
-                "|--------|-------|",
-            ])
+            lines.extend(
+                [
+                    "## Top Failure Reasons",
+                    "",
+                    "| Reason | Count |",
+                    "|--------|-------|",
+                ]
+            )
             for fr in report.top_failure_reasons:
                 lines.append(f"| {fr['reason']} | {fr['count']} |")
             lines.append("")

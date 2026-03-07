@@ -57,11 +57,9 @@ class NotificationEventType(StrEnum):
 class NotificationEvent(BaseModel):
     """A structured notification event."""
 
-    timestamp: str = Field(
-        default_factory=lambda: datetime.now(UTC).isoformat()
-    )
-    event: str                     # pr_created | pipeline_failed | budget_alert | ...
-    severity: str = "info"         # critical | high | medium | low | info
+    timestamp: str = Field(default_factory=lambda: datetime.now(UTC).isoformat())
+    event: str  # pr_created | pipeline_failed | budget_alert | ...
+    severity: str = "info"  # critical | high | medium | low | info
     title: str = ""
     body: str = ""
     metadata: dict[str, Any] = Field(default_factory=dict)
@@ -334,8 +332,8 @@ class NotificationEngine:
     def _severity_emoji(severity: str) -> str:
         return {
             "critical": "\U0001f534",  # 🔴
-            "high": "\U0001f7e0",       # 🟠
-            "medium": "\U0001f7e1",     # 🟡
-            "low": "\U0001f7e2",        # 🟢
-            "info": "\U0001f535",       # 🔵
+            "high": "\U0001f7e0",  # 🟠
+            "medium": "\U0001f7e1",  # 🟡
+            "low": "\U0001f7e2",  # 🟢
+            "info": "\U0001f535",  # 🔵
         }.get(severity, "\u2139\ufe0f")

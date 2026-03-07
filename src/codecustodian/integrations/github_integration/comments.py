@@ -56,7 +56,9 @@ class CommentManager:
 
         logger.debug(
             "Posted review comment on PR #%d at %s:%d",
-            pr_number, file_path, line,
+            pr_number,
+            file_path,
+            line,
         )
         return comment.id
 
@@ -93,9 +95,7 @@ class CommentManager:
                 for c in execution.safety_result.checks
             )
             safety_md = (
-                "| Check | Status | Details |\n"
-                "|-------|--------|---------|\n"
-                f"{checks_rows}\n"
+                f"| Check | Status | Details |\n|-------|--------|---------|\n{checks_rows}\n"
             )
         else:
             safety_md = "_No safety checks recorded._"
@@ -107,11 +107,7 @@ class CommentManager:
                 f"`{e.file_path}` | {'✅' if e.success else '❌'} |"
                 for e in execution.transaction_log
             )
-            tx_md = (
-                "| Time | Action | File | OK |\n"
-                "|------|--------|------|----|\n"
-                f"{tx_rows}\n"
-            )
+            tx_md = f"| Time | Action | File | OK |\n|------|--------|------|----|\n{tx_rows}\n"
         else:
             tx_md = "_No transaction log entries._"
 
@@ -123,14 +119,10 @@ class CommentManager:
                 for v in verification.lint_violations[:10]
             )
             lint_md = (
-                "| File | Line | Code | Message |\n"
-                "|------|------|------|---------|\n"
-                f"{lint_rows}\n"
+                f"| File | Line | Code | Message |\n|------|------|------|---------|\n{lint_rows}\n"
             )
             if len(verification.lint_violations) > 10:
-                lint_md += (
-                    f"\n_… and {len(verification.lint_violations) - 10} more_\n"
-                )
+                lint_md += f"\n_… and {len(verification.lint_violations) - 10} more_\n"
         else:
             lint_md = "✅ No lint violations."
 

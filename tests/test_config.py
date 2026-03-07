@@ -51,9 +51,7 @@ behavior:
   auto_merge: true
   confidence_threshold: 9
 """
-        with tempfile.NamedTemporaryFile(
-            mode="w", suffix=".yml", delete=False
-        ) as f:
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".yml", delete=False) as f:
             f.write(yaml_content)
             f.flush()
 
@@ -65,9 +63,7 @@ behavior:
 
     def test_to_yaml(self):
         config = CodeCustodianConfig(version="2.0")
-        with tempfile.NamedTemporaryFile(
-            mode="w", suffix=".yml", delete=False
-        ) as f:
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".yml", delete=False) as f:
             config.to_yaml(f.name)
             yaml_str = Path(f.name).read_text()
         assert "version" in yaml_str
@@ -142,9 +138,7 @@ class TestAzureConfig:
     def test_valid_connection_string(self):
         from codecustodian.config.schema import AzureConfig
 
-        config = AzureConfig(
-            monitor_connection_string="InstrumentationKey=abc-123"
-        )
+        config = AzureConfig(monitor_connection_string="InstrumentationKey=abc-123")
         assert "InstrumentationKey=" in config.monitor_connection_string
 
     def test_invalid_url_rejected(self):

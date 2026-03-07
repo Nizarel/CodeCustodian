@@ -106,7 +106,9 @@ def build_patch_candidates(log_text: str) -> list[dict[str, Any]]:
             }
         )
 
-    if "F401" in log_text and not any(c["id"] == "ruff-f401-remove-unused-import" for c in candidates):
+    if "F401" in log_text and not any(
+        c["id"] == "ruff-f401-remove-unused-import" for c in candidates
+    ):
         candidates.append(
             {
                 "id": "ruff-f401-remove-unused-import",
@@ -138,9 +140,8 @@ def build_patch_candidates(log_text: str) -> list[dict[str, Any]]:
             }
         )
 
-    if (
-        "Incompatible return value type" in log_text
-        and not any(c["id"] == "mypy-incompatible-return" for c in candidates)
+    if "Incompatible return value type" in log_text and not any(
+        c["id"] == "mypy-incompatible-return" for c in candidates
     ):
         candidates.append(
             {

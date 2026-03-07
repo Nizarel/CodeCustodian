@@ -40,9 +40,7 @@ class TestTestSynthesisResult:
         assert r.discarded is False
 
     def test_discard_reason(self):
-        r = TestSynthesisResult(
-            finding_id="f1", discarded=True, discard_reason="syntax error"
-        )
+        r = TestSynthesisResult(finding_id="f1", discarded=True, discard_reason="syntax error")
         assert r.discarded is True
         assert r.discard_reason == "syntax error"
 
@@ -74,14 +72,18 @@ class TestMigrationPlan:
     def test_invalid_complexity(self):
         with pytest.raises(ValidationError):
             MigrationPlan(
-                framework="x", from_version="1", to_version="2",
+                framework="x",
+                from_version="1",
+                to_version="2",
                 estimated_complexity="unknown",
             )
 
     def test_invalid_pr_strategy(self):
         with pytest.raises(ValidationError):
             MigrationPlan(
-                framework="x", from_version="1", to_version="2",
+                framework="x",
+                from_version="1",
+                to_version="2",
                 pr_strategy="parallel",
             )
 
@@ -151,6 +153,7 @@ class TestChatOpsConfig:
 class TestRootConfigWiring:
     def test_new_sections_exist(self):
         from codecustodian.config.schema import CodeCustodianConfig
+
         cfg = CodeCustodianConfig()
         assert isinstance(cfg.test_synthesis, TestSynthesisConfig)
         assert isinstance(cfg.migrations, MigrationsConfig)
@@ -172,11 +175,16 @@ class TestTestSynthesizer:
         finding = Finding(
             type=FindingType.CODE_SMELL,
             severity=SeverityLevel.MEDIUM,
-            file="x.py", line=1, description="test",
+            file="x.py",
+            line=1,
+            description="test",
         )
         ctx = CodeContext(
-            source_code="pass", file_path="x.py", language="python",
-            start_line=1, end_line=1,
+            source_code="pass",
+            file_path="x.py",
+            language="python",
+            start_line=1,
+            end_line=1,
         )
         result = await synth.synthesize(finding, ctx)
         assert result.discarded is True
@@ -224,7 +232,9 @@ class TestSDKToolCheckTestSyntax:
     async def test_valid_code(self):
         from codecustodian.planner.tools import CheckTestSyntaxParams, _get_impl, check_test_syntax
 
-        result = await _get_impl(check_test_syntax)(CheckTestSyntaxParams(code="def test_x(): pass"))
+        result = await _get_impl(check_test_syntax)(
+            CheckTestSyntaxParams(code="def test_x(): pass")
+        )
         assert "1 test function" in result
 
     @pytest.mark.asyncio
@@ -240,7 +250,9 @@ class TestSDKToolRunPytestSubset:
     async def test_missing_file(self):
         from codecustodian.planner.tools import RunPytestSubsetParams, _get_impl, run_pytest_subset
 
-        result = await _get_impl(run_pytest_subset)(RunPytestSubsetParams(test_file="/nonexistent/test.py"))
+        result = await _get_impl(run_pytest_subset)(
+            RunPytestSubsetParams(test_file="/nonexistent/test.py")
+        )
         assert "not found" in result
 
     @pytest.mark.asyncio
@@ -283,7 +295,8 @@ class TestMigrationEngine:
         finding = Finding(
             type=FindingType.DEPRECATED_API,
             severity=SeverityLevel.HIGH,
-            file="app.py", line=1,
+            file="app.py",
+            line=1,
             description="Deprecated Flask API — migrate to v3",
         )
         fw, _from_v, _to_v = MigrationEngine._detect_framework([finding])
@@ -295,7 +308,8 @@ class TestMigrationEngine:
         finding = Finding(
             type=FindingType.CODE_SMELL,
             severity=SeverityLevel.LOW,
-            file="app.py", line=1,
+            file="app.py",
+            line=1,
             description="Function too long",
         )
         fw, _, _ = MigrationEngine._detect_framework([finding])
@@ -323,7 +337,10 @@ class TestMigrationEngine:
     def test_estimate_complexity_expert(self):
         from codecustodian.intelligence.migrations import MigrationEngine
 
-        stages = [MigrationStage(name=f"s{i}", files_affected=[f"f{j}.py" for j in range(5)]) for i in range(6)]
+        stages = [
+            MigrationStage(name=f"s{i}", files_affected=[f"f{j}.py" for j in range(5)])
+            for i in range(6)
+        ]
         assert MigrationEngine._estimate_complexity(stages) == "expert-only"
 
     def test_playbook_loading(self):
@@ -339,7 +356,9 @@ class TestMigrationEngine:
                 "flask": MigrationPlaybookConfig(
                     guide_url="https://flask.palletsprojects.com/en/3.0.x/changes/",
                     patterns=[
-                        MigrationPlaybookPatternConfig(pattern="from flask.ext", replacement="from flask"),
+                        MigrationPlaybookPatternConfig(
+                            pattern="from flask.ext", replacement="from flask"
+                        ),
                     ],
                 )
             },
@@ -363,7 +382,8 @@ class TestMigrationEngine:
         config = MigrationsConfig(enabled=True)
         engine = MigrationEngine(config=config)
         pb = MigrationPlaybook(
-            name="flask", framework="flask",
+            name="flask",
+            framework="flask",
             patterns=[
                 {"pattern": "old1", "replacement": "new1"},
                 {"pattern": "old2", "replacement": "new2"},
@@ -381,7 +401,9 @@ class TestMigrationEngine:
         config = MigrationsConfig(enabled=True)
         engine = MigrationEngine(config=config)
         plan = MigrationPlan(
-            framework="test", from_version="1", to_version="2",
+            framework="test",
+            from_version="1",
+            to_version="2",
             stages=[
                 MigrationStage(name="a", order=0),
                 MigrationStage(name="b", order=1, depends_on=["a"]),
@@ -405,7 +427,9 @@ class TestMigrationEngine:
         mock_verifier.verify_all = fail_verify
 
         plan = MigrationPlan(
-            framework="test", from_version="1", to_version="2",
+            framework="test",
+            from_version="1",
+            to_version="2",
             stages=[
                 MigrationStage(name="a", order=0),
                 MigrationStage(name="b", order=1, depends_on=["a"]),
@@ -421,10 +445,12 @@ class TestMigrationEngine:
 
         config = MigrationsConfig(enabled=True)
         engine = MigrationEngine(config=config)
-        raw = json.dumps([
-            {"name": "step1", "description": "First step", "order": 0},
-            {"name": "step2", "description": "Second", "order": 1, "depends_on": ["step1"]},
-        ])
+        raw = json.dumps(
+            [
+                {"name": "step1", "description": "First step", "order": 0},
+                {"name": "step2", "description": "Second", "order": 1, "depends_on": ["step1"]},
+            ]
+        )
         stages = engine._parse_stages(raw)
         assert len(stages) == 2
         assert stages[1].depends_on == ["step1"]
@@ -465,7 +491,9 @@ class TestAdaptiveCards:
         from codecustodian.integrations.teams_chatops import build_approval_needed_card
 
         card = build_approval_needed_card(
-            finding_id="f1", summary="Fix XSS", risk="high",
+            finding_id="f1",
+            summary="Fix XSS",
+            risk="high",
             callback_url="https://callback.example.com",
         )
         assert card["type"] == "AdaptiveCard"
@@ -475,16 +503,16 @@ class TestAdaptiveCards:
     def test_verification_failed_card(self):
         from codecustodian.integrations.teams_chatops import build_verification_failed_card
 
-        card = build_verification_failed_card(
-            finding_id="f1", errors=["Test failed", "Lint error"]
-        )
+        card = build_verification_failed_card(finding_id="f1", errors=["Test failed", "Lint error"])
         assert card["type"] == "AdaptiveCard"
 
     def test_migration_card(self):
         from codecustodian.integrations.teams_chatops import build_migration_card
 
         plan = MigrationPlan(
-            framework="flask", from_version="2.0", to_version="3.0",
+            framework="flask",
+            from_version="2.0",
+            to_version="3.0",
             stages=[MigrationStage(name="s1", description="Step 1")],
         )
         card = build_migration_card(plan)
@@ -506,8 +534,12 @@ class TestAdaptiveCards:
 
         # bypass validation for test
         n = ChatOpsNotification.model_construct(
-            id="test", message_type="custom_event", payload={"key": "val"},
-            adaptive_card_json={}, channel="", delivered=False,
+            id="test",
+            message_type="custom_event",
+            payload={"key": "val"},
+            adaptive_card_json={},
+            channel="",
+            delivered=False,
         )
         card = build_card_for_notification(n)
         assert card["type"] == "AdaptiveCard"
@@ -538,9 +570,7 @@ class TestTeamsConnector:
     async def test_send_success(self):
         from codecustodian.integrations.teams_chatops import TeamsConnector
 
-        config = ChatOpsConfig(
-            enabled=True, teams_webhook_url="https://webhook.example.com"
-        )
+        config = ChatOpsConfig(enabled=True, teams_webhook_url="https://webhook.example.com")
         connector = TeamsConnector(config=config)
 
         mock_response = MagicMock()
@@ -551,9 +581,14 @@ class TestTeamsConnector:
         mock_client.post = AsyncMock(return_value=mock_response)
         connector._client = mock_client
 
-        n = ChatOpsNotification(message_type="scan_complete", payload={
-            "total_findings": 5, "critical": 0, "high": 1,
-        })
+        n = ChatOpsNotification(
+            message_type="scan_complete",
+            payload={
+                "total_findings": 5,
+                "critical": 0,
+                "high": 1,
+            },
+        )
         result = await connector.send(n)
         assert result is True
         assert n.delivered is True
@@ -575,8 +610,14 @@ class TestTeamsConnector:
         connector._client = mock_client
 
         notifications = [
-            ChatOpsNotification(message_type="scan_complete", payload={"total_findings": 1, "critical": 0, "high": 0}),
-            ChatOpsNotification(message_type="pr_created", payload={"pr_url": "x", "pr_title": "t", "finding_count": 1, "confidence": 8}),
+            ChatOpsNotification(
+                message_type="scan_complete",
+                payload={"total_findings": 1, "critical": 0, "high": 0},
+            ),
+            ChatOpsNotification(
+                message_type="pr_created",
+                payload={"pr_url": "x", "pr_title": "t", "finding_count": 1, "confidence": 8},
+            ),
         ]
         results = await connector.send_batch(notifications)
         assert results == [True, True]
@@ -742,10 +783,20 @@ class TestPipelineChatOps:
 
         # Populate findings
         pipeline._result.findings = [
-            Finding(type=FindingType.SECURITY, severity=SeverityLevel.CRITICAL,
-                    file="a.py", line=1, description="sql injection"),
-            Finding(type=FindingType.CODE_SMELL, severity=SeverityLevel.LOW,
-                    file="b.py", line=2, description="long function"),
+            Finding(
+                type=FindingType.SECURITY,
+                severity=SeverityLevel.CRITICAL,
+                file="a.py",
+                line=1,
+                description="sql injection",
+            ),
+            Finding(
+                type=FindingType.CODE_SMELL,
+                severity=SeverityLevel.LOW,
+                file="b.py",
+                line=2,
+                description="long function",
+            ),
         ]
 
         await pipeline._notify_scan_complete()
@@ -775,11 +826,13 @@ class TestPipelineChatOps:
 
         # Mock Work IQ to return sprint context
         mock_work_iq = AsyncMock()
-        mock_work_iq.get_sprint_context = AsyncMock(return_value=SprintContext(
-            sprint_name="Sprint 42",
-            days_remaining=5,
-            capacity_pct=72.0,
-        ))
+        mock_work_iq.get_sprint_context = AsyncMock(
+            return_value=SprintContext(
+                sprint_name="Sprint 42",
+                days_remaining=5,
+                capacity_pct=72.0,
+            )
+        )
         pipeline._work_iq = mock_work_iq
 
         pipeline._result.findings = []
@@ -813,8 +866,11 @@ class TestPipelineChatOps:
         pipeline._chatops = mock_connector
 
         finding = Finding(
-            type=FindingType.SECURITY, severity=SeverityLevel.HIGH,
-            file="c.py", line=10, description="xss",
+            type=FindingType.SECURITY,
+            severity=SeverityLevel.HIGH,
+            file="c.py",
+            line=10,
+            description="xss",
         )
         finding.metadata["work_iq_expert"] = {"name": "Alice", "email": "alice@example.com"}
 
@@ -856,8 +912,11 @@ class TestPipelineChatOps:
         pipeline._chatops = mock_connector
 
         finding = Finding(
-            type=FindingType.CODE_SMELL, severity=SeverityLevel.MEDIUM,
-            file="d.py", line=5, description="complex method",
+            type=FindingType.CODE_SMELL,
+            severity=SeverityLevel.MEDIUM,
+            file="d.py",
+            line=5,
+            description="complex method",
         )
 
         await pipeline._notify_verification_failed(finding, ["lint error", "test failed"])
@@ -884,7 +943,8 @@ class TestPipelineChatOps:
         pipeline._chatops = mock_connector
 
         notification = ChatOpsNotification(
-            message_type="scan_complete", payload={"total_findings": 0, "critical": 0, "high": 0},
+            message_type="scan_complete",
+            payload={"total_findings": 0, "critical": 0, "high": 0},
         )
         # Should not raise — just log warning
         await pipeline._notify(notification)
@@ -900,7 +960,8 @@ class TestPipelineChatOps:
         assert pipeline._chatops is None
 
         notification = ChatOpsNotification(
-            message_type="scan_complete", payload={"total_findings": 0, "critical": 0, "high": 0},
+            message_type="scan_complete",
+            payload={"total_findings": 0, "critical": 0, "high": 0},
         )
         # Should do nothing without errors
         await pipeline._notify(notification)

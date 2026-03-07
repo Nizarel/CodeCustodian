@@ -175,9 +175,7 @@ class SafetyCheckRunner:
 
     # ── Check 2: Import Availability ───────────────────────────────────
 
-    async def check_import_availability(
-        self, plan: RefactoringPlan
-    ) -> SafetyCheckResult:
+    async def check_import_availability(self, plan: RefactoringPlan) -> SafetyCheckResult:
         """Verify all imports in new code are available."""
         missing_imports: list[str] = []
 
@@ -238,7 +236,9 @@ class SafetyCheckRunner:
             file_name = Path(change.file_path).name
             file_str = change.file_path.replace("\\", "/")
 
-            if file_name in CRITICAL_FILE_PATTERNS or any(pattern in file_str for pattern in CRITICAL_DIR_PATTERNS):
+            if file_name in CRITICAL_FILE_PATTERNS or any(
+                pattern in file_str for pattern in CRITICAL_DIR_PATTERNS
+            ):
                 critical_files.append(change.file_path)
 
         if critical_files and plan.confidence_score < 9:
@@ -260,9 +260,7 @@ class SafetyCheckRunner:
 
     # ── Check 4: Concurrent Change Detection ───────────────────────────
 
-    async def check_concurrent_changes(
-        self, plan: RefactoringPlan
-    ) -> SafetyCheckResult:
+    async def check_concurrent_changes(self, plan: RefactoringPlan) -> SafetyCheckResult:
         """Check if files have been modified since scan (git SHA mismatch).
 
         Compares the current git SHA of each file to the SHA stored
@@ -315,9 +313,7 @@ class SafetyCheckRunner:
 
     # ── Check 5: Dangerous Function Detection ────────────────────────
 
-    async def check_dangerous_functions(
-        self, plan: RefactoringPlan
-    ) -> SafetyCheckResult:
+    async def check_dangerous_functions(self, plan: RefactoringPlan) -> SafetyCheckResult:
         """Block dangerous dynamic execution functions in generated code."""
         findings: list[str] = []
 
@@ -347,10 +343,7 @@ class SafetyCheckRunner:
             return SafetyCheckResult(
                 name="dangerous_functions",
                 passed=False,
-                message=(
-                    "Dangerous dynamic execution calls detected: "
-                    f"{', '.join(findings)}."
-                ),
+                message=(f"Dangerous dynamic execution calls detected: {', '.join(findings)}."),
             )
 
         return SafetyCheckResult(

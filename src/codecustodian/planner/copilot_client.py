@@ -93,8 +93,7 @@ class CopilotPlannerClient:
             from copilot import CopilotClient  # type: ignore[import-untyped]
         except ImportError as exc:
             raise PlannerError(
-                "github-copilot-sdk is not installed. "
-                "Install with: pip install github-copilot-sdk"
+                "github-copilot-sdk is not installed. Install with: pip install github-copilot-sdk"
             ) from exc
 
         token = self._resolve_token()
@@ -164,15 +163,19 @@ class CopilotPlannerClient:
         When ``list_available_models()`` has been called, validates
         the chosen model exists. Otherwise uses sensible defaults.
         """
-        strategy = preference if preference and preference != "auto" else self.config.model_selection
+        strategy = (
+            preference if preference and preference != "auto" else self.config.model_selection
+        )
 
         # Fixed strategies — models queried via list_models() 2026-02
         preferred: dict[str, list[str]] = {
             "fast": ["gpt-5-mini", "gpt-4.1", "gpt-5.1-codex-mini"],
             "balanced": ["gpt-5.1-codex", "gpt-5.1", "claude-sonnet-4"],
             "reasoning": [
-                "gpt-5.2-codex", "gpt-5.1-codex-max",
-                "gpt-5.2", "gpt-5.1-codex",
+                "gpt-5.2-codex",
+                "gpt-5.1-codex-max",
+                "gpt-5.2",
+                "gpt-5.1-codex",
             ],
         }
 
@@ -184,12 +187,8 @@ class CopilotPlannerClient:
         severity = getattr(finding, "severity", None)
         sev_value = severity.value if severity else "medium"
         if sev_value in ("critical", "high"):
-            return self._pick_available(
-                ["gpt-5.2-codex", "gpt-5.1-codex", "gpt-5.1"]
-            )
-        return self._pick_available(
-            ["gpt-5-mini", "gpt-5.1-codex-mini", "gpt-4.1"]
-        )
+            return self._pick_available(["gpt-5.2-codex", "gpt-5.1-codex", "gpt-5.1"])
+        return self._pick_available(["gpt-5-mini", "gpt-5.1-codex-mini", "gpt-4.1"])
 
     def _pick_available(self, candidates: list[str]) -> str:
         """Return the first candidate in the available models list.
@@ -199,9 +198,7 @@ class CopilotPlannerClient:
         if not self._available_models:
             return candidates[0]
 
-        model_ids = {
-            getattr(m, "id", str(m)) for m in self._available_models
-        }
+        model_ids = {getattr(m, "id", str(m)) for m in self._available_models}
         for c in candidates:
             if c in model_ids:
                 return c
@@ -253,10 +250,14 @@ class CopilotPlannerClient:
             },
             "infinite_sessions": {
                 "enabled": session_reuse,
-                **({
-                    "background_compaction_threshold": 0.80,
-                    "buffer_exhaustion_threshold": 0.95,
-                } if session_reuse else {}),
+                **(
+                    {
+                        "background_compaction_threshold": 0.80,
+                        "buffer_exhaustion_threshold": 0.95,
+                    }
+                    if session_reuse
+                    else {}
+                ),
             },
             "hooks": {
                 "on_pre_tool_use": self._on_pre_tool_use,
@@ -277,8 +278,13 @@ class CopilotPlannerClient:
 
         # Reasoning effort for capable models (all GPT-5.x support it)
         if self.config.reasoning_effort and model in {
-            "gpt-5.2-codex", "gpt-5.2", "gpt-5.1-codex-max",
-            "gpt-5.1-codex", "gpt-5.1", "gpt-5.1-codex-mini", "gpt-5-mini",
+            "gpt-5.2-codex",
+            "gpt-5.2",
+            "gpt-5.1-codex-max",
+            "gpt-5.1-codex",
+            "gpt-5.1",
+            "gpt-5.1-codex-mini",
+            "gpt-5-mini",
         }:
             session_config["reasoning_effort"] = self.config.reasoning_effort
 
@@ -301,9 +307,7 @@ class CopilotPlannerClient:
         Tracks cost via ``assistant.usage`` events.
         """
         effective_timeout = timeout or self.config.timeout
-        response = await session.send_and_wait(
-            {"prompt": prompt}, timeout=effective_timeout
-        )
+        response = await session.send_and_wait({"prompt": prompt}, timeout=effective_timeout)
 
         # Extract content from response
         content = self._extract_content(response)
@@ -394,9 +398,7 @@ class CopilotPlannerClient:
         error = input_data.get("error", "unknown error")
         recoverable = input_data.get("recoverable", False)
 
-        logger.error(
-            "Error in %s: %s (recoverable=%s)", error_ctx, error, recoverable
-        )
+        logger.error("Error in %s: %s (recoverable=%s)", error_ctx, error, recoverable)
 
         if recoverable:
             return {"errorHandling": "retry", "retryCount": 2}
@@ -431,8 +433,7 @@ class CopilotPlannerClient:
         limit = self.config.max_cost_per_run
         if limit > 0 and self.usage.total_cost > limit:
             raise BudgetExceededError(
-                f"AI cost ${self.usage.total_cost:.4f} exceeds "
-                f"max_cost_per_run ${limit:.2f}",
+                f"AI cost ${self.usage.total_cost:.4f} exceeds max_cost_per_run ${limit:.2f}",
                 current_cost=self.usage.total_cost,
                 budget_limit=limit,
             )
@@ -442,10 +443,7 @@ class CopilotPlannerClient:
     def _ensure_client(self) -> None:
         """Assert the client has been started."""
         if self._client is None:
-            raise PlannerError(
-                "CopilotPlannerClient not started. "
-                "Call await client.start() first."
-            )
+            raise PlannerError("CopilotPlannerClient not started. Call await client.start() first.")
 
     @staticmethod
     def _extract_content(response: Any) -> str:

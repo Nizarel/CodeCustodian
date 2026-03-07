@@ -24,12 +24,14 @@ from codecustodian.logging import get_logger
 logger = get_logger("executor.repo_cloner")
 
 # Allowed hosts for cloning (HTTPS only — no SSH, no file://)
-_ALLOWED_HOSTS = frozenset({
-    "github.com",
-    "dev.azure.com",
-    "gitlab.com",
-    "bitbucket.org",
-})
+_ALLOWED_HOSTS = frozenset(
+    {
+        "github.com",
+        "dev.azure.com",
+        "gitlab.com",
+        "bitbucket.org",
+    }
+)
 
 
 def validate_clone_url(url: str) -> str:

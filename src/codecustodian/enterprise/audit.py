@@ -22,9 +22,7 @@ logger = get_logger("enterprise.audit")
 class AuditEntry(BaseModel):
     """A single audit log entry."""
 
-    timestamp: str = Field(
-        default_factory=lambda: datetime.now(UTC).isoformat()
-    )
+    timestamp: str = Field(default_factory=lambda: datetime.now(UTC).isoformat())
     event_type: str = "refactoring_action"
     action: str
     finding_id: str = ""
@@ -108,12 +106,8 @@ class AuditLogger:
             confidence_score=details.pop("confidence_score", None),
             verification={
                 "tests_passed": bool(tests_passed) if tests_passed is not None else None,
-                "linting_passed": bool(linting_passed)
-                if linting_passed is not None
-                else None,
-                "security_passed": bool(security_passed)
-                if security_passed is not None
-                else None,
+                "linting_passed": bool(linting_passed) if linting_passed is not None else None,
+                "security_passed": bool(security_passed) if security_passed is not None else None,
             },
             pr_number=details.pop("pr_number", None),
             approver=details.pop("approver", None),

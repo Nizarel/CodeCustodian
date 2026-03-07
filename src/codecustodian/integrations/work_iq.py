@@ -289,9 +289,7 @@ class WorkIQContextProvider:
             )
             if is_urgent:
                 return True
-            logger.info(
-                "Deferring PR for %s — code freeze active", finding.id
-            )
+            logger.info("Deferring PR for %s — code freeze active", finding.id)
             return False
 
         if days_remaining < 3 and priority < 150:
@@ -352,20 +350,17 @@ class WorkIQContextProvider:
 
         return OrgContext(
             related_documents=[
-                d.get("title", d.get("name", ""))
-                for d in docs_data.get("documents", [])
+                d.get("title", d.get("name", "")) for d in docs_data.get("documents", [])
             ]
             if docs_data
             else [],
             recent_discussions=[
-                m.get("summary", m.get("text", ""))
-                for m in msgs_data.get("messages", [])
+                m.get("summary", m.get("text", "")) for m in msgs_data.get("messages", [])
             ]
             if msgs_data
             else [],
             upcoming_meetings=[
-                e.get("title", e.get("subject", ""))
-                for e in meetings_data.get("events", [])
+                e.get("title", e.get("subject", "")) for e in meetings_data.get("events", [])
             ]
             if meetings_data
             else [],

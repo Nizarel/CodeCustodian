@@ -33,9 +33,7 @@ class TodoScannerConfig(BaseModel):
 
     enabled: bool = True
     max_age_days: int = 90
-    patterns: list[str] = Field(
-        default_factory=lambda: ["TODO", "FIXME", "HACK", "XXX"]
-    )
+    patterns: list[str] = Field(default_factory=lambda: ["TODO", "FIXME", "HACK", "XXX"])
     auto_issue: bool = False
     notify_authors: bool = False
     languages: list[str] = Field(
@@ -104,9 +102,7 @@ class DependencyUpgradeScannerConfig(BaseModel):
         default=False,
         description="Query PyPI for latest versions (requires network access)",
     )
-    pypi_timeout: int = Field(
-        default=10, ge=1, description="Timeout in seconds for PyPI API calls"
-    )
+    pypi_timeout: int = Field(default=10, ge=1, description="Timeout in seconds for PyPI API calls")
     cache_ttl_hours: int = Field(
         default=24, ge=1, description="Cache TTL for PyPI responses in hours"
     )
@@ -115,17 +111,11 @@ class DependencyUpgradeScannerConfig(BaseModel):
 class ScannersConfig(BaseModel):
     """Aggregate scanner configuration."""
 
-    deprecated_apis: DeprecatedAPIScannerConfig = Field(
-        default_factory=DeprecatedAPIScannerConfig
-    )
+    deprecated_apis: DeprecatedAPIScannerConfig = Field(default_factory=DeprecatedAPIScannerConfig)
     todo_comments: TodoScannerConfig = Field(default_factory=TodoScannerConfig)
     code_smells: CodeSmellScannerConfig = Field(default_factory=CodeSmellScannerConfig)
-    security_patterns: SecurityScannerConfig = Field(
-        default_factory=SecurityScannerConfig
-    )
-    type_coverage: TypeCoverageScannerConfig = Field(
-        default_factory=TypeCoverageScannerConfig
-    )
+    security_patterns: SecurityScannerConfig = Field(default_factory=SecurityScannerConfig)
+    type_coverage: TypeCoverageScannerConfig = Field(default_factory=TypeCoverageScannerConfig)
     dependency_upgrades: DependencyUpgradeScannerConfig = Field(
         default_factory=DependencyUpgradeScannerConfig
     )
@@ -153,9 +143,7 @@ class BehaviorConfig(BaseModel):
     max_complexity: str = "moderate"  # simple | moderate | complex
     skip_complex_refactorings: bool = False
     # ── NEW — Phase 1 fields ──────────────────────────────────────────
-    max_files_per_pr: int = Field(
-        default=5, ge=1, description="Max files per PR (BR-PLN-002)"
-    )
+    max_files_per_pr: int = Field(default=5, ge=1, description="Max files per PR (BR-PLN-002)")
     max_lines_per_pr: int = Field(
         default=500, ge=1, description="Max changed lines per PR (BR-PLN-002)"
     )
@@ -414,8 +402,11 @@ class AzureConfig(BaseModel):
     @classmethod
     def _validate_url_format(cls, v: str) -> str:
         """Basic URL validation when non-empty."""
-        if v and not (v.startswith("http://") or v.startswith("https://")
-                      or v.startswith("InstrumentationKey=")):
+        if v and not (
+            v.startswith("http://")
+            or v.startswith("https://")
+            or v.startswith("InstrumentationKey=")
+        ):
             raise ValueError(f"Invalid URL or connection string format: {v!r}")
         return v
 
@@ -539,8 +530,12 @@ class TestSynthesisConfig(BaseModel):
     """AI test synthesis configuration."""
 
     enabled: bool = False
-    max_per_run: int = Field(default=3, ge=1, description="Max tests to synthesize per pipeline run")
-    timeout_per_test: int = Field(default=30, ge=5, description="Timeout in seconds for running each generated test")
+    max_per_run: int = Field(
+        default=3, ge=1, description="Max tests to synthesize per pipeline run"
+    )
+    timeout_per_test: int = Field(
+        default=30, ge=5, description="Timeout in seconds for running each generated test"
+    )
     require_passing_original: bool = True
 
 

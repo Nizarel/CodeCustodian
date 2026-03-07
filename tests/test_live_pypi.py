@@ -67,8 +67,7 @@ class TestScanWithLiveCheck:
         """Verifies that scan_with_live_check enriches findings with PyPI data."""
         # Create a minimal pyproject.toml
         (tmp_path / "pyproject.toml").write_text(
-            '[project]\nname = "test"\nversion = "0.1.0"\n'
-            'dependencies = ["requests>=1.0.0"]\n'
+            '[project]\nname = "test"\nversion = "0.1.0"\ndependencies = ["requests>=1.0.0"]\n'
         )
 
         mock_response = AsyncMock()

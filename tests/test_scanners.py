@@ -45,12 +45,14 @@ class TestScannerRegistry:
         class A(BaseScanner):
             name = "a"
             description = "Scanner A"
+
             def scan(self, repo_path, **kwargs):
                 return []
 
         class B(BaseScanner):
             name = "b"
             description = "Scanner B"
+
             def scan(self, repo_path, **kwargs):
                 return []
 
@@ -75,6 +77,7 @@ class TestScannerRegistry:
         class CatScanner(BaseScanner):
             name = "cat_scan"
             description = "Catalog scanner"
+
             def scan(self, repo_path, **kwargs):
                 return []
 
@@ -92,12 +95,14 @@ class TestScannerRegistry:
             name = "disabled"
             description = "Disabled at class level"
             enabled = False
+
             def scan(self, repo_path, **kwargs):
                 return []
 
         class EnabledScanner(BaseScanner):
             name = "enabled"
             description = "Enabled"
+
             def scan(self, repo_path, **kwargs):
                 return []
 
@@ -181,6 +186,7 @@ class TestFindPythonFiles:
         class Dummy(BaseScanner):
             name = "d"
             description = "d"
+
             def scan(self, repo_path, **kwargs):
                 return []
 
@@ -201,6 +207,7 @@ class TestFindPythonFiles:
         class Dummy(BaseScanner):
             name = "d"
             description = "d"
+
             def scan(self, repo_path, **kwargs):
                 return []
 
@@ -229,12 +236,14 @@ class TestTodoScanner:
 
         with tempfile.TemporaryDirectory() as tmpdir:
             py_file = Path(tmpdir) / "example.py"
-            py_file.write_text(textwrap.dedent("""\
+            py_file.write_text(
+                textwrap.dedent("""\
                 # TODO: Fix this later
                 def foo():
                     pass  # FIXME: broken
                 # HACK: workaround for bug #123
-            """))
+            """)
+            )
 
             findings = scanner.scan(tmpdir)
             assert len(findings) >= 3
@@ -266,7 +275,9 @@ class TestTodoScanner:
             py_file.write_text("# TODO: example\n")
 
             # Mock git blame integration
-            mock_blame_map = {1: {"author": "Test User", "author_email": "test@x.com", "age_days": 100}}
+            mock_blame_map = {
+                1: {"author": "Test User", "author_email": "test@x.com", "age_days": 100}
+            }
             with (
                 patch.object(scanner, "_build_blame_map", return_value=mock_blame_map),
                 patch.object(scanner, "_get_git_repo", return_value=MagicMock()),
@@ -298,7 +309,10 @@ class TestCodeSmellsScanner:
             py_file.write_text("\n".join(lines))
 
             findings = scanner.scan(tmpdir)
-            assert any("long" in f.description.lower() or "lines" in f.description.lower() for f in findings)
+            assert any(
+                "long" in f.description.lower() or "lines" in f.description.lower()
+                for f in findings
+            )
 
     def test_too_many_params(self):
         from codecustodian.scanner.code_smells import CodeSmellScanner
@@ -307,9 +321,7 @@ class TestCodeSmellsScanner:
 
         with tempfile.TemporaryDirectory() as tmpdir:
             py_file = Path(tmpdir) / "params.py"
-            py_file.write_text(
-                "def many_params(a, b, c, d, e, f, g, h):\n    pass\n"
-            )
+            py_file.write_text("def many_params(a, b, c, d, e, f, g, h):\n    pass\n")
 
             findings = scanner.scan(tmpdir)
             assert any("param" in f.description.lower() for f in findings)
@@ -322,7 +334,8 @@ class TestCodeSmellsScanner:
         with tempfile.TemporaryDirectory() as tmpdir:
             py_file = Path(tmpdir) / "complex.py"
             # Generate a function with high cyclomatic complexity
-            py_file.write_text(textwrap.dedent("""\
+            py_file.write_text(
+                textwrap.dedent("""\
                 def complex_func(x, y, z):
                     if x > 0:
                         if y > 0:
@@ -348,10 +361,13 @@ class TestCodeSmellsScanner:
                         except TypeError:
                             return 8
                     return 0
-            """))
+            """)
+            )
 
             findings = scanner.scan(tmpdir)
-            cc_findings = [f for f in findings if f.metadata.get("metric") == "cyclomatic_complexity"]
+            cc_findings = [
+                f for f in findings if f.metadata.get("metric") == "cyclomatic_complexity"
+            ]
             assert len(cc_findings) >= 1
             assert cc_findings[0].metadata.get("rank") is not None
 
@@ -363,7 +379,8 @@ class TestCodeSmellsScanner:
         with tempfile.TemporaryDirectory() as tmpdir:
             py_file = Path(tmpdir) / "cognitive.py"
             # Deeply nested logic with boolean ops
-            py_file.write_text(textwrap.dedent("""\
+            py_file.write_text(
+                textwrap.dedent("""\
                 def tangled(a, b, c, d):
                     if a:
                         for i in range(10):
@@ -376,10 +393,13 @@ class TestCodeSmellsScanner:
                                             if c and d:
                                                 break
                     return None
-            """))
+            """)
+            )
 
             findings = scanner.scan(tmpdir)
-            cog_findings = [f for f in findings if f.metadata.get("metric") == "cognitive_complexity"]
+            cog_findings = [
+                f for f in findings if f.metadata.get("metric") == "cognitive_complexity"
+            ]
             assert len(cog_findings) >= 1
 
     def test_dead_code_detection(self):
@@ -389,13 +409,15 @@ class TestCodeSmellsScanner:
 
         with tempfile.TemporaryDirectory() as tmpdir:
             py_file = Path(tmpdir) / "dead.py"
-            py_file.write_text(textwrap.dedent("""\
+            py_file.write_text(
+                textwrap.dedent("""\
                 def _unused_private():
                     pass
 
                 def public():
                     return 42
-            """))
+            """)
+            )
 
             findings = scanner.scan(tmpdir)
             dead_findings = [f for f in findings if f.metadata.get("metric") == "dead_code"]
@@ -432,10 +454,12 @@ class TestTypeCoverageScanner:
 
         with tempfile.TemporaryDirectory() as tmpdir:
             py_file = Path(tmpdir) / "untyped.py"
-            py_file.write_text(textwrap.dedent("""\
+            py_file.write_text(
+                textwrap.dedent("""\
                 def add(a, b):
                     return a + b
-            """))
+            """)
+            )
 
             findings = scanner.scan(tmpdir)
             assert len(findings) >= 1
@@ -448,7 +472,8 @@ class TestTypeCoverageScanner:
 
         with tempfile.TemporaryDirectory() as tmpdir:
             py_file = Path(tmpdir) / "partial.py"
-            py_file.write_text(textwrap.dedent("""\
+            py_file.write_text(
+                textwrap.dedent("""\
                 def typed(x: int) -> str:
                     return str(x)
 
@@ -457,7 +482,8 @@ class TestTypeCoverageScanner:
 
                 def also_untyped(c):
                     pass
-            """))
+            """)
+            )
 
             findings = scanner.scan(tmpdir)
             # Should have per-function findings + per-file summary
@@ -473,10 +499,12 @@ class TestTypeCoverageScanner:
 
         with tempfile.TemporaryDirectory() as tmpdir:
             py_file = Path(tmpdir) / "typed.py"
-            py_file.write_text(textwrap.dedent("""\
+            py_file.write_text(
+                textwrap.dedent("""\
                 def add(a: int, b: int) -> int:
                     return a + b
-            """))
+            """)
+            )
 
             findings = scanner.scan(tmpdir)
             assert len(findings) == 0
@@ -491,10 +519,12 @@ class TestTypeCoverageScanner:
 
         with tempfile.TemporaryDirectory() as tmpdir:
             py_file = Path(tmpdir) / "priv.py"
-            py_file.write_text(textwrap.dedent("""\
+            py_file.write_text(
+                textwrap.dedent("""\
                 def _private(x):
                     return x
-            """))
+            """)
+            )
 
             findings = scanner.scan(tmpdir)
             # strict_mode=True should flag private methods
@@ -508,10 +538,12 @@ class TestTypeCoverageScanner:
 
         with tempfile.TemporaryDirectory() as tmpdir:
             py_file = Path(tmpdir) / "priv.py"
-            py_file.write_text(textwrap.dedent("""\
+            py_file.write_text(
+                textwrap.dedent("""\
                 def _private(x):
                     return x
-            """))
+            """)
+            )
 
             findings = scanner.scan(tmpdir)
             func_findings = [f for f in findings if f.metadata.get("function_name") == "_private"]
@@ -522,6 +554,7 @@ class TestTypeCoverageScanner:
         import ast
 
         from codecustodian.scanner.type_coverage import TypeCoverageScanner
+
         node = ast.parse("def foo(): pass").body[0]
         assert TypeCoverageScanner._suggest_types(node) is None
 
@@ -604,11 +637,13 @@ class TestDeprecatedApiScanner:
 
         with tempfile.TemporaryDirectory() as tmpdir:
             py_file = Path(tmpdir) / "old_code.py"
-            py_file.write_text(textwrap.dedent("""\
+            py_file.write_text(
+                textwrap.dedent("""\
                 import pandas as pd
                 # Use pd.DataFrame.append directly so AST attribute resolution works
                 result = pd.DataFrame.append(pd.DataFrame(), {"a": 1}, ignore_index=True)
-            """))
+            """)
+            )
 
             findings = scanner.scan(tmpdir)
             deprecated_descs = [f.description for f in findings]
@@ -621,10 +656,12 @@ class TestDeprecatedApiScanner:
 
         with tempfile.TemporaryDirectory() as tmpdir:
             py_file = Path(tmpdir) / "os_use.py"
-            py_file.write_text(textwrap.dedent("""\
+            py_file.write_text(
+                textwrap.dedent("""\
                 import os
                 os.system("ls")
-            """))
+            """)
+            )
 
             findings = scanner.scan(tmpdir)
             assert any("os.system" in f.description for f in findings)
@@ -637,10 +674,12 @@ class TestDeprecatedApiScanner:
         with tempfile.TemporaryDirectory() as tmpdir:
             py_file = Path(tmpdir) / "typing_use.py"
             # Use typing.List attribute access so AST Attribute node is created
-            py_file.write_text(textwrap.dedent("""\
+            py_file.write_text(
+                textwrap.dedent("""\
                 import typing
                 x: typing.List[int] = [1, 2, 3]
-            """))
+            """)
+            )
 
             findings = scanner.scan(tmpdir)
             assert any("List" in f.description for f in findings)
@@ -652,10 +691,12 @@ class TestDeprecatedApiScanner:
 
         with tempfile.TemporaryDirectory() as tmpdir:
             py_file = Path(tmpdir) / "clean.py"
-            py_file.write_text(textwrap.dedent("""\
+            py_file.write_text(
+                textwrap.dedent("""\
                 def add(a: int, b: int) -> int:
                     return a + b
-            """))
+            """)
+            )
 
             findings = scanner.scan(tmpdir)
             assert len(findings) == 0
@@ -678,10 +719,12 @@ class TestDeprecatedApiScanner:
 
         with tempfile.TemporaryDirectory() as tmpdir:
             py_file = Path(tmpdir) / "legacy_use.py"
-            py_file.write_text(textwrap.dedent("""\
+            py_file.write_text(
+                textwrap.dedent("""\
                 import legacy
                 legacy.do_work()
-            """))
+            """)
+            )
 
             findings = scanner.scan(tmpdir)
 
@@ -698,12 +741,14 @@ class TestDeprecatedApiScanner:
 
         with tempfile.TemporaryDirectory() as tmpdir:
             js_file = Path(tmpdir) / "legacy.js"
-            js_file.write_text(textwrap.dedent("""\
+            js_file.write_text(
+                textwrap.dedent("""\
                 const fs = require('fs');
                 fs.exists('/tmp/file.txt', function(exists) {
                   console.log(exists);
                 });
-            """))
+            """)
+            )
 
             findings = scanner.scan(tmpdir)
 
@@ -740,13 +785,17 @@ class TestSecurityScanner:
 
         with tempfile.TemporaryDirectory() as tmpdir:
             py_file = Path(tmpdir) / "secrets.py"
-            py_file.write_text(textwrap.dedent("""\
+            py_file.write_text(
+                textwrap.dedent("""\
                 password = "super_secret_123"
                 api_key = "abcdef1234567890"
-            """))
+            """)
+            )
 
             findings = scanner.scan(tmpdir)
-            secret_findings = [f for f in findings if f.metadata.get("category") == "hardcoded_secrets"]
+            secret_findings = [
+                f for f in findings if f.metadata.get("category") == "hardcoded_secrets"
+            ]
             assert len(secret_findings) >= 1
             assert secret_findings[0].severity == SeverityLevel.CRITICAL
 
@@ -757,13 +806,17 @@ class TestSecurityScanner:
 
         with tempfile.TemporaryDirectory() as tmpdir:
             py_file = Path(tmpdir) / "eval_use.py"
-            py_file.write_text(textwrap.dedent("""\
+            py_file.write_text(
+                textwrap.dedent("""\
                 user_input = input()
                 result = eval(user_input)
-            """))
+            """)
+            )
 
             findings = scanner.scan(tmpdir)
-            cmd_findings = [f for f in findings if f.metadata.get("category") == "command_injection"]
+            cmd_findings = [
+                f for f in findings if f.metadata.get("category") == "command_injection"
+            ]
             assert len(cmd_findings) >= 1
 
     def test_detects_pickle(self):
@@ -773,13 +826,17 @@ class TestSecurityScanner:
 
         with tempfile.TemporaryDirectory() as tmpdir:
             py_file = Path(tmpdir) / "pkl.py"
-            py_file.write_text(textwrap.dedent("""\
+            py_file.write_text(
+                textwrap.dedent("""\
                 import pickle
                 data = pickle.load(open("data.pkl", "rb"))
-            """))
+            """)
+            )
 
             findings = scanner.scan(tmpdir)
-            deser_findings = [f for f in findings if f.metadata.get("category") == "deserialization"]
+            deser_findings = [
+                f for f in findings if f.metadata.get("category") == "deserialization"
+            ]
             assert len(deser_findings) >= 1
 
     def test_detects_weak_crypto(self):
@@ -789,10 +846,12 @@ class TestSecurityScanner:
 
         with tempfile.TemporaryDirectory() as tmpdir:
             py_file = Path(tmpdir) / "crypto.py"
-            py_file.write_text(textwrap.dedent("""\
+            py_file.write_text(
+                textwrap.dedent("""\
                 import hashlib
                 h = hashlib.md5(b"data")
-            """))
+            """)
+            )
 
             findings = scanner.scan(tmpdir)
             crypto_findings = [f for f in findings if f.metadata.get("category") == "weak_crypto"]
@@ -820,10 +879,12 @@ class TestSecurityScanner:
 
         with tempfile.TemporaryDirectory() as tmpdir:
             py_file = Path(tmpdir) / "safe.py"
-            py_file.write_text(textwrap.dedent("""\
+            py_file.write_text(
+                textwrap.dedent("""\
                 def add(a: int, b: int) -> int:
                     return a + b
-            """))
+            """)
+            )
 
             findings = scanner.scan(tmpdir)
             custom_findings = [f for f in findings if f.metadata.get("source") == "custom_pattern"]
@@ -842,7 +903,9 @@ class TestSecurityScanner:
             py_file.write_text('password = "mysecretpassword"\n')
 
             findings = scanner.scan(tmpdir)
-            secret_findings = [f for f in findings if f.metadata.get("category") == "hardcoded_secrets"]
+            secret_findings = [
+                f for f in findings if f.metadata.get("category") == "hardcoded_secrets"
+            ]
             assert len(secret_findings) == 0
 
     def test_reachability_marks_vulnerable_function_reachable(self):
@@ -852,16 +915,20 @@ class TestSecurityScanner:
 
         with tempfile.TemporaryDirectory() as tmpdir:
             py_file = Path(tmpdir) / "app.py"
-            py_file.write_text(textwrap.dedent("""\
+            py_file.write_text(
+                textwrap.dedent("""\
                 def unsafe(user_input):
                     return eval(user_input)
 
                 def handler(payload):
                     return unsafe(payload)
-            """))
+            """)
+            )
 
             findings = scanner.scan(tmpdir)
-            cmd_findings = [f for f in findings if f.metadata.get("category") == "command_injection"]
+            cmd_findings = [
+                f for f in findings if f.metadata.get("category") == "command_injection"
+            ]
             assert cmd_findings
             assert cmd_findings[0].metadata.get("reachable") is True
             assert cmd_findings[0].metadata.get("enclosing_function") == "unsafe"
@@ -874,16 +941,20 @@ class TestSecurityScanner:
 
         with tempfile.TemporaryDirectory() as tmpdir:
             py_file = Path(tmpdir) / "orphan.py"
-            py_file.write_text(textwrap.dedent("""\
+            py_file.write_text(
+                textwrap.dedent("""\
                 def helper():
                     return 1
 
                 def unsafe(user_input):
                     return eval(user_input)
-            """))
+            """)
+            )
 
             findings = scanner.scan(tmpdir)
-            cmd_findings = [f for f in findings if f.metadata.get("category") == "command_injection"]
+            cmd_findings = [
+                f for f in findings if f.metadata.get("category") == "command_injection"
+            ]
             assert cmd_findings
             assert cmd_findings[0].metadata.get("reachable") is False
             assert cmd_findings[0].metadata.get("enclosing_function") == "unsafe"
@@ -1006,6 +1077,7 @@ class TestDependencyUpgradeScanner:
 class TestDeduplicationEngine:
     def _make_engine(self, tmpdir):
         from codecustodian.scanner.deduplication import DeduplicationEngine
+
         return DeduplicationEngine(db_path=Path(tmpdir) / "dedup.json")
 
     def test_dedup_removes_duplicates(self):
@@ -1212,7 +1284,9 @@ class TestSecurityScannerMultiLang:
             )
 
             findings = scanner.scan(tmpdir)
-            secret_findings = [f for f in findings if f.metadata.get("category") == "hardcoded_secrets"]
+            secret_findings = [
+                f for f in findings if f.metadata.get("category") == "hardcoded_secrets"
+            ]
             assert len(secret_findings) >= 1
             assert any(f.metadata.get("language") == "go" for f in secret_findings)
 
@@ -1221,12 +1295,12 @@ class TestSecurityScannerMultiLang:
 
         scanner = SecurityScanner()
         with tempfile.TemporaryDirectory() as tmpdir:
-            (Path(tmpdir) / "Auth.cs").write_text(
-                'string password = "admin123!";\n'
-            )
+            (Path(tmpdir) / "Auth.cs").write_text('string password = "admin123!";\n')
 
             findings = scanner.scan(tmpdir)
-            secret_findings = [f for f in findings if f.metadata.get("category") == "hardcoded_secrets"]
+            secret_findings = [
+                f for f in findings if f.metadata.get("category") == "hardcoded_secrets"
+            ]
             assert len(secret_findings) >= 1
             assert any(f.metadata.get("language") == "cs" for f in secret_findings)
 
@@ -1240,7 +1314,9 @@ class TestSecurityScannerMultiLang:
             )
 
             findings = scanner.scan(tmpdir)
-            cmd_findings = [f for f in findings if f.metadata.get("category") == "command_injection"]
+            cmd_findings = [
+                f for f in findings if f.metadata.get("category") == "command_injection"
+            ]
             assert any("exec.Command" in f.description for f in cmd_findings)
 
     def test_detects_process_start_in_cs(self):
@@ -1248,12 +1324,12 @@ class TestSecurityScannerMultiLang:
 
         scanner = SecurityScanner()
         with tempfile.TemporaryDirectory() as tmpdir:
-            (Path(tmpdir) / "Launcher.cs").write_text(
-                "Process.Start(userInput);\n"
-            )
+            (Path(tmpdir) / "Launcher.cs").write_text("Process.Start(userInput);\n")
 
             findings = scanner.scan(tmpdir)
-            cmd_findings = [f for f in findings if f.metadata.get("category") == "command_injection"]
+            cmd_findings = [
+                f for f in findings if f.metadata.get("category") == "command_injection"
+            ]
             assert any("Process.Start" in f.description for f in cmd_findings)
 
     def test_detects_sql_injection_in_go(self):
@@ -1274,9 +1350,7 @@ class TestSecurityScannerMultiLang:
 
         scanner = SecurityScanner()
         with tempfile.TemporaryDirectory() as tmpdir:
-            (Path(tmpdir) / "secrets.go").write_text(
-                'const token = "my_secret_token_value"\n'
-            )
+            (Path(tmpdir) / "secrets.go").write_text('const token = "my_secret_token_value"\n')
 
             findings = scanner.scan(tmpdir)
             custom = [f for f in findings if f.metadata.get("source") == "custom_pattern"]
@@ -1399,12 +1473,14 @@ class TestPipelineScanWiring:
         config = CodeCustodianConfig()
         with tempfile.TemporaryDirectory() as tmpdir:
             py_file = Path(tmpdir) / "test_target.py"
-            py_file.write_text(textwrap.dedent("""\
+            py_file.write_text(
+                textwrap.dedent("""\
                 # TODO: fix this
                 password = "hardcoded_secret123"
                 def untyped(x):
                     return x
-            """))
+            """)
+            )
 
             pipeline = Pipeline(config=config, repo_path=tmpdir)
             findings = await pipeline._scan()

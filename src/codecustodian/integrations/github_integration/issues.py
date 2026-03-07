@@ -96,9 +96,7 @@ class IssueManager:
             )
             return dup
 
-        steps_md = "\n".join(
-            f"{i}. {step}" for i, step in enumerate(proposal.recommended_steps, 1)
-        )
+        steps_md = "\n".join(f"{i}. {step}" for i, step in enumerate(proposal.recommended_steps, 1))
         risks_md = (
             "\n".join(f"- ⚠️ {r}" for r in proposal.risks)
             if proposal.risks
@@ -171,10 +169,7 @@ class IssueManager:
         try:
             open_issues = self.repo.get_issues(state="open")
             for issue in open_issues:
-                if (
-                    issue.title.startswith("[Proposal]")
-                    and search_title in issue.title
-                ):
+                if issue.title.startswith("[Proposal]") and search_title in issue.title:
                     return issue.number
         except Exception:
             logger.debug("Duplicate check failed — proceeding with creation")

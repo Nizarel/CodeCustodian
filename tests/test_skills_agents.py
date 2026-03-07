@@ -145,8 +145,10 @@ class TestSkillRegistry:
 
     def test_load_skills_from_directory(self) -> None:
         with TemporaryDirectory() as tmp:
-            skill_dir = _make_skill_dir(Path(tmp), {
-                "test-skill": textwrap.dedent("""\
+            skill_dir = _make_skill_dir(
+                Path(tmp),
+                {
+                    "test-skill": textwrap.dedent("""\
                 ---
                 name: test-skill
                 description: A test skill
@@ -155,7 +157,8 @@ class TestSkillRegistry:
                 # Test Skill
                 Test content.
                 """),
-            })
+                },
+            )
             registry = SkillRegistry()
             registry.load_skills(skill_dir)
             assert "test-skill" in registry.list_skills()
@@ -177,19 +180,25 @@ class TestSkillRegistry:
 
     def test_load_skills_string_path(self) -> None:
         with TemporaryDirectory() as tmp:
-            skill_dir = _make_skill_dir(Path(tmp), {
-                "my-skill": "---\nname: my-skill\ndescription: test\n---\nBody.",
-            })
+            skill_dir = _make_skill_dir(
+                Path(tmp),
+                {
+                    "my-skill": "---\nname: my-skill\ndescription: test\n---\nBody.",
+                },
+            )
             registry = SkillRegistry()
             registry.load_skills(str(skill_dir))
             assert "my-skill" in registry.list_skills()
 
     def test_get_skills_for_finding_security(self) -> None:
         with TemporaryDirectory() as tmp:
-            skill_dir = _make_skill_dir(Path(tmp), {
-                "security-remediation": "---\nname: security-remediation\ndescription: sec\n---\nSec body.",
-                "code-quality": "---\nname: code-quality\ndescription: qual\n---\nQuality body.",
-            })
+            skill_dir = _make_skill_dir(
+                Path(tmp),
+                {
+                    "security-remediation": "---\nname: security-remediation\ndescription: sec\n---\nSec body.",
+                    "code-quality": "---\nname: code-quality\ndescription: qual\n---\nQuality body.",
+                },
+            )
             registry = SkillRegistry()
             registry.load_skills(skill_dir)
             skills = registry.get_skills_for_finding(FindingType.SECURITY)
@@ -200,9 +209,12 @@ class TestSkillRegistry:
 
     def test_get_skills_for_finding_unknown_type(self) -> None:
         with TemporaryDirectory() as tmp:
-            skill_dir = _make_skill_dir(Path(tmp), {
-                "general-refactoring": "---\nname: general-refactoring\ndescription: gen\n---\nGeneral.",
-            })
+            skill_dir = _make_skill_dir(
+                Path(tmp),
+                {
+                    "general-refactoring": "---\nname: general-refactoring\ndescription: gen\n---\nGeneral.",
+                },
+            )
             registry = SkillRegistry()
             registry.load_skills(skill_dir)
             skills = registry.get_skills_for_finding("unknown_type")
@@ -211,11 +223,14 @@ class TestSkillRegistry:
 
     def test_get_skills_by_names(self) -> None:
         with TemporaryDirectory() as tmp:
-            skill_dir = _make_skill_dir(Path(tmp), {
-                "a": "---\nname: a\n---\nA body.",
-                "b": "---\nname: b\n---\nB body.",
-                "c": "---\nname: c\n---\nC body.",
-            })
+            skill_dir = _make_skill_dir(
+                Path(tmp),
+                {
+                    "a": "---\nname: a\n---\nA body.",
+                    "b": "---\nname: b\n---\nB body.",
+                    "c": "---\nname: c\n---\nC body.",
+                },
+            )
             registry = SkillRegistry()
             registry.load_skills(skill_dir)
             skills = registry.get_skills_by_names(["b", "a", "nonexistent"])
@@ -249,9 +264,12 @@ class TestSkillRegistry:
 
     def test_name_defaults_to_directory_name(self) -> None:
         with TemporaryDirectory() as tmp:
-            skill_dir = _make_skill_dir(Path(tmp), {
-                "my-dir": "---\ndescription: no name field\n---\nBody.",
-            })
+            skill_dir = _make_skill_dir(
+                Path(tmp),
+                {
+                    "my-dir": "---\ndescription: no name field\n---\nBody.",
+                },
+            )
             registry = SkillRegistry()
             registry.load_skills(skill_dir)
             assert "my-dir" in registry.list_skills()
@@ -309,9 +327,7 @@ class TestAgentProfiles:
 
     def test_select_agent_has_skill_names(self) -> None:
         for profile in AGENT_REGISTRY.values():
-            assert len(profile.skill_names) >= 1, (
-                f"Agent {profile.name} has no skill_names"
-            )
+            assert len(profile.skill_names) >= 1, f"Agent {profile.name} has no skill_names"
 
     def test_get_agent_tools_no_filter(self) -> None:
         profile = AgentProfile(name="test", tool_filter=None)
@@ -402,8 +418,10 @@ class TestCopilotClientExtensions:
         # With preference → overrides config
         model_reasoning = client.select_model(finding, preference="reasoning")
         assert model_reasoning in {
-            "gpt-5.2-codex", "gpt-5.1-codex-max",
-            "gpt-5.2", "gpt-5.1-codex",
+            "gpt-5.2-codex",
+            "gpt-5.1-codex-max",
+            "gpt-5.2",
+            "gpt-5.1-codex",
         }
 
     def test_select_model_preference_auto_uses_config(self) -> None:
@@ -552,7 +570,9 @@ class TestPlannerIntegration:
         mock_session = AsyncMock()
         client.create_session = AsyncMock(return_value=mock_session)
         client.send_streaming = AsyncMock()
-        client.send_and_wait = AsyncMock(return_value='{"summary":"Fix SQL injection","description":"Parameterize","changes":[],"confidence_score":8,"risk_level":"high","ai_reasoning":"SQL injection"}')
+        client.send_and_wait = AsyncMock(
+            return_value='{"summary":"Fix SQL injection","description":"Parameterize","changes":[],"confidence_score":8,"risk_level":"high","ai_reasoning":"SQL injection"}'
+        )
 
         planner = Planner(config=config, copilot_client=client)
         finding = _make_finding(type=FindingType.SECURITY, severity=SeverityLevel.CRITICAL)
@@ -594,7 +614,9 @@ class TestPlannerIntegration:
         mock_session = AsyncMock()
         client.create_session = AsyncMock(return_value=mock_session)
         client.send_streaming = AsyncMock()
-        client.send_and_wait = AsyncMock(return_value='{"summary":"Refactor","description":"Fix","changes":[],"confidence_score":7,"risk_level":"low","ai_reasoning":"Simple"}')
+        client.send_and_wait = AsyncMock(
+            return_value='{"summary":"Refactor","description":"Fix","changes":[],"confidence_score":7,"risk_level":"low","ai_reasoning":"Simple"}'
+        )
 
         planner = Planner(config=config, copilot_client=client)
         finding = _make_finding()
@@ -626,7 +648,9 @@ class TestPlannerIntegration:
         mock_session = AsyncMock()
         client.create_session = AsyncMock(return_value=mock_session)
         client.send_streaming = AsyncMock()
-        client.send_and_wait = AsyncMock(return_value='{"summary":"Fix","description":"Fix","changes":[],"confidence_score":7,"risk_level":"low","ai_reasoning":"OK"}')
+        client.send_and_wait = AsyncMock(
+            return_value='{"summary":"Fix","description":"Fix","changes":[],"confidence_score":7,"risk_level":"low","ai_reasoning":"OK"}'
+        )
 
         planner = Planner(config=config, copilot_client=client)
 
@@ -661,7 +685,9 @@ class TestPlannerIntegration:
         mock_session = AsyncMock()
         client.create_session = AsyncMock(return_value=mock_session)
         client.send_streaming = AsyncMock()
-        client.send_and_wait = AsyncMock(return_value='{"summary":"Fix","description":"Fix","changes":[],"confidence_score":7,"risk_level":"low","ai_reasoning":"OK"}')
+        client.send_and_wait = AsyncMock(
+            return_value='{"summary":"Fix","description":"Fix","changes":[],"confidence_score":7,"risk_level":"low","ai_reasoning":"OK"}'
+        )
 
         planner = Planner(config=config, copilot_client=client)
         finding = _make_finding(type=FindingType.SECURITY)
@@ -694,7 +720,9 @@ class TestPlannerIntegration:
         mock_session = AsyncMock()
         client.create_session = AsyncMock(return_value=mock_session)
         client.send_streaming = AsyncMock()
-        client.send_and_wait = AsyncMock(return_value='{"summary":"Fix","description":"Fix","changes":[],"confidence_score":7,"risk_level":"low","ai_reasoning":"OK"}')
+        client.send_and_wait = AsyncMock(
+            return_value='{"summary":"Fix","description":"Fix","changes":[],"confidence_score":7,"risk_level":"low","ai_reasoning":"OK"}'
+        )
 
         planner = Planner(config=config, copilot_client=client)
         finding = _make_finding()

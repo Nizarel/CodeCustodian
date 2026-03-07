@@ -65,9 +65,7 @@ class TestPredictiveDebtForecaster:
                 by_type={"deprecated_api": 10 + i * 5},
                 by_severity={"high": 10 + i * 5},
             ).model_dump(mode="json")
-            (snap_dir / f"{repo_hash}_{d.isoformat()}.json").write_text(
-                json.dumps(data)
-            )
+            (snap_dir / f"{repo_hash}_{d.isoformat()}.json").write_text(json.dumps(data))
 
         snapshots = fc.load_snapshots(str(tmp_path))
         assert len(snapshots) == 3
@@ -105,9 +103,7 @@ class TestPredictiveDebtForecaster:
                 by_type={"deprecated_api": 20 + i * 10},
                 by_severity={"high": 20 + i * 10},
             ).model_dump(mode="json")
-            (snap_dir / f"{repo_hash}_{d.isoformat()}.json").write_text(
-                json.dumps(data)
-            )
+            (snap_dir / f"{repo_hash}_{d.isoformat()}.json").write_text(json.dumps(data))
 
         forecast = fc.forecast(str(tmp_path), horizon_days=90)
         assert isinstance(forecast, DebtForecast)
@@ -131,9 +127,7 @@ class TestPredictiveDebtForecaster:
                 by_type={"deprecated_api": 10 + i * 20},
                 by_severity={"high": 10 + i * 20},
             ).model_dump(mode="json")
-            (snap_dir / f"{repo_hash}_{d.isoformat()}.json").write_text(
-                json.dumps(data)
-            )
+            (snap_dir / f"{repo_hash}_{d.isoformat()}.json").write_text(json.dumps(data))
 
         forecast = fc.forecast(str(tmp_path))
         assert forecast.trend == "worsening"
@@ -154,9 +148,7 @@ class TestPredictiveDebtForecaster:
                 by_type={"deprecated_api": 100 - i * 20},
                 by_severity={"high": 100 - i * 20},
             ).model_dump(mode="json")
-            (snap_dir / f"{repo_hash}_{d.isoformat()}.json").write_text(
-                json.dumps(data)
-            )
+            (snap_dir / f"{repo_hash}_{d.isoformat()}.json").write_text(json.dumps(data))
 
         forecast = fc.forecast(str(tmp_path))
         assert forecast.trend == "improving"
@@ -198,9 +190,7 @@ class TestPredictiveDebtForecaster:
                 by_type={"deprecated_api": 30, "security": 20 + i * 10},
                 by_severity={"high": 50 + i * 10},
             ).model_dump(mode="json")
-            (snap_dir / f"{repo_hash}_{d.isoformat()}.json").write_text(
-                json.dumps(data)
-            )
+            (snap_dir / f"{repo_hash}_{d.isoformat()}.json").write_text(json.dumps(data))
 
         forecast = fc.forecast(str(tmp_path))
         assert isinstance(forecast.recommended_actions, list)

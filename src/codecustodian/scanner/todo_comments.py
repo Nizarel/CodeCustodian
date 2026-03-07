@@ -160,9 +160,7 @@ class TodoCommentScanner(BaseScanner):
             now = datetime.now(UTC)
             blame_map: dict[int, dict[str, Any]] = {}
             for entry in entries:
-                authored = datetime.fromtimestamp(
-                    entry.commit.authored_date, tz=UTC
-                )
+                authored = datetime.fromtimestamp(entry.commit.authored_date, tz=UTC)
                 age_days = (now - authored).days
                 info = {
                     "author": str(entry.commit.author.name) if entry.commit.author else "",
@@ -190,9 +188,7 @@ class TodoCommentScanner(BaseScanner):
         return mapping.get(tag, SeverityLevel.MEDIUM)
 
     @staticmethod
-    def _age_severity(
-        base: SeverityLevel, age_days: int, max_age: int
-    ) -> SeverityLevel:
+    def _age_severity(base: SeverityLevel, age_days: int, max_age: int) -> SeverityLevel:
         """Override severity when a comment has aged beyond thresholds.
 
         - ``age > 2 x max_age`` -> CRITICAL

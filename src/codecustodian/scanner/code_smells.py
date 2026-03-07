@@ -110,7 +110,8 @@ class CodeSmellScanner(BaseScanner):
                                     f"(threshold: {thresholds['function_length']})"
                                 ),
                                 suggestion="Consider breaking this function into smaller pieces",
-                                priority_score=70.0 + min(length - thresholds["function_length"], 50),
+                                priority_score=70.0
+                                + min(length - thresholds["function_length"], 50),
                                 scanner_name=self.name,
                                 metadata={"metric": "function_length", "value": length},
                             )
@@ -183,8 +184,10 @@ class CodeSmellScanner(BaseScanner):
                     Finding(
                         type=FindingType.CODE_SMELL,
                         severity=(
-                            SeverityLevel.CRITICAL if rank in ("E", "F")
-                            else SeverityLevel.HIGH if rank in ("C", "D")
+                            SeverityLevel.CRITICAL
+                            if rank in ("E", "F")
+                            else SeverityLevel.HIGH
+                            if rank in ("C", "D")
                             else SeverityLevel.MEDIUM
                         ),
                         file=str(file_path),
@@ -198,9 +201,7 @@ class CodeSmellScanner(BaseScanner):
                             "Reduce branching by extracting helper functions, "
                             "using early returns, or applying the strategy pattern"
                         ),
-                        priority_score=min(
-                            200.0, 80.0 + (block.complexity - threshold) * 5
-                        ),
+                        priority_score=min(200.0, 80.0 + (block.complexity - threshold) * 5),
                         scanner_name=self.name,
                         metadata={
                             "metric": "cyclomatic_complexity",
@@ -233,9 +234,7 @@ class CodeSmellScanner(BaseScanner):
             findings.append(
                 Finding(
                     type=FindingType.CODE_SMELL,
-                    severity=(
-                        SeverityLevel.HIGH if rank == "C" else SeverityLevel.MEDIUM
-                    ),
+                    severity=(SeverityLevel.HIGH if rank == "C" else SeverityLevel.MEDIUM),
                     file=str(file_path),
                     line=1,
                     description=(
@@ -278,7 +277,8 @@ class CodeSmellScanner(BaseScanner):
                         Finding(
                             type=FindingType.CODE_SMELL,
                             severity=(
-                                SeverityLevel.HIGH if score > threshold * 2
+                                SeverityLevel.HIGH
+                                if score > threshold * 2
                                 else SeverityLevel.MEDIUM
                             ),
                             file=str(file_path),
@@ -291,9 +291,7 @@ class CodeSmellScanner(BaseScanner):
                                 "Simplify control flow: reduce nesting, "
                                 "flatten boolean expressions, extract helpers"
                             ),
-                            priority_score=min(
-                                200.0, 75.0 + (score - threshold) * 4
-                            ),
+                            priority_score=min(200.0, 75.0 + (score - threshold) * 4),
                             scanner_name=self.name,
                             metadata={
                                 "metric": "cognitive_complexity",
@@ -306,9 +304,7 @@ class CodeSmellScanner(BaseScanner):
 
     # ── Dead code detection (single-file — 4.4.3) ────────────────────
 
-    def _check_dead_code(
-        self, file_path: Path, tree: ast.AST
-    ) -> list[Finding]:
+    def _check_dead_code(self, file_path: Path, tree: ast.AST) -> list[Finding]:
         """Detect private functions/classes defined but never referenced.
 
         Only flags symbols starting with ``_`` (private) to reduce
@@ -319,8 +315,12 @@ class CodeSmellScanner(BaseScanner):
         # Pass 1: collect defined private names
         defined: dict[str, int] = {}  # name → lineno
         for node in ast.walk(tree):
-            if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)) and node.name.startswith("_") and not node.name.startswith("__"):
-                    defined[node.name] = node.lineno
+            if (
+                isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef))
+                and node.name.startswith("_")
+                and not node.name.startswith("__")
+            ):
+                defined[node.name] = node.lineno
 
         if not defined:
             return findings
@@ -372,14 +372,9 @@ class CodeSmellScanner(BaseScanner):
                     severity=SeverityLevel.MEDIUM,
                     file=str(file_path),
                     line=1,
-                    description=(
-                        f"File is {line_count} lines long "
-                        f"(threshold: {max_lines})"
-                    ),
+                    description=(f"File is {line_count} lines long (threshold: {max_lines})"),
                     suggestion="Consider splitting into smaller modules",
-                    priority_score=min(
-                        200.0, 50.0 + (line_count - max_lines) * 0.1
-                    ),
+                    priority_score=min(200.0, 50.0 + (line_count - max_lines) * 0.1),
                     scanner_name=self.name,
                     metadata={"metric": "file_length", "value": line_count},
                 )

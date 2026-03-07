@@ -27,6 +27,7 @@ logger = get_logger("integrations.teams_chatops")
 
 # ── Adaptive Card templates ──────────────────────────────────────────
 
+
 def _base_card(title: str, body_blocks: list[dict[str, Any]]) -> dict[str, Any]:
     """Build a minimal Adaptive Card v1.4 wrapper."""
     return {
@@ -77,11 +78,14 @@ def build_pr_created_card(
     return _base_card(
         "\U0001f680 Pull Request Created",
         [
-            {"type": "FactSet", "facts": [
-                {"title": "PR", "value": f"[{pr_title}]({pr_url})"},
-                {"title": "Findings Fixed", "value": str(finding_count)},
-                {"title": "Confidence", "value": f"{confidence}/10"},
-            ]},
+            {
+                "type": "FactSet",
+                "facts": [
+                    {"title": "PR", "value": f"[{pr_title}]({pr_url})"},
+                    {"title": "Findings Fixed", "value": str(finding_count)},
+                    {"title": "Confidence", "value": f"{confidence}/10"},
+                ],
+            },
         ],
     )
 
@@ -94,28 +98,33 @@ def build_approval_needed_card(
 ) -> dict[str, Any]:
     """Adaptive Card for ``approval_needed`` events."""
     body: list[dict[str, Any]] = [
-        {"type": "FactSet", "facts": [
-            {"title": "Finding", "value": finding_id},
-            {"title": "Summary", "value": summary},
-            {"title": "Risk", "value": risk},
-        ]},
+        {
+            "type": "FactSet",
+            "facts": [
+                {"title": "Finding", "value": finding_id},
+                {"title": "Summary", "value": summary},
+                {"title": "Risk", "value": risk},
+            ],
+        },
     ]
     if callback_url:
-        body.append({
-            "type": "ActionSet",
-            "actions": [
-                {
-                    "type": "Action.OpenUrl",
-                    "title": "\u2705 Approve",
-                    "url": f"{callback_url}?action=approve&finding={finding_id}",
-                },
-                {
-                    "type": "Action.OpenUrl",
-                    "title": "\u274c Reject",
-                    "url": f"{callback_url}?action=reject&finding={finding_id}",
-                },
-            ],
-        })
+        body.append(
+            {
+                "type": "ActionSet",
+                "actions": [
+                    {
+                        "type": "Action.OpenUrl",
+                        "title": "\u2705 Approve",
+                        "url": f"{callback_url}?action=approve&finding={finding_id}",
+                    },
+                    {
+                        "type": "Action.OpenUrl",
+                        "title": "\u274c Reject",
+                        "url": f"{callback_url}?action=reject&finding={finding_id}",
+                    },
+                ],
+            }
+        )
     return _base_card("\u26a0\ufe0f Approval Needed", body)
 
 
@@ -128,9 +137,12 @@ def build_verification_failed_card(
     return _base_card(
         "\u274c Verification Failed",
         [
-            {"type": "FactSet", "facts": [
-                {"title": "Finding", "value": finding_id},
-            ]},
+            {
+                "type": "FactSet",
+                "facts": [
+                    {"title": "Finding", "value": finding_id},
+                ],
+            },
             {"type": "TextBlock", "text": error_text, "wrap": True, "isSubtle": True},
         ],
     )
@@ -138,18 +150,19 @@ def build_verification_failed_card(
 
 def build_migration_card(plan: MigrationPlan) -> dict[str, Any]:
     """Adaptive Card for migration plan overview."""
-    stage_lines = "\n".join(
-        f"- **{s.name}** ({s.status}): {s.description}" for s in plan.stages
-    )
+    stage_lines = "\n".join(f"- **{s.name}** ({s.status}): {s.description}" for s in plan.stages)
     return _base_card(
         f"\U0001f504 Migration: {plan.framework} {plan.from_version} \u2192 {plan.to_version}",
         [
-            {"type": "FactSet", "facts": [
-                {"title": "Stages", "value": str(len(plan.stages))},
-                {"title": "Complexity", "value": plan.estimated_complexity},
-                {"title": "PR Strategy", "value": plan.pr_strategy},
-                {"title": "Files Affected", "value": str(plan.total_files_affected)},
-            ]},
+            {
+                "type": "FactSet",
+                "facts": [
+                    {"title": "Stages", "value": str(len(plan.stages))},
+                    {"title": "Complexity", "value": plan.estimated_complexity},
+                    {"title": "PR Strategy", "value": plan.pr_strategy},
+                    {"title": "Files Affected", "value": str(plan.total_files_affected)},
+                ],
+            },
             {"type": "TextBlock", "text": stage_lines, "wrap": True},
         ],
     )
@@ -177,6 +190,7 @@ def build_card_for_notification(notification: ChatOpsNotification) -> dict[str, 
 
 
 # ── Teams connector ──────────────────────────────────────────────────
+
 
 class TeamsConnector:
     """Send Adaptive Card notifications to Microsoft Teams via webhook."""
@@ -237,9 +251,7 @@ class TeamsConnector:
             logger.exception("Failed to send Teams notification %s", notification.id)
             return False
 
-    async def send_batch(
-        self, notifications: list[ChatOpsNotification]
-    ) -> list[bool]:
+    async def send_batch(self, notifications: list[ChatOpsNotification]) -> list[bool]:
         """Deliver multiple notifications sequentially."""
         return [await self.send(n) for n in notifications]
 

@@ -20,9 +20,7 @@ logger = get_logger("feedback")
 class FeedbackEntry(BaseModel):
     """A single feedback entry from a PR review."""
 
-    timestamp: str = Field(
-        default_factory=lambda: datetime.now(UTC).isoformat()
-    )
+    timestamp: str = Field(default_factory=lambda: datetime.now(UTC).isoformat())
     finding_id: str
     finding_type: str
     action: str  # approved | rejected | modified
@@ -34,9 +32,7 @@ class FeedbackEntry(BaseModel):
 class FeedbackStore:
     """Persistent feedback storage for learning."""
 
-    def __init__(
-        self, storage_dir: str | Path = ".codecustodian-cache"
-    ) -> None:
+    def __init__(self, storage_dir: str | Path = ".codecustodian-cache") -> None:
         self.storage_dir = Path(storage_dir)
         self.storage_dir.mkdir(parents=True, exist_ok=True)
         self.file = self.storage_dir / "feedback.jsonl"

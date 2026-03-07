@@ -25,9 +25,7 @@ class AzureDevOpsClient:
         project: str,
         pat: str,
     ) -> None:
-        self.base_url = (
-            f"https://dev.azure.com/{organization}/{project}/_apis"
-        )
+        self.base_url = f"https://dev.azure.com/{organization}/{project}/_apis"
         self.auth = ("", pat)
         self.headers = {"Content-Type": "application/json-patch+json"}
         self._client: httpx.AsyncClient | None = None

@@ -78,7 +78,9 @@ class SecurityVerifier:
                         issues.append(
                             SecurityIssue(
                                 file=str(req_path),
-                                severity="HIGH" if "critical" in v.get("id", "").lower() else "MEDIUM",
+                                severity="HIGH"
+                                if "critical" in v.get("id", "").lower()
+                                else "MEDIUM",
                                 description=f"{vuln.get('name')}=={vuln.get('version')}: {v.get('id')} — {v.get('description', '')[:200]}",
                                 test_id=v.get("id", ""),
                                 tool="pip-audit",
@@ -115,7 +117,8 @@ class SecurityVerifier:
             result = subprocess.run(
                 [
                     "bandit",
-                    "-f", "json",
+                    "-f",
+                    "json",
                     "-q",
                     *[str(f) for f in files],
                 ],
@@ -163,27 +166,31 @@ class SecurityVerifier:
 
             if rule_id not in seen_rule_ids:
                 seen_rule_ids.add(rule_id)
-                rules.append({
-                    "id": rule_id,
-                    "shortDescription": {"text": issue.description[:200]},
-                    "defaultConfiguration": {
-                        "level": _sarif_level(issue.severity),
-                    },
-                })
-
-            results.append({
-                "ruleId": rule_id,
-                "level": _sarif_level(issue.severity),
-                "message": {"text": issue.description},
-                "locations": [
+                rules.append(
                     {
-                        "physicalLocation": {
-                            "artifactLocation": {"uri": issue.file},
-                            "region": {"startLine": max(issue.line, 1)},
-                        }
+                        "id": rule_id,
+                        "shortDescription": {"text": issue.description[:200]},
+                        "defaultConfiguration": {
+                            "level": _sarif_level(issue.severity),
+                        },
                     }
-                ],
-            })
+                )
+
+            results.append(
+                {
+                    "ruleId": rule_id,
+                    "level": _sarif_level(issue.severity),
+                    "message": {"text": issue.description},
+                    "locations": [
+                        {
+                            "physicalLocation": {
+                                "artifactLocation": {"uri": issue.file},
+                                "region": {"startLine": max(issue.line, 1)},
+                            }
+                        }
+                    ],
+                }
+            )
 
         return {
             "$schema": "https://raw.githubusercontent.com/oasis-tcs/sarif-spec/main/sarif-2.1/schema/sarif-schema-2.1.0.json",

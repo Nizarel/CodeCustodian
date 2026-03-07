@@ -133,13 +133,9 @@ class TestRefactoringPlan:
 
     def test_confidence_bounds(self):
         with pytest.raises(ValidationError):
-            RefactoringPlan(
-                finding_id="x", summary="test", confidence_score=0
-            )
+            RefactoringPlan(finding_id="x", summary="test", confidence_score=0)
         with pytest.raises(ValidationError):
-            RefactoringPlan(
-                finding_id="x", summary="test", confidence_score=11
-            )
+            RefactoringPlan(finding_id="x", summary="test", confidence_score=11)
 
 
 class TestExecutionResult:
@@ -172,7 +168,9 @@ class TestVerificationResult:
         vr = VerificationResult(
             passed=False,
             lint_passed=False,
-            lint_violations=[{"file": "app.py", "code": "E501", "message": "line too long", "tool": "ruff"}],
+            lint_violations=[
+                {"file": "app.py", "code": "E501", "message": "line too long", "tool": "ruff"}
+            ],
         )
         assert not vr.lint_passed
         assert len(vr.lint_violations) == 1

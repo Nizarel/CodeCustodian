@@ -89,7 +89,9 @@ def _finding_to_row(finding: Finding) -> dict[str, Any]:
     }
 
 
-def _print_findings(findings: list[Finding], output_format: str, repo_root: str | None = None) -> None:
+def _print_findings(
+    findings: list[Finding], output_format: str, repo_root: str | None = None
+) -> None:
     fmt = output_format.lower()
     rows = [_finding_to_row(f) for f in findings]
 
@@ -180,7 +182,9 @@ def _print_scan_summary(findings: list[Finding]) -> None:
     """Print a rich summary panel with severity breakdown and bar chart."""
     total = len(findings)
     if total == 0:
-        console.print(Panel("[green]No findings detected.[/]", title="Scan Complete", border_style="green"))
+        console.print(
+            Panel("[green]No findings detected.[/]", title="Scan Complete", border_style="green")
+        )
         return
 
     by_severity: dict[str, int] = {}
@@ -217,16 +221,20 @@ def _print_scan_summary(findings: list[Finding]) -> None:
     )
     if manual_hours > 0:
         savings = manual_hours * 85
-        lines.append(f"\n  💰 Est. manual effort: {manual_hours:.0f}h  │  Savings: [bold green]${savings:,.0f}[/]")
+        lines.append(
+            f"\n  💰 Est. manual effort: {manual_hours:.0f}h  │  Savings: [bold green]${savings:,.0f}[/]"
+        )
 
     lines.append("\n  [dim]Next → codecustodian run --dry-run[/]")
 
-    console.print(Panel(
-        "\n".join(lines),
-        title="✅ Scan Complete",
-        border_style="green",
-        padding=(1, 2),
-    ))
+    console.print(
+        Panel(
+            "\n".join(lines),
+            title="✅ Scan Complete",
+            border_style="green",
+            padding=(1, 2),
+        )
+    )
 
 
 def _print_diff_preview(plans: list) -> None:
@@ -244,13 +252,15 @@ def _print_diff_preview(plans: list) -> None:
         for change in plan.changes:
             old_lines = change.old_content.splitlines(keepends=True) if change.old_content else []
             new_lines = change.new_content.splitlines(keepends=True) if change.new_content else []
-            diff = list(difflib.unified_diff(
-                old_lines,
-                new_lines,
-                fromfile=f"a/{change.file_path}",
-                tofile=f"b/{change.file_path}",
-                lineterm="",
-            ))
+            diff = list(
+                difflib.unified_diff(
+                    old_lines,
+                    new_lines,
+                    fromfile=f"a/{change.file_path}",
+                    tofile=f"b/{change.file_path}",
+                    lineterm="",
+                )
+            )
             if not diff:
                 continue
             diff_text = "\n".join(diff)
@@ -304,8 +314,13 @@ def _print_finding_detail(finding: Finding, repo_root: str | None = None) -> Non
                 lines.append("")
                 console.print(
                     Panel(
-                        Syntax(snippet, "python", line_numbers=True, start_line=start + 1,
-                               highlight_lines={finding.line}),
+                        Syntax(
+                            snippet,
+                            "python",
+                            line_numbers=True,
+                            start_line=start + 1,
+                            highlight_lines={finding.line},
+                        ),
                         border_style="dim",
                         padding=(0, 1),
                     )
@@ -320,12 +335,14 @@ def _print_finding_detail(finding: Finding, repo_root: str | None = None) -> Non
             for k, v in interesting.items():
                 lines.append(f"  {k}: {v}")
 
-    console.print(Panel(
-        "\n".join(lines),
-        title="🔍 Finding Detail",
-        border_style="blue",
-        padding=(1, 2),
-    ))
+    console.print(
+        Panel(
+            "\n".join(lines),
+            title="🔍 Finding Detail",
+            border_style="blue",
+            padding=(1, 2),
+        )
+    )
 
 
 def _filter_findings(
@@ -624,7 +641,11 @@ def validate(
 def config_cmd(
     validate: bool = typer.Option(False, "--validate", help="Validate configuration"),
     show: bool = typer.Option(False, "--show", help="Show resolved configuration as JSON"),
-    get: str | None = typer.Option(None, "--get", help="Get a specific config key (dot-notation, e.g. behavior.max_prs_per_run)"),
+    get: str | None = typer.Option(
+        None,
+        "--get",
+        help="Get a specific config key (dot-notation, e.g. behavior.max_prs_per_run)",
+    ),
     path: str = typer.Option(".codecustodian.yml", "--path", "-p", help="Config file path"),
 ) -> None:
     """Manage CodeCustodian configuration."""
@@ -651,7 +672,9 @@ def config_cmd(
                 else:
                     console.print(f"[red]Key not found: {get}[/]")
                     raise typer.Exit(1)
-            typer.echo(json.dumps(current, indent=2) if isinstance(current, (dict, list)) else current)
+            typer.echo(
+                json.dumps(current, indent=2) if isinstance(current, (dict, list)) else current
+            )
         else:
             typer.echo(json.dumps(data, indent=2, default=str))
         return
@@ -713,7 +736,9 @@ def scan(
 @app.command()
 def onboard(
     repo_path: str = typer.Option(".", "--repo-path", "-r", help="Repository path"),
-    org: str | None = typer.Option(None, "--org", help="Organization name for org-level onboarding"),
+    org: str | None = typer.Option(
+        None, "--org", help="Organization name for org-level onboarding"
+    ),
     template: str = typer.Option("full_scan", "--template", help="Onboarding template"),
 ) -> None:
     """Onboard a repository or organization."""
@@ -878,10 +903,9 @@ def finding(
     all_findings = _scan_findings(repo_path, config, "all")
     needle = finding_id.strip().lower()
     matched = [
-        f for f in all_findings
-        if needle in f.id.lower()
-        or needle in f.description.lower()
-        or needle in f.file.lower()
+        f
+        for f in all_findings
+        if needle in f.id.lower() or needle in f.description.lower() or needle in f.file.lower()
     ]
     if not matched:
         console.print(f"[red]No finding matching '{finding_id}' found.[/]")
@@ -1010,6 +1034,11 @@ def review_pr(
     if fmt not in {"json", "table"}:
         raise typer.BadParameter("--output-format must be 'json' or 'table'")
 
+    block_levels = {level.strip().lower() for level in block_on.split(",") if level.strip()}
+    valid_levels = {"critical", "high", "medium", "low", "info"}
+    if not block_levels.issubset(valid_levels):
+        raise typer.BadParameter("--block-on must only contain: critical, high, medium, low, info")
+
     findings_list = _scan_findings(repo_path, config, "all")
 
     healing_payload: dict[str, Any] | None = None
@@ -1018,15 +1047,6 @@ def review_pr(
         if not plan_path.exists():
             raise typer.BadParameter(f"Healing plan file not found: {healing_plan_file}")
         healing_payload = json.loads(plan_path.read_text(encoding="utf-8", errors="replace"))
-
-    block_levels = {
-        level.strip().lower()
-        for level in block_on.split(",")
-        if level.strip()
-    }
-    valid_levels = {"critical", "high", "medium", "low", "info"}
-    if not block_levels.issubset(valid_levels):
-        raise typer.BadParameter("--block-on must only contain: critical, high, medium, low, info")
 
     review = _build_pr_review_summary(findings_list, healing_payload, block_levels)
 

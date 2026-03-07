@@ -104,9 +104,7 @@ def register_resources(mcp: FastMCP) -> None:
         forecast_summary = None
         if forecast is not None:
             forecast_data = (
-                forecast.model_dump(mode="json")
-                if hasattr(forecast, "model_dump")
-                else forecast
+                forecast.model_dump(mode="json") if hasattr(forecast, "model_dump") else forecast
             )
             forecast_summary = {
                 "trend": forecast_data.get("trend", "unknown"),

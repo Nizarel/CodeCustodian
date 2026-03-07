@@ -163,9 +163,7 @@ class SafeFileEditor:
 
     # ── Change type handlers ───────────────────────────────────────────
 
-    def _apply_replace(
-        self, file_path: Path, old_content: str, new_content: str
-    ) -> Path:
+    def _apply_replace(self, file_path: Path, old_content: str, new_content: str) -> Path:
         """Replace old_content with new_content in file."""
         backup = self.backup_manager.create_backup(file_path)
 
@@ -176,9 +174,7 @@ class SafeFileEditor:
             if count == 0:
                 raise ValueError("old_content not found in file")
             if count > 1:
-                raise ValueError(
-                    f"old_content appears {count} times — must be unique"
-                )
+                raise ValueError(f"old_content appears {count} times — must be unique")
 
             modified = original.replace(old_content, new_content, 1)
 
@@ -193,9 +189,7 @@ class SafeFileEditor:
             self._restore_backup(backup, file_path)
             raise
 
-    def _apply_insert(
-        self, file_path: Path, content: str, line: int | None
-    ) -> Path:
+    def _apply_insert(self, file_path: Path, content: str, line: int | None) -> Path:
         """Insert content at a specific line."""
         if not file_path.exists():
             # Create new file
@@ -221,9 +215,7 @@ class SafeFileEditor:
             self._restore_backup(backup, file_path)
             raise
 
-    def _apply_delete(
-        self, file_path: Path, start_line: int | None, end_line: int | None
-    ) -> Path:
+    def _apply_delete(self, file_path: Path, start_line: int | None, end_line: int | None) -> Path:
         """Delete lines from start_line to end_line (inclusive)."""
         backup = self.backup_manager.create_backup(file_path)
 
@@ -255,9 +247,7 @@ class SafeFileEditor:
     def _atomic_write(file_path: Path, content: str) -> None:
         """Write content atomically via temp file + rename."""
         file_path.parent.mkdir(parents=True, exist_ok=True)
-        fd, tmp = tempfile.mkstemp(
-            dir=file_path.parent, suffix=".tmp", prefix=file_path.stem
-        )
+        fd, tmp = tempfile.mkstemp(dir=file_path.parent, suffix=".tmp", prefix=file_path.stem)
         try:
             with open(fd, "w", encoding="utf-8") as f:
                 f.write(content)

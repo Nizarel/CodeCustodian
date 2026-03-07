@@ -128,9 +128,7 @@ class DeprecatedAPIScanner(BaseScanner):
                             file=str(file_path),
                             line=node.lineno,
                             column=node.col_offset,
-                            description=rule.get(
-                                "message", f"{full_name} is deprecated"
-                            ),
+                            description=rule.get("message", f"{full_name} is deprecated"),
                             suggestion=rule.get("replacement", ""),
                             priority_score=min(200.0, base_priority),
                             scanner_name=self.name,
@@ -138,9 +136,7 @@ class DeprecatedAPIScanner(BaseScanner):
                                 "deprecated_name": full_name,
                                 "deprecated_since": rule.get("deprecated_since", ""),
                                 "removal_version": rule.get("removal_version", ""),
-                                "migration_guide_url": rule.get(
-                                    "migration_guide_url", ""
-                                ),
+                                "migration_guide_url": rule.get("migration_guide_url", ""),
                                 "urgency": urgency,
                             },
                         )
@@ -216,12 +212,12 @@ class DeprecatedAPIScanner(BaseScanner):
                 if node.type == "call_expression":
                     fn = node.child_by_field_name("function")
                     if fn is not None:
-                        text = blob[fn.start_byte:fn.end_byte].decode("utf8", errors="ignore")
+                        text = blob[fn.start_byte : fn.end_byte].decode("utf8", errors="ignore")
                         calls.add(text.replace("?.", ".").strip())
                 elif node.type == "new_expression":
                     ctor = node.child_by_field_name("constructor")
                     if ctor is not None:
-                        text = blob[ctor.start_byte:ctor.end_byte].decode("utf8", errors="ignore")
+                        text = blob[ctor.start_byte : ctor.end_byte].decode("utf8", errors="ignore")
                         calls.add(f"new {text.strip()}")
 
                 stack.extend(list(node.children))

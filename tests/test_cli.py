@@ -45,7 +45,7 @@ def test_init_creates_config(cli_runner, tmp_path: Path) -> None:
 
 
 def test_init_fails_when_config_exists(cli_runner, tmp_path: Path) -> None:
-    (tmp_path / ".codecustodian.yml").write_text("version: \"1.0\"\n")
+    (tmp_path / ".codecustodian.yml").write_text('version: "1.0"\n')
     result = cli_runner.invoke(app, ["init", str(tmp_path)])
     assert result.exit_code == 1
     assert "already exists" in result.stdout
@@ -367,7 +367,9 @@ def test_status_command_renders_with_mocked_services(cli_runner, monkeypatch) ->
         description="Potential vulnerability",
     )
 
-    monkeypatch.setattr("codecustodian.cli.main._scan_findings", lambda *_args, **_kwargs: [finding])
+    monkeypatch.setattr(
+        "codecustodian.cli.main._scan_findings", lambda *_args, **_kwargs: [finding]
+    )
 
     class _DummyBudgetSummary:
         total_spent = 12.5
@@ -391,10 +393,14 @@ def test_status_command_renders_with_mocked_services(cli_runner, monkeypatch) ->
         def close(self):
             return None
 
-    monkeypatch.setattr("codecustodian.enterprise.budget_manager.BudgetManager", _DummyBudgetManager)
+    monkeypatch.setattr(
+        "codecustodian.enterprise.budget_manager.BudgetManager", _DummyBudgetManager
+    )
     monkeypatch.setattr("codecustodian.enterprise.sla_reporter.SLAReporter", _DummySLAReporter)
 
-    result = cli_runner.invoke(app, ["status", "--repo-path", ".", "--config", ".codecustodian.yml"])
+    result = cli_runner.invoke(
+        app, ["status", "--repo-path", ".", "--config", ".codecustodian.yml"]
+    )
     assert result.exit_code == 0
     assert "Operational Status" in result.stdout
 
@@ -415,5 +421,7 @@ def test_interactive_exits_immediately(cli_runner, monkeypatch) -> None:
     import sys
 
     monkeypatch.setitem(sys.modules, "InquirerPy", _DummyModule)
-    result = cli_runner.invoke(app, ["interactive", "--repo-path", ".", "--config", ".codecustodian.yml"])
+    result = cli_runner.invoke(
+        app, ["interactive", "--repo-path", ".", "--config", ".codecustodian.yml"]
+    )
     assert result.exit_code == 0

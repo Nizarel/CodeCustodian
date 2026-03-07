@@ -33,8 +33,16 @@ _LANGUAGE_EXTENSIONS: dict[str, str] = {
 }
 
 _SKIP_DIRS = {
-    ".git", ".venv", "venv", "__pycache__", "node_modules",
-    ".tox", ".mypy_cache", ".ruff_cache", "dist", "build",
+    ".git",
+    ".venv",
+    "venv",
+    "__pycache__",
+    "node_modules",
+    ".tox",
+    ".mypy_cache",
+    ".ruff_cache",
+    "dist",
+    "build",
 }
 
 
@@ -91,7 +99,10 @@ class ProjectAnalyzer:
             return "security_first"
 
         frameworks = analysis.get("frameworks", [])
-        if any(fw in ("django", "flask", "fastapi") for fw in frameworks) and "django" in frameworks:
+        if (
+            any(fw in ("django", "flask", "fastapi") for fw in frameworks)
+            and "django" in frameworks
+        ):
             return "security_first"
 
         # If the codebase is large and has many Python files, focus on deprecations
@@ -206,7 +217,11 @@ class ProjectAnalyzer:
 
         if (root / "ruff.toml").exists() or "[tool.ruff]" in content:
             linters.append("ruff")
-        if (root / "mypy.ini").exists() or (root / ".mypy.ini").exists() or "[tool.mypy]" in content:
+        if (
+            (root / "mypy.ini").exists()
+            or (root / ".mypy.ini").exists()
+            or "[tool.mypy]" in content
+        ):
             linters.append("mypy")
         if (root / ".eslintrc.js").exists() or (root / ".eslintrc.json").exists():
             linters.append("eslint")
@@ -228,8 +243,16 @@ class ProjectAnalyzer:
     @staticmethod
     def _detect_sensitive_paths(root: Path) -> list[str]:
         """Find directories that likely contain sensitive code."""
-        sensitive_names = {"auth", "authentication", "payments", "billing",
-                          "security", "crypto", "secrets", "credentials"}
+        sensitive_names = {
+            "auth",
+            "authentication",
+            "payments",
+            "billing",
+            "security",
+            "crypto",
+            "secrets",
+            "credentials",
+        }
         found: list[str] = []
         for path in root.iterdir():
             if path.is_dir() and path.name.lower() in sensitive_names:

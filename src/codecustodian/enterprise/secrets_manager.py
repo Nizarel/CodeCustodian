@@ -41,7 +41,7 @@ class SecretInfo(BaseModel):
     """Metadata about a secret (value is never serialized)."""
 
     name: str
-    source: str = "env"           # keyvault | env
+    source: str = "env"  # keyvault | env
     created_on: str = ""
     updated_on: str = ""
     expires_on: str = ""
@@ -90,13 +90,11 @@ class SecretsManager:
             logger.info("Key Vault client initialized: %s", vault_url)
         except ImportError:
             logger.warning(
-                "azure-identity / azure-keyvault-secrets not installed — "
-                "falling back to env vars"
+                "azure-identity / azure-keyvault-secrets not installed — falling back to env vars"
             )
         except Exception as exc:
             logger.warning(
-                "Failed to initialize Key Vault client: %s — "
-                "falling back to env vars",
+                "Failed to initialize Key Vault client: %s — falling back to env vars",
                 exc,
             )
 
@@ -115,9 +113,7 @@ class SecretsManager:
                 logger.debug("Secret '%s' retrieved from Key Vault", name)
                 return secret.value or ""
             except Exception as exc:
-                logger.warning(
-                    "Key Vault get '%s' failed: %s — trying env", name, exc
-                )
+                logger.warning("Key Vault get '%s' failed: %s — trying env", name, exc)
 
         # Env fallback
         value = os.environ.get(name, "")
@@ -132,9 +128,7 @@ class SecretsManager:
     async def set_secret(self, name: str, value: str) -> SecretInfo:
         """Store a secret in Key Vault (or log a warning if unavailable)."""
         if not self._client:
-            logger.warning(
-                "No Key Vault client — cannot store secret '%s'", name
-            )
+            logger.warning("No Key Vault client — cannot store secret '%s'", name)
             return SecretInfo(name=name, source="env")
 
         try:
@@ -183,11 +177,7 @@ class SecretsManager:
     async def check_rotation_status(self) -> list[SecretInfo]:
         """Return secrets that need rotation (past threshold)."""
         all_secrets = await self.list_secrets()
-        stale = [
-            s
-            for s in all_secrets
-            if s.days_since_rotation >= self.rotation_warning_days
-        ]
+        stale = [s for s in all_secrets if s.days_since_rotation >= self.rotation_warning_days]
         if stale:
             logger.warning(
                 "%d secret(s) need rotation (>%d days)",

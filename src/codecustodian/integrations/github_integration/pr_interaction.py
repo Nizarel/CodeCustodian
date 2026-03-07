@@ -65,7 +65,9 @@ class PRInteractionHandler:
     # ── Public dispatcher ──────────────────────────────────────────────
 
     def handle_comment(
-        self, pr_number: int, comment_body: str,
+        self,
+        pr_number: int,
+        comment_body: str,
     ) -> str | None:
         """Process a review comment and generate a response.
 
@@ -100,7 +102,9 @@ class PRInteractionHandler:
     # ── Command handlers ───────────────────────────────────────────────
 
     def _handle_approval(
-        self, pr: PullRequest, args: str = "",
+        self,
+        pr: PullRequest,
+        args: str = "",
     ) -> str:
         """Handle PR approval — record positive feedback."""
         self._record_feedback(pr, "approved", args)
@@ -111,7 +115,9 @@ class PRInteractionHandler:
         )
 
     def _handle_rejection(
-        self, pr: PullRequest, args: str = "",
+        self,
+        pr: PullRequest,
+        args: str = "",
     ) -> str:
         """Handle PR rejection — close PR and record negative feedback."""
         pr.edit(state="closed")
@@ -123,7 +129,9 @@ class PRInteractionHandler:
         )
 
     def _handle_explain(
-        self, pr: PullRequest, args: str = "",
+        self,
+        pr: PullRequest,
+        args: str = "",
     ) -> str:
         """Provide a detailed explanation by extracting the AI reasoning."""
         body = pr.body or ""
@@ -147,7 +155,9 @@ class PRInteractionHandler:
         )
 
     def _handle_retry(
-        self, pr: PullRequest, args: str = "",
+        self,
+        pr: PullRequest,
+        args: str = "",
     ) -> str:
         """Signal a retry request — recorded for future pipeline integration."""
         self._record_feedback(pr, "retry_requested", args)
@@ -158,7 +168,9 @@ class PRInteractionHandler:
         )
 
     def _handle_why(
-        self, pr: PullRequest, args: str = "",
+        self,
+        pr: PullRequest,
+        args: str = "",
     ) -> str:
         """Explain *why* this finding was flagged."""
         body = pr.body or ""
@@ -178,7 +190,9 @@ class PRInteractionHandler:
         )
 
     def _handle_alternatives(
-        self, pr: PullRequest, args: str = "",
+        self,
+        pr: PullRequest,
+        args: str = "",
     ) -> str:
         """List the alternative solutions considered."""
         body = pr.body or ""
@@ -193,7 +207,9 @@ class PRInteractionHandler:
         return "No alternatives were recorded for this refactoring."
 
     def _handle_modify(
-        self, pr: PullRequest, args: str = "",
+        self,
+        pr: PullRequest,
+        args: str = "",
     ) -> str:
         """Acknowledge a modify request with reviewer instructions."""
         self._record_feedback(pr, "modified", args)
@@ -206,7 +222,9 @@ class PRInteractionHandler:
         )
 
     def _handle_feedback(
-        self, pr: PullRequest, args: str = "",
+        self,
+        pr: PullRequest,
+        args: str = "",
     ) -> str:
         """Record freeform reviewer feedback."""
         self._record_feedback(pr, "feedback", args)
@@ -219,7 +237,9 @@ class PRInteractionHandler:
         )
 
     def _handle_smaller(
-        self, pr: PullRequest, args: str = "",
+        self,
+        pr: PullRequest,
+        args: str = "",
     ) -> str:
         """Request a smaller scope for the PR."""
         self._record_feedback(pr, "smaller_requested", args)
@@ -232,13 +252,16 @@ class PRInteractionHandler:
         )
 
     def _handle_propose(
-        self, pr: PullRequest, args: str = "",
+        self,
+        pr: PullRequest,
+        args: str = "",
     ) -> str:
         """Close the PR and create a proposal issue instead."""
         pr.edit(state="closed")
         self._record_feedback(pr, "downgraded_to_proposal", args)
         logger.info(
-            "PR #%d closed → downgraded to proposal", pr.number,
+            "PR #%d closed → downgraded to proposal",
+            pr.number,
         )
         return (
             "📋 PR closed and downgraded to a proposal.\n\n"
@@ -250,7 +273,10 @@ class PRInteractionHandler:
     # ── Helpers ────────────────────────────────────────────────────────
 
     def _record_feedback(
-        self, pr: PullRequest, action: str, comment: str = "",
+        self,
+        pr: PullRequest,
+        action: str,
+        comment: str = "",
     ) -> None:
         """Record reviewer feedback to the FeedbackStore."""
         # Extract finding metadata from PR body

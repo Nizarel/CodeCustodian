@@ -85,6 +85,7 @@ class Pipeline:
         self._impact_scorer: BusinessImpactScorer | None = None
         if getattr(self.config, "business_impact", None) and self.config.business_impact.enabled:
             from codecustodian.intelligence.business_impact import ScoringWeights
+
             weights = ScoringWeights(
                 usage=self.config.business_impact.usage_weight,
                 criticality=self.config.business_impact.criticality_weight,
@@ -229,7 +230,10 @@ class Pipeline:
         await self._notify(notification)
 
     async def _notify_pr_created(
-        self, pr: PullRequestInfo, finding: Finding, plan: RefactoringPlan,
+        self,
+        pr: PullRequestInfo,
+        finding: Finding,
+        plan: RefactoringPlan,
     ) -> None:
         """Send pr_created notification enriched with Work IQ expert info."""
         payload: dict = {
@@ -251,7 +255,9 @@ class Pipeline:
         await self._notify(notification)
 
     async def _notify_verification_failed(
-        self, finding: Finding, errors: list[str],
+        self,
+        finding: Finding,
+        errors: list[str],
     ) -> None:
         """Send verification_failed notification to Teams."""
         notification = ChatOpsNotification(
@@ -309,9 +315,7 @@ class Pipeline:
 
     def _estimate_cost_savings(self, hourly_rate: float = 85.0) -> dict[str, float]:
         """Estimate hours and dollars saved by automating these findings."""
-        manual_hours = sum(
-            self._EFFORT_HOURS.get(f.type.value, 1.0) for f in self._result.findings
-        )
+        manual_hours = sum(self._EFFORT_HOURS.get(f.type.value, 1.0) for f in self._result.findings)
         # Automated resolution averages ~5 min per finding
         automated_hours = round(len(self._result.findings) * (5.0 / 60.0), 2)
         hours_saved = round(manual_hours - automated_hours, 2)
@@ -358,9 +362,7 @@ class Pipeline:
                         all_findings.extend(results)
                     except Exception as exc:
                         logger.exception("Scanner %s failed", scanner_name)
-                        self._result.errors.append(
-                            f"scanner.{scanner_name}: {exc}"
-                        )
+                        self._result.errors.append(f"scanner.{scanner_name}: {exc}")
 
             return all_findings
 
@@ -511,7 +513,8 @@ class Pipeline:
             else:
                 # Downgrade to proposal if verification fails (BR-QA-002)
                 await self._notify_verification_failed(
-                    finding, verification.failures,
+                    finding,
+                    verification.failures,
                 )
                 logger.warning(
                     "Verification failed for %s — downgrading to proposal and rolling back",
@@ -559,7 +562,9 @@ class Pipeline:
 
         pm = PolicyManager()
         sensitive = self.config.approval.sensitive_paths
-        return bool(pm.should_use_proposal_mode(finding.file, finding.type.value, sensitive_paths=sensitive))
+        return bool(
+            pm.should_use_proposal_mode(finding.file, finding.type.value, sensitive_paths=sensitive)
+        )
 
     def _create_proposal(
         self,
@@ -579,7 +584,9 @@ class Pipeline:
             finding=finding,
             recommended_steps=[
                 plan.summary,
-                f"Review AI reasoning: {plan.ai_reasoning}" if plan.ai_reasoning else "Review changes manually",
+                f"Review AI reasoning: {plan.ai_reasoning}"
+                if plan.ai_reasoning
+                else "Review changes manually",
                 "Run tests after applying changes",
             ],
             estimated_effort=plan.reviewer_effort if hasattr(plan, "reviewer_effort") else "medium",
@@ -809,9 +816,7 @@ class Pipeline:
             )
             start = _time.monotonic()
 
-            changed_paths = [
-                Path(c.file_path) for c in execution.changes_applied
-            ]
+            changed_paths = [Path(c.file_path) for c in execution.changes_applied]
 
             # Tests
             test_runner = TestRunner(
@@ -837,13 +842,9 @@ class Pipeline:
 
             failures = list(test_result.failures)
             if not lint_passed:
-                failures.append(
-                    f"{len(lint_violations)} lint violation(s) found"
-                )
+                failures.append(f"{len(lint_violations)} lint violation(s) found")
             if not sec_passed:
-                failures.append(
-                    f"{sec_result.get('total_issues', 0)} security issue(s) found"
-                )
+                failures.append(f"{sec_result.get('total_issues', 0)} security issue(s) found")
 
             return VerificationResult(
                 passed=all_passed,
@@ -857,7 +858,9 @@ class Pipeline:
                 lint_violations=lint_violations,
                 security_passed=sec_passed,
                 security_issues=[
-                    __import__("codecustodian.models", fromlist=["SecurityIssue"]).SecurityIssue(**i)
+                    __import__("codecustodian.models", fromlist=["SecurityIssue"]).SecurityIssue(
+                        **i
+                    )
                     for i in sec_result.get("issues", [])
                 ],
                 failures=failures,
@@ -921,9 +924,7 @@ class Pipeline:
                         finding.metadata["work_iq_expert"] = expert.model_dump()
                         if expert.email and expert.available:
                             reviewers = [expert.email] + [
-                                reviewer
-                                for reviewer in reviewers
-                                if reviewer != expert.email
+                                reviewer for reviewer in reviewers if reviewer != expert.email
                             ]
                     except Exception as exc:
                         logger.warning(
@@ -964,7 +965,8 @@ class Pipeline:
 
             except Exception as exc:
                 logger.exception(
-                    "PR creation failed for finding %s", finding.id,
+                    "PR creation failed for finding %s",
+                    finding.id,
                 )
                 self._result.errors.append(
                     f"{finding.id}: pr_creation: {exc}",
@@ -984,12 +986,8 @@ class Pipeline:
 
             # Restore files from backups
             if execution.backup_paths:
-                backup_mgr = BackupManager(
-                    backup_dir=f"{self.repo_path}/.codecustodian-backups"
-                )
-                restored = backup_mgr.restore_all(
-                    execution.backup_paths, self.repo_path
-                )
+                backup_mgr = BackupManager(backup_dir=f"{self.repo_path}/.codecustodian-backups")
+                restored = backup_mgr.restore_all(execution.backup_paths, self.repo_path)
                 logger.info("Restored %d files from backup", restored)
 
             # Clean up git branch

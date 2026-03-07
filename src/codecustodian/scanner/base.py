@@ -90,10 +90,7 @@ def is_excluded(file_path: str | Path, patterns: list[str]) -> bool:
     rel = str(file_path).replace("\\", "/")
     # Prefix with "/" so ``**/dir`` patterns match root-level entries
     prefixed = "/" + rel
-    return any(
-        fnmatch.fnmatch(rel, pat) or fnmatch.fnmatch(prefixed, pat)
-        for pat in patterns
-    )
+    return any(fnmatch.fnmatch(rel, pat) or fnmatch.fnmatch(prefixed, pat) for pat in patterns)
 
 
 class BaseScanner(ABC):
@@ -183,9 +180,7 @@ class BaseScanner(ABC):
             Sorted list of ``.py`` file paths.
         """
         root = Path(repo_path)
-        config_excludes = (
-            self.config.advanced.exclude_paths if self.config else []
-        )
+        config_excludes = self.config.advanced.exclude_paths if self.config else []
         user_excludes = exclude_patterns or []
         gitignore_excludes = _load_gitignore_patterns(root)
 
@@ -224,9 +219,7 @@ class BaseScanner(ABC):
             Sorted, deduplicated list of matching file paths.
         """
         root = Path(repo_path)
-        config_excludes = (
-            self.config.advanced.exclude_paths if self.config else []
-        )
+        config_excludes = self.config.advanced.exclude_paths if self.config else []
         user_excludes = exclude_patterns or []
         gitignore_excludes = _load_gitignore_patterns(root)
 

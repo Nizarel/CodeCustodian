@@ -219,11 +219,7 @@ def build_finding_prompt(
     )
 
     # Function signature
-    sig_info = (
-        f"Signature: {context.function_signature}"
-        if context.function_signature
-        else ""
-    )
+    sig_info = f"Signature: {context.function_signature}" if context.function_signature else ""
 
     # Coverage
     cov_info = f"Coverage: {context.coverage_percentage:.0f}%"
@@ -362,7 +358,7 @@ def truncate_context(
         head = head[:last_newline_head]
     first_newline_tail = tail.find("\n")
     if first_newline_tail > 0:
-        tail = tail[first_newline_tail + 1:]
+        tail = tail[first_newline_tail + 1 :]
 
     omitted = len(source_code) - len(head) - len(tail)
     return f"{head}\n\n    # ... ({omitted} chars truncated) ...\n\n{tail}"

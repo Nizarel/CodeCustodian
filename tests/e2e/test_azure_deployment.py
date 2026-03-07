@@ -148,9 +148,7 @@ class TestMCPProtocol:
                     "clientInfo": {"name": "e2e-test", "version": "1.0"},
                 },
             )
-            resp = client.post(
-                MCP_URL, json=body, headers=MCP_HEADERS, timeout=TIMEOUT
-            )
+            resp = client.post(MCP_URL, json=body, headers=MCP_HEADERS, timeout=TIMEOUT)
             result = _extract_sse_result(resp.text)
             caps = result["result"]["capabilities"]
             assert "tools" in caps
@@ -167,9 +165,7 @@ class TestMCPProtocol:
                     "clientInfo": {"name": "e2e-test", "version": "1.0"},
                 },
             )
-            resp = client.post(
-                MCP_URL, json=body, headers=MCP_HEADERS, timeout=TIMEOUT
-            )
+            resp = client.post(MCP_URL, json=body, headers=MCP_HEADERS, timeout=TIMEOUT)
             result = _extract_sse_result(resp.text)
             info = result["result"]["serverInfo"]
             assert info["name"] == "CodeCustodian"
@@ -178,9 +174,7 @@ class TestMCPProtocol:
     def test_invalid_method_returns_error(self) -> None:
         with httpx.Client() as client:
             session_id = _mcp_session(client)
-            result = _mcp_call(
-                client, session_id, "nonexistent/method", req_id=99
-            )
+            result = _mcp_call(client, session_id, "nonexistent/method", req_id=99)
             assert "error" in result
 
 
@@ -235,11 +229,7 @@ class TestMCPTools:
             elif "content" in content:
                 text = content["content"][0]["text"]
                 parsed = json.loads(text)
-                scanners = (
-                    parsed
-                    if isinstance(parsed, list)
-                    else parsed.get("result", [])
-                )
+                scanners = parsed if isinstance(parsed, list) else parsed.get("result", [])
             assert len(scanners) == 7
             names = {s["name"] for s in scanners}
             assert names == {
@@ -267,15 +257,11 @@ class TestMCPTools:
                 "get_business_impact",
             ):
                 ann = tools[name].get("annotations", {})
-                assert ann.get("readOnlyHint") is True, (
-                    f"{name} should be readOnly"
-                )
+                assert ann.get("readOnlyHint") is True, f"{name} should be readOnly"
 
             for name in ("apply_refactoring", "create_pull_request"):
                 ann = tools[name].get("annotations", {})
-                assert ann.get("destructiveHint") is True, (
-                    f"{name} should be destructive"
-                )
+                assert ann.get("destructiveHint") is True, f"{name} should be destructive"
 
 
 # ── MCP Resources ──────────────────────────────────────────────────────────
@@ -535,11 +521,7 @@ class TestProductRequirements:
                 scanners = content["structuredContent"].get("result", [])
             elif "content" in content:
                 parsed = json.loads(content["content"][0]["text"])
-                scanners = (
-                    parsed
-                    if isinstance(parsed, list)
-                    else parsed.get("result", [])
-                )
+                scanners = parsed if isinstance(parsed, list) else parsed.get("result", [])
             assert len(scanners) >= 5
 
     def test_fr_plan_tool_registered(self) -> None:

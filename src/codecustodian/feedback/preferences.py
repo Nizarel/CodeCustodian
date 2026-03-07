@@ -171,7 +171,7 @@ class PreferenceStore:
         # Sort by timestamp descending, limit
         unique.sort(key=lambda r: r.get("timestamp", ""), reverse=True)
 
-        return [r["preference"] for r in unique[:self.MAX_PREFERENCES]]
+        return [r["preference"] for r in unique[: self.MAX_PREFERENCES]]
 
     def get_preferences_for_prompt(
         self,

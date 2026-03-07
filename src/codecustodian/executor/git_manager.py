@@ -145,7 +145,8 @@ class GitManager:
 
         try:
             self.repo.git.commit(
-                "-m", commit_msg,
+                "-m",
+                commit_msg,
                 author=f"{author_name} <{author_email}>",
             )
         except GitCommandError as exc:

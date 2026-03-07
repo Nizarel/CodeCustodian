@@ -66,14 +66,16 @@ class TestWorkIQContextProvider:
 
     async def test_get_expert_with_mocked_client(self, provider, finding):
         """Mock the _call_tool method to simulate Work IQ response."""
-        provider._call_tool = AsyncMock(return_value={
-            "name": "Alice Eng",
-            "email": "alice@contoso.com",
-            "relevance": 0.95,
-            "recent_files": ["src/auth.py"],
-            "teams": ["Security Team"],
-            "available": True,
-        })
+        provider._call_tool = AsyncMock(
+            return_value={
+                "name": "Alice Eng",
+                "email": "alice@contoso.com",
+                "relevance": 0.95,
+                "recent_files": ["src/auth.py"],
+                "teams": ["Security Team"],
+                "available": True,
+            }
+        )
         result = await provider.get_expert_for_finding(finding)
         assert result.name == "Alice Eng"
         assert result.email == "alice@contoso.com"
@@ -82,10 +84,12 @@ class TestWorkIQContextProvider:
 
     async def test_sprint_code_freeze_defers_pr(self, provider, finding):
         """During code freeze, non-critical findings are deferred."""
-        provider.get_sprint_context = AsyncMock(return_value=MagicMock(
-            is_code_freeze=True,
-            capacity_pct=50.0,
-        ))
+        provider.get_sprint_context = AsyncMock(
+            return_value=MagicMock(
+                is_code_freeze=True,
+                capacity_pct=50.0,
+            )
+        )
         # LOW severity code smell should be deferred
         finding.severity = SeverityLevel.LOW
         finding.type = FindingType.CODE_SMELL
@@ -94,10 +98,12 @@ class TestWorkIQContextProvider:
 
     async def test_sprint_freeze_allows_critical_security(self, provider, finding):
         """Critical security findings go through even during freeze."""
-        provider.get_sprint_context = AsyncMock(return_value=MagicMock(
-            is_code_freeze=True,
-            capacity_pct=50.0,
-        ))
+        provider.get_sprint_context = AsyncMock(
+            return_value=MagicMock(
+                is_code_freeze=True,
+                capacity_pct=50.0,
+            )
+        )
         finding.severity = SeverityLevel.CRITICAL
         finding.type = FindingType.SECURITY
         result = await provider.should_create_pr_now(finding)
@@ -105,10 +111,12 @@ class TestWorkIQContextProvider:
 
     async def test_over_capacity_defers_pr(self, provider, finding):
         """Over 90% capacity defers all PRs."""
-        provider.get_sprint_context = AsyncMock(return_value=MagicMock(
-            is_code_freeze=False,
-            capacity_pct=95.0,
-        ))
+        provider.get_sprint_context = AsyncMock(
+            return_value=MagicMock(
+                is_code_freeze=False,
+                capacity_pct=95.0,
+            )
+        )
         result = await provider.should_create_pr_now(finding)
         assert result is False
 
@@ -460,9 +468,10 @@ class TestApprovalWorkflows:
         assert manager.needs_approval("plan", repo="owner/safe-repo") is False
 
     def test_needs_approval_sensitive_path(self, manager):
-        assert manager.needs_approval(
-            "plan", repo="owner/safe-repo", file_path="src/auth/login.py"
-        ) is True
+        assert (
+            manager.needs_approval("plan", repo="owner/safe-repo", file_path="src/auth/login.py")
+            is True
+        )
 
     def test_get_pending(self, manager):
         manager.request_approval("a", "plan")
@@ -586,15 +595,11 @@ class TestNotificationEngine:
         )
 
     async def test_severity_filter_skips_low(self, engine):
-        result = await engine.notify(
-            event="pr_created", severity="info", title="Low priority"
-        )
+        result = await engine.notify(event="pr_created", severity="info", title="Low priority")
         assert result.channels_attempted == []
 
     async def test_event_filter_skips_unknown(self, engine):
-        result = await engine.notify(
-            event="unknown_event", severity="high", title="Test"
-        )
+        result = await engine.notify(event="unknown_event", severity="high", title="Test")
         assert result.channels_attempted == []
 
     async def test_teams_notification_mock(self, engine):
@@ -696,6 +701,7 @@ class TestPackageExports:
         from codecustodian.enterprise import (
             Role,
         )
+
         # Just verify they're all importable
         assert Role.ADMIN.value == "admin"
 
@@ -703,10 +709,12 @@ class TestPackageExports:
         from codecustodian.intelligence import (
             NotificationEngine,
         )
+
         assert NotificationEngine is not None
 
     def test_integrations_exports(self):
         from codecustodian.integrations import (
             WorkIQContextProvider,
         )
+
         assert WorkIQContextProvider is not None

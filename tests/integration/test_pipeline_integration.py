@@ -28,7 +28,16 @@ def _prepare_repo(tmp_path: Path) -> Path:
     subprocess.run(["git", "init"], cwd=repo, check=True, capture_output=True)
     subprocess.run(["git", "add", "."], cwd=repo, check=True, capture_output=True)
     subprocess.run(
-        ["git", "-c", "user.name=Test", "-c", "user.email=test@example.com", "commit", "-m", "init"],
+        [
+            "git",
+            "-c",
+            "user.name=Test",
+            "-c",
+            "user.email=test@example.com",
+            "commit",
+            "-m",
+            "init",
+        ],
         cwd=repo,
         check=True,
         capture_output=True,
@@ -71,7 +80,9 @@ async def test_pipeline_run_with_fixture_repo_dry_run(tmp_path: Path, monkeypatc
 
 @pytest.mark.integration
 @pytest.mark.asyncio
-async def test_pipeline_full_path_with_mocked_execute_verify_pr(tmp_path: Path, monkeypatch) -> None:
+async def test_pipeline_full_path_with_mocked_execute_verify_pr(
+    tmp_path: Path, monkeypatch
+) -> None:
     repo = _prepare_repo(tmp_path)
 
     async def _fake_plan(self, finding):

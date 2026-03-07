@@ -50,13 +50,8 @@ class LinterRunner:
 
         Matching is done by (file, line, code, tool) tuple.
         """
-        baseline_keys = {
-            (v.file, v.line, v.code, v.tool) for v in baseline
-        }
-        return [
-            v for v in current
-            if (v.file, v.line, v.code, v.tool) not in baseline_keys
-        ]
+        baseline_keys = {(v.file, v.line, v.code, v.tool) for v in baseline}
+        return [v for v in current if (v.file, v.line, v.code, v.tool) not in baseline_keys]
 
     def _run_ruff(self, files: list[Path]) -> list[LintViolation]:
         """Run ruff linter with JSON output."""
@@ -136,7 +131,8 @@ class LinterRunner:
             result = subprocess.run(
                 [
                     "bandit",
-                    "-f", "json",
+                    "-f",
+                    "json",
                     "-q",
                     *[str(f) for f in py_files],
                 ],

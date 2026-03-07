@@ -139,11 +139,7 @@ def estimate_reviewer_effort(
         return "high"
 
     # Low effort: single-file + high confidence + no signature changes
-    if (
-        files_changed <= 1
-        and conf >= 8
-        and not plan.changes_signature
-    ):
+    if files_changed <= 1 and conf >= 8 and not plan.changes_signature:
         return "low"
 
     # Medium: everything else

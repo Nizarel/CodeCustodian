@@ -140,7 +140,8 @@ class PullRequestCreator:
             team_rev = team_reviewers or []
             if user_rev or team_rev:
                 pr.create_review_request(
-                    reviewers=user_rev, team_reviewers=team_rev,
+                    reviewers=user_rev,
+                    team_reviewers=team_rev,
                 )
                 assigned_reviewers = list(user_rev)
         except Exception:
@@ -181,8 +182,7 @@ class PullRequestCreator:
         results, alternatives (collapsible), and risks.
         """
         changes_table = "\n".join(
-            f"| `{c.file_path}` | {c.change_type.value} | "
-            f"{c.description or 'Updated'} |"
+            f"| `{c.file_path}` | {c.change_type.value} | {c.description or 'Updated'} |"
             for c in plan.changes
         )
 
@@ -213,11 +213,13 @@ class PullRequestCreator:
 
         # Verification summary
         lint_status = (
-            "✅ Clean" if verification.lint_passed
+            "✅ Clean"
+            if verification.lint_passed
             else f"❌ {len(verification.lint_violations)} violation(s)"
         )
         sec_status = (
-            "✅ Clean" if verification.security_passed
+            "✅ Clean"
+            if verification.security_passed
             else f"❌ {len(verification.security_issues)} issue(s)"
         )
         coverage_delta = verification.coverage_delta

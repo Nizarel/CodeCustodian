@@ -128,10 +128,14 @@ class TestMCPServerStructure:
             names = {p.name for p in prompts}
 
         expected = {
-            "refactor_finding", "scan_summary", "roi_report", "onboard_repo",
+            "refactor_finding",
+            "scan_summary",
+            "roi_report",
+            "onboard_repo",
             "forecast_report",
             # v0.15.0
-            "migration_assessment", "test_coverage_gap",
+            "migration_assessment",
+            "test_coverage_gap",
         }
         assert expected == names
 
@@ -301,8 +305,18 @@ class TestListScannersTool:
         from fastmcp import Client
 
         catalog = [
-            {"name": "deprecated_api", "description": "Finds deprecated APIs", "detects": "deprecated_api", "enabled": "True"},
-            {"name": "todo_comments", "description": "Finds old TODOs", "detects": "todo_comments", "enabled": "True"},
+            {
+                "name": "deprecated_api",
+                "description": "Finds deprecated APIs",
+                "detects": "deprecated_api",
+                "enabled": "True",
+            },
+            {
+                "name": "todo_comments",
+                "description": "Finds old TODOs",
+                "detects": "todo_comments",
+                "enabled": "True",
+            },
         ]
         mock_registry = MagicMock()
         mock_registry.list_catalog.return_value = catalog

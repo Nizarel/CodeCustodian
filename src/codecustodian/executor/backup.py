@@ -76,7 +76,9 @@ class BackupManager:
         self._transaction_log.append(entry)
         logger.info("Restored %s from %s", target_path, backup_path)
 
-    def restore_all(self, backup_paths: list[str] | None = None, repo_path: str | Path = ".") -> int:
+    def restore_all(
+        self, backup_paths: list[str] | None = None, repo_path: str | Path = "."
+    ) -> int:
         """Restore all backed-up files. Returns count restored.
 
         If ``backup_paths`` is provided, restore from those paths using the

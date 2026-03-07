@@ -66,8 +66,7 @@ def _validate_startup_secrets() -> None:
 
     if not keyvault_uri and not github_token:
         logger.warning(
-            "No Key Vault URI or GITHUB_TOKEN configured. "
-            "Authenticated operations may fail."
+            "No Key Vault URI or GITHUB_TOKEN configured. Authenticated operations may fail."
         )
 
     if keyvault_uri and not os.environ.get("AZURE_CLIENT_ID", "").strip():

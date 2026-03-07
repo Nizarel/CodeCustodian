@@ -45,11 +45,9 @@ class ApprovalRequest(BaseModel):
     """A request for human approval."""
 
     id: str = Field(default_factory=lambda: uuid.uuid4().hex[:12])
-    timestamp: str = Field(
-        default_factory=lambda: datetime.now(UTC).isoformat()
-    )
+    timestamp: str = Field(default_factory=lambda: datetime.now(UTC).isoformat())
     resource_id: str = ""
-    resource_type: str = "plan"          # plan | pr | execution
+    resource_type: str = "plan"  # plan | pr | execution
     requester: str = "codecustodian"
     status: ApprovalStatus = ApprovalStatus.PENDING
     approver: str = ""
@@ -106,9 +104,7 @@ class ApprovalWorkflowManager:
             require_pr_approval=config.require_pr_approval,
             approved_repos=list(config.approved_repos),
             sensitive_paths=list(config.sensitive_paths),
-            approval_required_categories=list(
-                getattr(config, "approval_required_categories", [])
-            ),
+            approval_required_categories=list(getattr(config, "approval_required_categories", [])),
         )
 
     # ── Request / Approve / Reject ─────────────────────────────────────
@@ -275,11 +271,7 @@ class ApprovalWorkflowManager:
 
     def get_pending(self) -> list[ApprovalRequest]:
         """Return all pending approval requests."""
-        return [
-            r
-            for r in self._requests.values()
-            if r.status == ApprovalStatus.PENDING
-        ]
+        return [r for r in self._requests.values() if r.status == ApprovalStatus.PENDING]
 
     def auto_approve(
         self,

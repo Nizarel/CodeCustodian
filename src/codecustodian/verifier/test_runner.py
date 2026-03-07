@@ -132,9 +132,7 @@ class TestRunner:
             )
         except FileNotFoundError:
             logger.error("pytest not found — install with: pip install pytest")
-            return VerificationResult(
-                passed=False, failures=["pytest not installed"]
-            )
+            return VerificationResult(passed=False, failures=["pytest not installed"])
         finally:
             # Cleanup temp files
             junit_xml.unlink(missing_ok=True)
@@ -181,9 +179,7 @@ class TestRunner:
         finally:
             junit_xml.unlink(missing_ok=True)
 
-    def _discover_tests(
-        self, changed_files: list[Path], repo_path: Path
-    ) -> list[Path]:
+    def _discover_tests(self, changed_files: list[Path], repo_path: Path) -> list[Path]:
         """Find tests covering changed files using naming conventions."""
         test_files: set[Path] = set()
         tests_dir = repo_path / "tests"

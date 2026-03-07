@@ -198,10 +198,12 @@ class TestMCPResources:
         from fastmcp import Client
 
         cache = ScanCache()
-        await cache.store_findings([
-            _make_finding(id="f1"),
-            _make_finding(id="f2"),
-        ])
+        await cache.store_findings(
+            [
+                _make_finding(id="f1"),
+                _make_finding(id="f2"),
+            ]
+        )
         with patch("codecustodian.mcp.cache.scan_cache", cache):
             async with Client(mcp) as client:
                 result = await client.read_resource("findings://myrepo/all")
@@ -215,11 +217,13 @@ class TestMCPResources:
         from fastmcp import Client
 
         cache = ScanCache()
-        await cache.store_findings([
-            _make_finding(id="f1", type=FindingType.CODE_SMELL),
-            _make_finding(id="f2", type=FindingType.SECURITY),
-            _make_finding(id="f3", type=FindingType.CODE_SMELL),
-        ])
+        await cache.store_findings(
+            [
+                _make_finding(id="f1", type=FindingType.CODE_SMELL),
+                _make_finding(id="f2", type=FindingType.SECURITY),
+                _make_finding(id="f3", type=FindingType.CODE_SMELL),
+            ]
+        )
         with patch("codecustodian.mcp.cache.scan_cache", cache):
             async with Client(mcp) as client:
                 result = await client.read_resource("findings://repo/code_smell")
@@ -233,10 +237,12 @@ class TestMCPResources:
         from fastmcp import Client
 
         cache = ScanCache()
-        await cache.store_findings([
-            _make_finding(id="f1", severity=SeverityLevel.HIGH),
-            _make_finding(id="f2", severity=SeverityLevel.LOW),
-        ])
+        await cache.store_findings(
+            [
+                _make_finding(id="f1", severity=SeverityLevel.HIGH),
+                _make_finding(id="f2", severity=SeverityLevel.LOW),
+            ]
+        )
         with patch("codecustodian.mcp.cache.scan_cache", cache):
             async with Client(mcp) as client:
                 result = await client.read_resource("dashboard://my-team/summary")

@@ -142,15 +142,11 @@ class Planner:
             # ── Turn 1: Context gathering (tool-assisted) ─────────────
             context_prompt = build_context_request_prompt(finding)
             await self.client.send_streaming(session, context_prompt)
-            logger.debug(
-                "Turn 1 complete — context gathered for %s", finding.id
-            )
+            logger.debug("Turn 1 complete — context gathered for %s", finding.id)
 
             # ── Turn 2: Plan generation ───────────────────────────────
             planning_prompt = build_finding_prompt(finding, context)
-            raw_response = await self.client.send_and_wait(
-                session, planning_prompt
-            )
+            raw_response = await self.client.send_and_wait(session, planning_prompt)
 
             plan = self._parse_plan(raw_response, finding, model)
 
@@ -166,9 +162,7 @@ class Planner:
                     "schema specified in the system prompt. No markdown, "
                     "no explanation — just the JSON."
                 )
-                raw_response = await self.client.send_and_wait(
-                    session, clarify
-                )
+                raw_response = await self.client.send_and_wait(session, clarify)
                 plan = self._parse_plan(raw_response, finding, model)
 
             if plan is None:
@@ -188,17 +182,12 @@ class Planner:
                 )
 
             # ── Turn 3: Alternatives (conditional) ────────────────────
-            if (
-                self.config.enable_alternatives
-                and is_complex_finding(finding)
-            ):
+            if self.config.enable_alternatives and is_complex_finding(finding):
                 alternatives = await self.alt_generator.generate_alternatives(
                     finding, session, plan
                 )
                 plan.alternatives = alternatives
-                recommended = self.alt_generator.select_recommended(
-                    alternatives
-                )
+                recommended = self.alt_generator.select_recommended(alternatives)
                 if recommended:
                     logger.info(
                         "Recommended alternative: %s (confidence=%d)",
@@ -210,13 +199,9 @@ class Planner:
             score, factors = calculate_confidence(plan, context)
             plan.confidence_score = score
             plan.confidence_factors = factors
-            plan.reviewer_effort = estimate_reviewer_effort(
-                plan, context, confidence=score
-            )
+            plan.reviewer_effort = estimate_reviewer_effort(plan, context, confidence=score)
             plan.model_used = model
-            plan.estimated_tokens = (
-                self.client.usage.input_tokens + self.client.usage.output_tokens
-            )
+            plan.estimated_tokens = self.client.usage.input_tokens + self.client.usage.output_tokens
 
             logger.info(
                 "Plan created for %s: confidence=%d, effort=%s, risk=%s, model=%s",
@@ -258,9 +243,7 @@ class Planner:
                 await session.destroy()
                 logger.debug("Closed pooled session for agent=%s", name)
             except Exception:
-                logger.debug(
-                    "Failed to close session for agent=%s", name, exc_info=True
-                )
+                logger.debug("Failed to close session for agent=%s", name, exc_info=True)
         self._session_pool.clear()
 
     # ── Parse helpers ──────────────────────────────────────────────────
@@ -334,9 +317,7 @@ class Planner:
             risk_level=risk,
             ai_reasoning=data.get("ai_reasoning", data.get("reasoning", "")),
             changes_signature=bool(data.get("changes_signature", False)),
-            requires_manual_verification=bool(
-                data.get("requires_manual_verification", False)
-            ),
+            requires_manual_verification=bool(data.get("requires_manual_verification", False)),
             model_used=model,
         )
 
@@ -350,9 +331,7 @@ class Planner:
         if plan.summary:
             steps.append(f"Review suggested refactoring: {plan.summary}")
         for change in plan.changes:
-            steps.append(
-                f"Modify {change.file_path}: {change.description or 'see diff'}"
-            )
+            steps.append(f"Modify {change.file_path}: {change.description or 'see diff'}")
         if plan.ai_reasoning:
             steps.append(f"AI reasoning: {plan.ai_reasoning}")
 

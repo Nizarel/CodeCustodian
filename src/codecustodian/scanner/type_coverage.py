@@ -62,8 +62,12 @@ class TypeCoverageScanner(BaseScanner):
             for node in ast.walk(tree):
                 if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
                     # Skip private methods unless strict_mode
-                    if not strict_mode and node.name.startswith("_") and not node.name.startswith("__"):
-                            continue
+                    if (
+                        not strict_mode
+                        and node.name.startswith("_")
+                        and not node.name.startswith("__")
+                    ):
+                        continue
 
                     total_functions += 1
                     file_total += 1
@@ -145,9 +149,7 @@ class TypeCoverageScanner(BaseScanner):
                                 f"Add type annotations to {file_total - file_typed} "
                                 f"more functions to reach {target_coverage}% coverage"
                             ),
-                            priority_score=25.0 + max(
-                                0, (target_coverage - file_coverage) * 0.3
-                            ),
+                            priority_score=25.0 + max(0, (target_coverage - file_coverage) * 0.3),
                             scanner_name=self.name,
                             metadata={
                                 "metric": "file_type_coverage",
@@ -249,8 +251,7 @@ class TypeCoverageScanner(BaseScanner):
                 model=model,
                 tools=[],
                 system_prompt=(
-                    "You are a Python typing assistant. "
-                    "Produce accurate, minimal annotations."
+                    "You are a Python typing assistant. Produce accurate, minimal annotations."
                 ),
             )
             response = await client.send_and_wait(

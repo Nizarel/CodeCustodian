@@ -73,12 +73,27 @@ class BusinessImpactScorer:
     """
 
     CRITICAL_PATTERNS: ClassVar[list[str]] = [
-        "payment", "auth", "billing", "security", "crypto",
-        "checkout", "token", "credential", "session",
+        "payment",
+        "auth",
+        "billing",
+        "security",
+        "crypto",
+        "checkout",
+        "token",
+        "credential",
+        "session",
     ]
     REGULATED_PATTERNS: ClassVar[list[str]] = [
-        "pii", "credit_card", "ssn", "hipaa", "gdpr",
-        "ferpa", "sox", "pci", "phi", "personal_data",
+        "pii",
+        "credit_card",
+        "ssn",
+        "hipaa",
+        "gdpr",
+        "ferpa",
+        "sox",
+        "pci",
+        "phi",
+        "personal_data",
     ]
 
     def __init__(
@@ -181,6 +196,7 @@ class BusinessImpactScorer:
             return 0.0
         # Logarithmic normalisation: 1→1, 10→3.3, 100→6.6, 1000→10
         import math
+
         return min(10.0, round(math.log10(max(raw, 1)) * 3.33, 1))
 
     # ── Factor 2: Criticality ──────────────────────────────────────────
@@ -219,9 +235,7 @@ class BusinessImpactScorer:
         doesn't block the event loop.
         """
         try:
-            commits = await asyncio.to_thread(
-                self._count_recent_commits, finding.file, repo_path
-            )
+            commits = await asyncio.to_thread(self._count_recent_commits, finding.file, repo_path)
         except Exception:
             return 0.0
 
@@ -251,9 +265,12 @@ class BusinessImpactScorer:
         try:
             result = subprocess.run(
                 [
-                    "git", "log", "--oneline",
+                    "git",
+                    "log",
+                    "--oneline",
                     f"--since={days} days ago",
-                    "--", file_path,
+                    "--",
+                    file_path,
                 ],
                 capture_output=True,
                 text=True,

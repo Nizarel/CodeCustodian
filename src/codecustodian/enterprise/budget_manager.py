@@ -34,11 +34,9 @@ logger = get_logger("enterprise.budget")
 class CostEntry(BaseModel):
     """A single cost record."""
 
-    timestamp: str = Field(
-        default_factory=lambda: datetime.now(UTC).isoformat()
-    )
+    timestamp: str = Field(default_factory=lambda: datetime.now(UTC).isoformat())
     run_id: str = ""
-    operation: str = ""          # plan | execute | verify | scan
+    operation: str = ""  # plan | execute | verify | scan
     cost_usd: float = 0.0
     model: str = ""
     tokens_in: int = 0
@@ -49,9 +47,7 @@ class CostEntry(BaseModel):
 class BudgetAlert(BaseModel):
     """Alert emitted when a threshold is crossed."""
 
-    timestamp: str = Field(
-        default_factory=lambda: datetime.now(UTC).isoformat()
-    )
+    timestamp: str = Field(default_factory=lambda: datetime.now(UTC).isoformat())
     threshold_pct: int
     current_cost: float
     budget_limit: float
@@ -193,10 +189,7 @@ class BudgetManager:
         projected = self._total_spent + estimated_cost
         if self.hard_limit and projected > self.monthly_budget:
             raise BudgetExceededError(
-                message=(
-                    f"Budget exceeded: ${projected:.2f} > "
-                    f"${self.monthly_budget:.2f} limit"
-                ),
+                message=(f"Budget exceeded: ${projected:.2f} > ${self.monthly_budget:.2f} limit"),
                 current_cost=self._total_spent,
                 budget_limit=self.monthly_budget,
             )
@@ -208,9 +201,7 @@ class BudgetManager:
         """Return a snapshot of the current budget state (FR-COST-101)."""
         remaining = max(0.0, self.monthly_budget - self._total_spent)
         usage_pct = (
-            (self._total_spent / self.monthly_budget * 100)
-            if self.monthly_budget > 0
-            else 0.0
+            (self._total_spent / self.monthly_budget * 100) if self.monthly_budget > 0 else 0.0
         )
         operation_counts = self._load_operation_counts()
         pr_count = operation_counts.get("create_pr", 0)
@@ -238,9 +229,7 @@ class BudgetManager:
         """Return all alerts that would fire at the current spending level."""
         alerts: list[BudgetAlert] = []
         usage_pct = (
-            (self._total_spent / self.monthly_budget * 100)
-            if self.monthly_budget > 0
-            else 0.0
+            (self._total_spent / self.monthly_budget * 100) if self.monthly_budget > 0 else 0.0
         )
         for threshold in self.alert_thresholds:
             if usage_pct >= threshold:
@@ -294,9 +283,7 @@ class BudgetManager:
         if not self._log_file.exists():
             return 0
         return sum(
-            1
-            for line in self._log_file.read_text(encoding="utf-8").splitlines()
-            if line.strip()
+            1 for line in self._log_file.read_text(encoding="utf-8").splitlines() if line.strip()
         )
 
     def _load_operation_counts(self) -> dict[str, int]:

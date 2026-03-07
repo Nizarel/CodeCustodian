@@ -148,7 +148,9 @@ def register_tools(mcp: FastMCP) -> None:
 
         finding = await scan_cache.get_finding(finding_id)
         if finding is None:
-            return {"error": f"Finding '{finding_id}' not found in cache. Run scan_repository first."}
+            return {
+                "error": f"Finding '{finding_id}' not found in cache. Run scan_repository first."
+            }
 
         if ctx:
             await ctx.info(f"Planning refactoring for {finding.type.value} in {finding.file}")
@@ -300,7 +302,9 @@ def register_tools(mcp: FastMCP) -> None:
             lint_result = linter.run_all(paths)
             result["stages"]["lint"] = {
                 "passed": lint_result.passed,
-                "violations": len(lint_result.violations) if hasattr(lint_result, "violations") else 0,
+                "violations": len(lint_result.violations)
+                if hasattr(lint_result, "violations")
+                else 0,
             }
             if not lint_result.passed:
                 result["passed"] = False
@@ -415,7 +419,9 @@ def register_tools(mcp: FastMCP) -> None:
             "type_coverage": 0.8,
         }
 
-        sev = finding.severity.value if hasattr(finding.severity, "value") else str(finding.severity)
+        sev = (
+            finding.severity.value if hasattr(finding.severity, "value") else str(finding.severity)
+        )
         typ = finding.type.value if hasattr(finding.type, "value") else str(finding.type)
         hours = severity_hours.get(sev, 1.0) * type_multiplier.get(typ, 1.0)
 
@@ -469,7 +475,9 @@ def register_tools(mcp: FastMCP) -> None:
         scorer = BusinessImpactScorer()
         breakdown = await scorer.score_detailed(finding, repo_path)
 
-        sev = finding.severity.value if hasattr(finding.severity, "value") else str(finding.severity)
+        sev = (
+            finding.severity.value if hasattr(finding.severity, "value") else str(finding.severity)
+        )
 
         # Map score to business impact level for backward compatibility
         if breakdown.total > 500 or sev == "critical":
@@ -493,14 +501,18 @@ def register_tools(mcp: FastMCP) -> None:
             },
             "factor_descriptions": breakdown.factors,
             "affected_file": finding.file,
-            "finding_type": finding.type.value if hasattr(finding.type, "value") else str(finding.type),
+            "finding_type": finding.type.value
+            if hasattr(finding.type, "value")
+            else str(finding.type),
             "severity": sev,
             # Backward-compatible keys
             "business_impact_level": biz_level,
             "sla_risk": biz_level in ("critical", "high"),
             "recommendation": (
-                "Fix immediately" if biz_level == "critical"
-                else "Schedule for next sprint" if biz_level in ("high", "medium")
+                "Fix immediately"
+                if biz_level == "critical"
+                else "Schedule for next sprint"
+                if biz_level in ("high", "medium")
                 else "Add to backlog"
             ),
         }
@@ -548,9 +560,7 @@ def register_tools(mcp: FastMCP) -> None:
             return {"error": f"Blast radius analysis failed: {exc}"}
 
         if ctx:
-            await ctx.info(
-                f"Blast radius: {report.radius_score:.0%} — risk {report.risk_level}"
-            )
+            await ctx.info(f"Blast radius: {report.radius_score:.0%} — risk {report.risk_level}")
 
         return report.model_dump(mode="json")
 
@@ -593,7 +603,10 @@ def register_tools(mcp: FastMCP) -> None:
         try:
             forecast = forecaster.forecast(repo_path, horizon_days=horizon_days)
         except ValueError as exc:
-            return {"error": str(exc), "hint": "Run scan_repository multiple times to build history"}
+            return {
+                "error": str(exc),
+                "hint": "Run scan_repository multiple times to build history",
+            }
 
         # Cache the forecast
         await scan_cache.store_forecast(repo_path, forecast)
@@ -707,8 +720,7 @@ def register_tools(mcp: FastMCP) -> None:
 
         if ctx:
             await ctx.info(
-                f"{reachable}/{len(results)} findings reachable, "
-                f"{entry_count} in entry points"
+                f"{reachable}/{len(results)} findings reachable, {entry_count} in entry points"
             )
 
         return {
@@ -808,10 +820,7 @@ def register_tools(mcp: FastMCP) -> None:
 
         findings = await scan_cache.list_findings()
         if framework:
-            findings = [
-                f for f in findings
-                if framework.lower() in f.description.lower()
-            ]
+            findings = [f for f in findings if framework.lower() in f.description.lower()]
 
         if not findings:
             return {"error": "No migration-eligible findings in cache"}
@@ -826,9 +835,7 @@ def register_tools(mcp: FastMCP) -> None:
         await scan_cache.store_migration(plan.id, plan)
 
         if ctx:
-            await ctx.info(
-                f"Migration plan: {plan.framework} — {len(plan.stages)} stages"
-            )
+            await ctx.info(f"Migration plan: {plan.framework} — {len(plan.stages)} stages")
 
         return plan.model_dump(mode="json")
 
@@ -1002,9 +1009,7 @@ def register_tools(mcp: FastMCP) -> None:
             await scan_cache.store_findings(findings)
 
             if ctx:
-                await ctx.info(
-                    f"Remote scan complete — {len(findings)} findings from {url}"
-                )
+                await ctx.info(f"Remote scan complete — {len(findings)} findings from {url}")
 
             return {
                 "url": url,

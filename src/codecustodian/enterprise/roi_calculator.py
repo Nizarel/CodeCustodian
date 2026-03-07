@@ -32,9 +32,7 @@ logger = get_logger("enterprise.roi")
 class ROIEntry(BaseModel):
     """A single refactoring event used for ROI tracking."""
 
-    timestamp: str = Field(
-        default_factory=lambda: datetime.now(UTC).isoformat()
-    )
+    timestamp: str = Field(default_factory=lambda: datetime.now(UTC).isoformat())
     run_id: str = ""
     finding_type: str = ""
     severity: str = ""
@@ -171,9 +169,7 @@ class ROICalculator:
         total_setup_cost = sum(e.setup_cost_usd for e in entries)
         total_cost = total_ai_cost + total_infra_cost + total_setup_cost
         total_hours = sum(
-            e.estimated_manual_hours * e.automation_rate
-            for e in entries
-            if e.was_successful
+            e.estimated_manual_hours * e.automation_rate for e in entries if e.was_successful
         )
         successful = sum(1 for e in entries if e.was_successful)
         cost_per_fix = total_cost / successful if successful > 0 else 0.0
@@ -251,9 +247,7 @@ class ROICalculator:
             writer = DictWriter(csv_file, fieldnames=["section", "key", "value"])
             writer.writeheader()
             for row in summary_rows:
-                writer.writerow(
-                    {"section": "summary", "key": row["metric"], "value": row["value"]}
-                )
+                writer.writerow({"section": "summary", "key": row["metric"], "value": row["value"]})
             for finding_type, metrics in report.by_finding_type.items():
                 for key, value in metrics.items():
                     writer.writerow(
@@ -300,10 +294,16 @@ class ROICalculator:
         """Render an interactive HTML ROI report with Chart.js charts."""
         type_labels = json.dumps(sorted(report.by_finding_type.keys()))
         type_costs = json.dumps(
-            [round(report.by_finding_type[t].get("cost", 0), 2) for t in sorted(report.by_finding_type)]
+            [
+                round(report.by_finding_type[t].get("cost", 0), 2)
+                for t in sorted(report.by_finding_type)
+            ]
         )
         type_savings = json.dumps(
-            [round(report.by_finding_type[t].get("savings", 0), 2) for t in sorted(report.by_finding_type)]
+            [
+                round(report.by_finding_type[t].get("savings", 0), 2)
+                for t in sorted(report.by_finding_type)
+            ]
         )
         type_counts = json.dumps(
             [int(report.by_finding_type[t].get("count", 0)) for t in sorted(report.by_finding_type)]
@@ -331,9 +331,9 @@ class ROICalculator:
 
         # Type breakdown table
         type_rows = "".join(
-            f"<tr><td>{ft}</td><td>{int(m.get('count',0))}</td>"
-            f"<td>${m.get('cost',0):.2f}</td><td>{m.get('hours',0):.1f}h</td>"
-            f"<td>${m.get('savings',0):.2f}</td></tr>"
+            f"<tr><td>{ft}</td><td>{int(m.get('count', 0))}</td>"
+            f"<td>${m.get('cost', 0):.2f}</td><td>{m.get('hours', 0):.1f}h</td>"
+            f"<td>${m.get('savings', 0):.2f}</td></tr>"
             for ft, m in sorted(report.by_finding_type.items())
         )
 

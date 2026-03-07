@@ -142,8 +142,13 @@ class OnboardingManager:
                 config_dict["behavior"].get("confidence_threshold", 7), 8
             )
             # Ensure proposal threshold stays valid
-            if config_dict["behavior"].get("proposal_mode_threshold", 5) > config_dict["behavior"]["confidence_threshold"]:
-                config_dict["behavior"]["proposal_mode_threshold"] = config_dict["behavior"]["confidence_threshold"]
+            if (
+                config_dict["behavior"].get("proposal_mode_threshold", 5)
+                > config_dict["behavior"]["confidence_threshold"]
+            ):
+                config_dict["behavior"]["proposal_mode_threshold"] = config_dict["behavior"][
+                    "confidence_threshold"
+                ]
 
         # v0.14.0 — auto-populate sensitive paths
         config_dict = self._auto_populate_sensitive_paths(analysis, config_dict)
@@ -183,7 +188,8 @@ class OnboardingManager:
 
     @staticmethod
     def _auto_populate_sensitive_paths(
-        analysis: dict, config_dict: dict,
+        analysis: dict,
+        config_dict: dict,
     ) -> dict:
         """Merge detected sensitive paths into the approval config."""
         detected = analysis.get("sensitive_paths", [])
@@ -260,7 +266,8 @@ jobs:
 
     @staticmethod
     def _run_health_check(
-        repo_path: Path, config: Any,
+        repo_path: Path,
+        config: Any,
     ) -> dict[str, Any]:
         """Run a quick validation that config works with the repo.
 

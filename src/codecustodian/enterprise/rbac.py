@@ -64,9 +64,7 @@ class UserContext(BaseModel):
         default_factory=list,
         description="Repos this user can access; empty = all",
     )
-    authenticated_at: str = Field(
-        default_factory=lambda: datetime.now(UTC).isoformat()
-    )
+    authenticated_at: str = Field(default_factory=lambda: datetime.now(UTC).isoformat())
     claims: dict[str, Any] = Field(default_factory=dict)
 
 
@@ -204,8 +202,7 @@ class RBACManager:
         if not self.has_permission(user, permission, repo=repo):
             raise PermissionError(
                 f"User {user.user_id} ({user.role.value}) lacks "
-                f"permission '{permission.value}'"
-                + (f" on repo {repo}" if repo else "")
+                f"permission '{permission.value}'" + (f" on repo {repo}" if repo else "")
             )
 
     def user_from_claims(self, claims: dict[str, Any]) -> UserContext:

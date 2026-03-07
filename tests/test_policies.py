@@ -68,9 +68,7 @@ class TestPolicyManager:
                 }
             ]
         }
-        with tempfile.NamedTemporaryFile(
-            mode="w", suffix=".yml", delete=False
-        ) as f:
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".yml", delete=False) as f:
             yaml.dump(data, f)
             f.flush()
             pm = PolicyManager()
@@ -94,25 +92,34 @@ class TestPathControls:
 
     def test_should_use_proposal_mode_sensitive_path(self):
         pm = PolicyManager()
-        assert pm.should_use_proposal_mode(
-            "src/auth/login.py",
-            sensitive_paths=["**/auth/**"],
-        ) is True
+        assert (
+            pm.should_use_proposal_mode(
+                "src/auth/login.py",
+                sensitive_paths=["**/auth/**"],
+            )
+            is True
+        )
 
     def test_should_use_proposal_mode_normal_path(self):
         pm = PolicyManager()
-        assert pm.should_use_proposal_mode(
-            "src/utils/helpers.py",
-            sensitive_paths=["**/auth/**"],
-        ) is False
+        assert (
+            pm.should_use_proposal_mode(
+                "src/utils/helpers.py",
+                sensitive_paths=["**/auth/**"],
+            )
+            is False
+        )
 
     def test_should_use_proposal_mode_finding_type(self):
         pm = PolicyManager()
-        assert pm.should_use_proposal_mode(
-            "src/main.py",
-            finding_type="security",
-            proposal_only_types={"security"},
-        ) is True
+        assert (
+            pm.should_use_proposal_mode(
+                "src/main.py",
+                finding_type="security",
+                proposal_only_types={"security"},
+            )
+            is True
+        )
 
 
 class TestDeepMerge:

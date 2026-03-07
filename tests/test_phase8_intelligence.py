@@ -308,21 +308,23 @@ class TestFeedbackCollector:
         from codecustodian.feedback.learning import FeedbackCollector, PROutcome
 
         with tempfile.TemporaryDirectory() as tmpdir:
-            collector = FeedbackCollector(
-                db_path=f"{tmpdir}/learning.json"
+            collector = FeedbackCollector(db_path=f"{tmpdir}/learning.json")
+            collector.record_outcome(
+                PROutcome(
+                    pr_number=1,
+                    status="merged",
+                    confidence_was=8,
+                    scanner_type="deprecated_api",
+                )
             )
-            collector.record_outcome(PROutcome(
-                pr_number=1,
-                status="merged",
-                confidence_was=8,
-                scanner_type="deprecated_api",
-            ))
-            collector.record_outcome(PROutcome(
-                pr_number=2,
-                status="rejected",
-                confidence_was=5,
-                scanner_type="deprecated_api",
-            ))
+            collector.record_outcome(
+                PROutcome(
+                    pr_number=2,
+                    status="rejected",
+                    confidence_was=5,
+                    scanner_type="deprecated_api",
+                )
+            )
 
             summary = collector.get_summary()
             assert summary["total"] == 2
@@ -334,21 +336,23 @@ class TestFeedbackCollector:
         from codecustodian.feedback.learning import FeedbackCollector, PROutcome
 
         with tempfile.TemporaryDirectory() as tmpdir:
-            collector = FeedbackCollector(
-                db_path=f"{tmpdir}/learning.json"
-            )
+            collector = FeedbackCollector(db_path=f"{tmpdir}/learning.json")
             for i in range(8):
-                collector.record_outcome(PROutcome(
-                    pr_number=i,
-                    status="merged",
-                    scanner_type="code_smell",
-                ))
+                collector.record_outcome(
+                    PROutcome(
+                        pr_number=i,
+                        status="merged",
+                        scanner_type="code_smell",
+                    )
+                )
             for i in range(2):
-                collector.record_outcome(PROutcome(
-                    pr_number=10 + i,
-                    status="rejected",
-                    scanner_type="code_smell",
-                ))
+                collector.record_outcome(
+                    PROutcome(
+                        pr_number=10 + i,
+                        status="rejected",
+                        scanner_type="code_smell",
+                    )
+                )
 
             rate = collector.get_scanner_success_rate("code_smell")
             assert rate == 0.8
@@ -358,9 +362,7 @@ class TestFeedbackCollector:
         from codecustodian.feedback.learning import FeedbackCollector
 
         with tempfile.TemporaryDirectory() as tmpdir:
-            collector = FeedbackCollector(
-                db_path=f"{tmpdir}/learning.json"
-            )
+            collector = FeedbackCollector(db_path=f"{tmpdir}/learning.json")
             rate = collector.get_scanner_success_rate("unknown")
             assert rate == 1.0
             collector.close()
@@ -369,18 +371,16 @@ class TestFeedbackCollector:
         from codecustodian.feedback.learning import FeedbackCollector, PROutcome
 
         with tempfile.TemporaryDirectory() as tmpdir:
-            collector = FeedbackCollector(
-                db_path=f"{tmpdir}/learning.json"
-            )
+            collector = FeedbackCollector(db_path=f"{tmpdir}/learning.json")
             # 70% success rate → below 90% target
             for i in range(7):
-                collector.record_outcome(PROutcome(
-                    pr_number=i, status="merged", scanner_type="security"
-                ))
+                collector.record_outcome(
+                    PROutcome(pr_number=i, status="merged", scanner_type="security")
+                )
             for i in range(3):
-                collector.record_outcome(PROutcome(
-                    pr_number=10 + i, status="rejected", scanner_type="security"
-                ))
+                collector.record_outcome(
+                    PROutcome(pr_number=10 + i, status="rejected", scanner_type="security")
+                )
 
             adj = collector.suggest_confidence_adjustment("security")
             assert adj >= 1
@@ -390,13 +390,11 @@ class TestFeedbackCollector:
         from codecustodian.feedback.learning import FeedbackCollector, PROutcome
 
         with tempfile.TemporaryDirectory() as tmpdir:
-            collector = FeedbackCollector(
-                db_path=f"{tmpdir}/learning.json"
-            )
+            collector = FeedbackCollector(db_path=f"{tmpdir}/learning.json")
             for i in range(10):
-                collector.record_outcome(PROutcome(
-                    pr_number=i, status="merged", scanner_type="todo"
-                ))
+                collector.record_outcome(
+                    PROutcome(pr_number=i, status="merged", scanner_type="todo")
+                )
             adj = collector.suggest_confidence_adjustment("todo")
             assert adj == 0
             collector.close()
@@ -405,14 +403,15 @@ class TestFeedbackCollector:
         from codecustodian.feedback.learning import FeedbackCollector
 
         with tempfile.TemporaryDirectory() as tmpdir:
-            collector = FeedbackCollector(
-                db_path=f"{tmpdir}/learning.json"
+            collector = FeedbackCollector(db_path=f"{tmpdir}/learning.json")
+            collector.record_dict(
+                42,
+                {
+                    "status": "modified",
+                    "confidence": 7,
+                    "scanner_type": "code_smell",
+                },
             )
-            collector.record_dict(42, {
-                "status": "modified",
-                "confidence": 7,
-                "scanner_type": "code_smell",
-            })
             summary = collector.get_summary()
             assert summary["total"] == 1
             assert summary["modified"] == 1
@@ -422,15 +421,9 @@ class TestFeedbackCollector:
         from codecustodian.feedback.learning import FeedbackCollector, PROutcome
 
         with tempfile.TemporaryDirectory() as tmpdir:
-            collector = FeedbackCollector(
-                db_path=f"{tmpdir}/learning.json"
-            )
-            collector.record_outcome(PROutcome(
-                pr_number=1, status="merged", scanner_type="a"
-            ))
-            collector.record_outcome(PROutcome(
-                pr_number=2, status="rejected", scanner_type="b"
-            ))
+            collector = FeedbackCollector(db_path=f"{tmpdir}/learning.json")
+            collector.record_outcome(PROutcome(pr_number=1, status="merged", scanner_type="a"))
+            collector.record_outcome(PROutcome(pr_number=2, status="rejected", scanner_type="b"))
             rates = collector.get_all_scanner_rates()
             assert "a" in rates
             assert "b" in rates
@@ -545,17 +538,17 @@ class TestHistoricalPatternRecognizer:
         )
 
         with tempfile.TemporaryDirectory() as tmpdir:
-            recognizer = HistoricalPatternRecognizer(
-                db_path=f"{tmpdir}/history.json"
+            recognizer = HistoricalPatternRecognizer(db_path=f"{tmpdir}/history.json")
+            recognizer.record_refactoring(
+                HistoricalRefactoring(
+                    finding_type="deprecated_api",
+                    library="requests",
+                    team="team-alpha",
+                    outcome="merged",
+                    success=True,
+                    learned_recommendation="Use httpx instead",
+                )
             )
-            recognizer.record_refactoring(HistoricalRefactoring(
-                finding_type="deprecated_api",
-                library="requests",
-                team="team-alpha",
-                outcome="merged",
-                success=True,
-                learned_recommendation="Use httpx instead",
-            ))
 
             finding = _make_finding(
                 finding_type=FindingType.DEPRECATED_API,
@@ -571,9 +564,7 @@ class TestHistoricalPatternRecognizer:
         from codecustodian.feedback.history import HistoricalPatternRecognizer
 
         with tempfile.TemporaryDirectory() as tmpdir:
-            recognizer = HistoricalPatternRecognizer(
-                db_path=f"{tmpdir}/history.json"
-            )
+            recognizer = HistoricalPatternRecognizer(db_path=f"{tmpdir}/history.json")
             finding = _make_finding(finding_type=FindingType.SECURITY)
             similar = await recognizer.find_similar(finding)
             assert len(similar) == 0
@@ -583,9 +574,7 @@ class TestHistoricalPatternRecognizer:
         from codecustodian.feedback.history import HistoricalPatternRecognizer
 
         with tempfile.TemporaryDirectory() as tmpdir:
-            recognizer = HistoricalPatternRecognizer(
-                db_path=f"{tmpdir}/history.json"
-            )
+            recognizer = HistoricalPatternRecognizer(db_path=f"{tmpdir}/history.json")
             finding = _make_finding(
                 finding_type=FindingType.CODE_SMELL,
                 metadata={"library": "flask"},
@@ -608,9 +597,7 @@ class TestHistoricalPatternRecognizer:
         )
 
         with tempfile.TemporaryDirectory() as tmpdir:
-            recognizer = HistoricalPatternRecognizer(
-                db_path=f"{tmpdir}/history.json"
-            )
+            recognizer = HistoricalPatternRecognizer(db_path=f"{tmpdir}/history.json")
             patterns = [
                 SimilarPattern(
                     team="t1",
@@ -634,15 +621,21 @@ class TestHistoricalPatternRecognizer:
         )
 
         with tempfile.TemporaryDirectory() as tmpdir:
-            recognizer = HistoricalPatternRecognizer(
-                db_path=f"{tmpdir}/history.json"
+            recognizer = HistoricalPatternRecognizer(db_path=f"{tmpdir}/history.json")
+            recognizer.record_refactoring(
+                HistoricalRefactoring(
+                    finding_type="code_smell",
+                    success=True,
+                    outcome="merged",
+                )
             )
-            recognizer.record_refactoring(HistoricalRefactoring(
-                finding_type="code_smell", success=True, outcome="merged",
-            ))
-            recognizer.record_refactoring(HistoricalRefactoring(
-                finding_type="code_smell", success=False, outcome="rejected",
-            ))
+            recognizer.record_refactoring(
+                HistoricalRefactoring(
+                    finding_type="code_smell",
+                    success=False,
+                    outcome="rejected",
+                )
+            )
             rates = recognizer.get_success_rate_by_type()
             assert rates["code_smell"] == 0.5
             recognizer.close()
@@ -661,19 +654,23 @@ class TestSLAReporter:
 
         with tempfile.TemporaryDirectory() as tmpdir:
             reporter = SLAReporter(db_path=f"{tmpdir}/sla.json")
-            reporter.record_run(SLARecord(
-                run_id="r1",
-                success=True,
-                duration_seconds=10.5,
-                findings_count=5,
-                prs_created=2,
-            ))
-            reporter.record_run(SLARecord(
-                run_id="r2",
-                success=False,
-                duration_seconds=5.0,
-                failure_reason="timeout",
-            ))
+            reporter.record_run(
+                SLARecord(
+                    run_id="r1",
+                    success=True,
+                    duration_seconds=10.5,
+                    findings_count=5,
+                    prs_created=2,
+                )
+            )
+            reporter.record_run(
+                SLARecord(
+                    run_id="r2",
+                    success=False,
+                    duration_seconds=5.0,
+                    failure_reason="timeout",
+                )
+            )
 
             report = reporter.generate_report()
             assert report.total_runs == 2
@@ -698,21 +695,25 @@ class TestSLAReporter:
             reporter = SLAReporter(db_path=f"{tmpdir}/sla.json")
             # Older runs: mostly success
             for i in range(5):
-                reporter.record_run(SLARecord(
-                    run_id=f"old-{i}",
-                    success=True,
-                    duration_seconds=10.0,
-                    timestamp=f"2026-01-0{i + 1}T00:00:00Z",
-                ))
+                reporter.record_run(
+                    SLARecord(
+                        run_id=f"old-{i}",
+                        success=True,
+                        duration_seconds=10.0,
+                        timestamp=f"2026-01-0{i + 1}T00:00:00Z",
+                    )
+                )
             # Recent runs: mostly failures
             for i in range(5):
-                reporter.record_run(SLARecord(
-                    run_id=f"new-{i}",
-                    success=False,
-                    duration_seconds=5.0,
-                    failure_reason="error",
-                    timestamp=f"2026-02-0{i + 1}T00:00:00Z",
-                ))
+                reporter.record_run(
+                    SLARecord(
+                        run_id=f"new-{i}",
+                        success=False,
+                        duration_seconds=5.0,
+                        failure_reason="error",
+                        timestamp=f"2026-02-0{i + 1}T00:00:00Z",
+                    )
+                )
 
             report = reporter.generate_report()
             assert report.failure_trend == "degrading"
@@ -727,13 +728,21 @@ class TestSLAReporter:
                 failure_spike_threshold=10.0,
             )
             # 50% failure rate → should alert
-            reporter.record_run(SLARecord(
-                run_id="r1", success=True, duration_seconds=10.0,
-            ))
-            reporter.record_run(SLARecord(
-                run_id="r2", success=False, failure_reason="crash",
-                duration_seconds=5.0,
-            ))
+            reporter.record_run(
+                SLARecord(
+                    run_id="r1",
+                    success=True,
+                    duration_seconds=10.0,
+                )
+            )
+            reporter.record_run(
+                SLARecord(
+                    run_id="r2",
+                    success=False,
+                    failure_reason="crash",
+                    duration_seconds=5.0,
+                )
+            )
 
             report = reporter.generate_report()
             assert report.alert != ""
@@ -745,9 +754,13 @@ class TestSLAReporter:
 
         with tempfile.TemporaryDirectory() as tmpdir:
             reporter = SLAReporter(db_path=f"{tmpdir}/sla.json")
-            reporter.record_run(SLARecord(
-                run_id="r1", success=True, duration_seconds=10.0,
-            ))
+            reporter.record_run(
+                SLARecord(
+                    run_id="r1",
+                    success=True,
+                    duration_seconds=10.0,
+                )
+            )
             csv_str = reporter.export_csv()
             assert "run_id" in csv_str
             assert "r1" in csv_str
@@ -758,10 +771,15 @@ class TestSLAReporter:
 
         with tempfile.TemporaryDirectory() as tmpdir:
             reporter = SLAReporter(db_path=f"{tmpdir}/sla.json")
-            reporter.record_run(SLARecord(
-                run_id="r1", success=True, duration_seconds=10.0,
-                findings_count=3, prs_created=1,
-            ))
+            reporter.record_run(
+                SLARecord(
+                    run_id="r1",
+                    success=True,
+                    duration_seconds=10.0,
+                    findings_count=3,
+                    prs_created=1,
+                )
+            )
             md = reporter.export_markdown()
             assert "# SLA & Reliability Report" in md
             assert "Success Rate" in md
@@ -772,12 +790,22 @@ class TestSLAReporter:
 
         with tempfile.TemporaryDirectory() as tmpdir:
             reporter = SLAReporter(db_path=f"{tmpdir}/sla.json")
-            reporter.record_run(SLARecord(
-                run_id="r1", success=True, duration_seconds=10.0, team="alpha",
-            ))
-            reporter.record_run(SLARecord(
-                run_id="r2", success=False, duration_seconds=5.0, team="beta",
-            ))
+            reporter.record_run(
+                SLARecord(
+                    run_id="r1",
+                    success=True,
+                    duration_seconds=10.0,
+                    team="alpha",
+                )
+            )
+            reporter.record_run(
+                SLARecord(
+                    run_id="r2",
+                    success=False,
+                    duration_seconds=5.0,
+                    team="beta",
+                )
+            )
 
             alpha_report = reporter.generate_report(team="alpha")
             assert alpha_report.total_runs == 1
@@ -790,18 +818,22 @@ class TestSLAReporter:
         with tempfile.TemporaryDirectory() as tmpdir:
             reporter = SLAReporter(db_path=f"{tmpdir}/sla.json")
             for i in range(3):
-                reporter.record_run(SLARecord(
-                    run_id=f"r{i}",
+                reporter.record_run(
+                    SLARecord(
+                        run_id=f"r{i}",
+                        success=False,
+                        failure_reason="timeout",
+                        duration_seconds=5.0,
+                    )
+                )
+            reporter.record_run(
+                SLARecord(
+                    run_id="r9",
                     success=False,
-                    failure_reason="timeout",
-                    duration_seconds=5.0,
-                ))
-            reporter.record_run(SLARecord(
-                run_id="r9",
-                success=False,
-                failure_reason="auth_error",
-                duration_seconds=1.0,
-            ))
+                    failure_reason="auth_error",
+                    duration_seconds=1.0,
+                )
+            )
 
             report = reporter.generate_report()
             assert len(report.top_failure_reasons) >= 1
@@ -921,9 +953,7 @@ class TestConfidenceWithLearning:
             has_tests=True,
         )
         score_base, _ = calculate_confidence(plan, context)
-        score_adj, factors = calculate_confidence(
-            plan, context, scanner_adjustment=2
-        )
+        score_adj, factors = calculate_confidence(plan, context, scanner_adjustment=2)
         assert score_adj < score_base
         assert any("scanner_history" in f for f in factors)
 
@@ -944,7 +974,5 @@ class TestConfidenceWithLearning:
             has_tests=True,
         )
         score_base, _factors_base = calculate_confidence(plan, context)
-        score_zero, _factors_zero = calculate_confidence(
-            plan, context, scanner_adjustment=0
-        )
+        score_zero, _factors_zero = calculate_confidence(plan, context, scanner_adjustment=0)
         assert score_base == score_zero

@@ -151,6 +151,7 @@ class TestBackupManager:
             log_path = manager.write_transaction_log()
             assert log_path.exists()
             import json
+
             data = json.loads(log_path.read_text())
             assert len(data) == 1
             assert data[0]["action"] == "backup"
@@ -610,9 +611,7 @@ class TestGitManager:
         with patch("codecustodian.executor.git_manager.Repo") as MockRepo:  # noqa: N806
             mock_repo = MagicMock()
             MockRepo.return_value = mock_repo
-            mock_repo.git.push.side_effect = GitCommandError(
-                "push", "Authentication failed"
-            )
+            mock_repo.git.push.side_effect = GitCommandError("push", "Authentication failed")
 
             gm = GitManager("/fake/repo")
             with pytest.raises(ExecutorError, match="Authentication"):
@@ -636,9 +635,7 @@ class TestTestRunner:
             (tests_dir / "test_config.py").write_text("# test")
 
             runner = TestRunner()
-            found = runner._discover_tests(
-                [Path("models.py"), Path("other.py")], repo
-            )
+            found = runner._discover_tests([Path("models.py"), Path("other.py")], repo)
             assert any("test_models" in str(f) for f in found)
 
     def test_parse_junit_xml(self):

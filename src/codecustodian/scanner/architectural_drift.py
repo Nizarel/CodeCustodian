@@ -84,7 +84,9 @@ class ArchitecturalDriftScanner(BaseScanner):
             imports = self._get_imports(py_file)
             import_map[rel] = imports
             try:
-                file_sizes[rel] = len(py_file.read_text(encoding="utf-8", errors="replace").splitlines())
+                file_sizes[rel] = len(
+                    py_file.read_text(encoding="utf-8", errors="replace").splitlines()
+                )
             except OSError:
                 file_sizes[rel] = 0
 
@@ -121,9 +123,7 @@ class ArchitecturalDriftScanner(BaseScanner):
                 imports.append(node.module)
         return imports
 
-    def _check_circular_deps(
-        self, import_map: dict[str, list[str]], root: Path
-    ) -> list[Finding]:
+    def _check_circular_deps(self, import_map: dict[str, list[str]], root: Path) -> list[Finding]:
         """Detect circular import chains."""
         findings: list[Finding] = []
         # Build a simplified module graph from file-level imports
@@ -161,18 +161,22 @@ class ArchitecturalDriftScanner(BaseScanner):
                         if cycle not in reported_cycles and len(cycle) >= 2:
                             reported_cycles.add(cycle)
                             cycle_list = [*path[cycle_start:], neighbor]
-                            findings.append(Finding(
-                                type=FindingType.CODE_SMELL,
-                                severity=SeverityLevel.HIGH,
-                                file=f"{node}/__init__.py",
-                                line=1,
-                                description=(
-                                    f"Circular dependency detected: "
-                                    f"{' → '.join(cycle_list)}"
-                                ),
-                                suggestion="Break the cycle by introducing an interface or moving shared code to a common module.",
-                                metadata={"drift_type": "circular_dependency", "cycle": cycle_list},
-                            ))
+                            findings.append(
+                                Finding(
+                                    type=FindingType.CODE_SMELL,
+                                    severity=SeverityLevel.HIGH,
+                                    file=f"{node}/__init__.py",
+                                    line=1,
+                                    description=(
+                                        f"Circular dependency detected: {' → '.join(cycle_list)}"
+                                    ),
+                                    suggestion="Break the cycle by introducing an interface or moving shared code to a common module.",
+                                    metadata={
+                                        "drift_type": "circular_dependency",
+                                        "cycle": cycle_list,
+                                    },
+                                )
+                            )
             rec_stack.discard(node)
 
         for module in module_graph:
@@ -210,19 +214,25 @@ class ArchitecturalDriftScanner(BaseScanner):
 
                 for rule in forbidden:
                     if rule["from_layer"] == src_layer and rule["to_layer"] == target_layer:
-                        findings.append(Finding(
-                            type=FindingType.CODE_SMELL,
-                            severity=SeverityLevel.MEDIUM,
-                            file=rel_path,
-                            line=1,
-                            description=(
-                                f"Layer violation: {src_pkg} ({src_layer}) imports "
-                                f"{imp} ({target_layer}). "
-                                f"Rule: {src_layer} → {target_layer} is forbidden."
-                            ),
-                            suggestion=f"Route through the service layer instead of importing directly from {target_layer}.",
-                            metadata={"drift_type": "layer_violation", "from_layer": src_layer, "to_layer": target_layer},
-                        ))
+                        findings.append(
+                            Finding(
+                                type=FindingType.CODE_SMELL,
+                                severity=SeverityLevel.MEDIUM,
+                                file=rel_path,
+                                line=1,
+                                description=(
+                                    f"Layer violation: {src_pkg} ({src_layer}) imports "
+                                    f"{imp} ({target_layer}). "
+                                    f"Rule: {src_layer} → {target_layer} is forbidden."
+                                ),
+                                suggestion=f"Route through the service layer instead of importing directly from {target_layer}.",
+                                metadata={
+                                    "drift_type": "layer_violation",
+                                    "from_layer": src_layer,
+                                    "to_layer": target_layer,
+                                },
+                            )
+                        )
         return findings
 
     def _check_module_sizes(self, file_sizes: dict[str, int]) -> list[Finding]:
@@ -232,18 +242,20 @@ class ArchitecturalDriftScanner(BaseScanner):
 
         for rel_path, lines in file_sizes.items():
             if lines > max_lines:
-                findings.append(Finding(
-                    type=FindingType.CODE_SMELL,
-                    severity=SeverityLevel.LOW,
-                    file=rel_path,
-                    line=1,
-                    description=(
-                        f"Module {rel_path} has {lines} lines, exceeding "
-                        f"the {max_lines}-line limit."
-                    ),
-                    suggestion="Consider splitting into smaller, focused modules.",
-                    metadata={"drift_type": "module_size", "lines": lines, "limit": max_lines},
-                ))
+                findings.append(
+                    Finding(
+                        type=FindingType.CODE_SMELL,
+                        severity=SeverityLevel.LOW,
+                        file=rel_path,
+                        line=1,
+                        description=(
+                            f"Module {rel_path} has {lines} lines, exceeding "
+                            f"the {max_lines}-line limit."
+                        ),
+                        suggestion="Consider splitting into smaller, focused modules.",
+                        metadata={"drift_type": "module_size", "lines": lines, "limit": max_lines},
+                    )
+                )
         return findings
 
     @staticmethod

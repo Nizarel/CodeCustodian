@@ -81,9 +81,7 @@ def tmp_repo() -> Path:
         src_dir = root / "src"
         src_dir.mkdir(parents=True, exist_ok=True)
         (src_dir / "app.py").write_text(
-            "def run(value):\n"
-            "    # TODO: improve implementation\n"
-            "    return value\n"
+            "def run(value):\n    # TODO: improve implementation\n    return value\n"
         )
-        (root / ".codecustodian.yml").write_text("version: \"1.0\"\n")
+        (root / ".codecustodian.yml").write_text('version: "1.0"\n')
         yield root

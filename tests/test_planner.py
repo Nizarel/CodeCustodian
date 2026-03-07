@@ -181,10 +181,7 @@ class TestConfidenceScoring:
         plan = _make_plan(
             changes_signature=True,
             requires_manual_verification=True,
-            changes=[
-                FileChange(file_path=f"f{i}.py", change_type="replace")
-                for i in range(10)
-            ],
+            changes=[FileChange(file_path=f"f{i}.py", change_type="replace") for i in range(10)],
         )
         ctx = _make_context(has_tests=False)
         score, _factors = calculate_confidence(plan, ctx)
@@ -237,10 +234,7 @@ class TestReviewerEffort:
     def test_medium_effort(self):
         plan = _make_plan(
             confidence_score=6,
-            changes=[
-                FileChange(file_path=f"f{i}.py", change_type="replace")
-                for i in range(3)
-            ],
+            changes=[FileChange(file_path=f"f{i}.py", change_type="replace") for i in range(3)],
         )
         ctx = _make_context()
         effort = estimate_reviewer_effort(plan, ctx, confidence=6)
@@ -306,22 +300,24 @@ class TestAlternativeGenerator:
         generator = AlternativeGenerator(client)
 
         # Mock send_and_wait to return JSON alternatives
-        ai_response = json.dumps([
-            {
-                "name": "Extract Method",
-                "description": "Pull logic into a helper",
-                "pros": ["Cleaner"],
-                "cons": ["More functions"],
-                "confidence_score": 7,
-            },
-            {
-                "name": "Inline",
-                "description": "Simplify inline",
-                "pros": ["Less indirection"],
-                "cons": ["Longer function"],
-                "confidence_score": 5,
-            },
-        ])
+        ai_response = json.dumps(
+            [
+                {
+                    "name": "Extract Method",
+                    "description": "Pull logic into a helper",
+                    "pros": ["Cleaner"],
+                    "cons": ["More functions"],
+                    "confidence_score": 7,
+                },
+                {
+                    "name": "Inline",
+                    "description": "Simplify inline",
+                    "pros": ["Less indirection"],
+                    "cons": ["Longer function"],
+                    "confidence_score": 5,
+                },
+            ]
+        )
         client.send_and_wait = AsyncMock(return_value=ai_response)
 
         finding = _make_finding()
@@ -341,8 +337,12 @@ class TestAlternativeGenerator:
         alts = [
             AlternativeSolution(name="A", description="a", confidence_score=5),
             AlternativeSolution(name="B", description="b", confidence_score=8),
-            AlternativeSolution(name="C", description="c", confidence_score=8,
-                                changes=[FileChange(file_path="x.py", change_type="replace")]),
+            AlternativeSolution(
+                name="C",
+                description="c",
+                confidence_score=8,
+                changes=[FileChange(file_path="x.py", change_type="replace")],
+            ),
         ]
         rec = generator.select_recommended(alts)
         assert rec is not None
@@ -492,9 +492,7 @@ class TestTools:
     @pytest.mark.asyncio
     async def test_get_function_definition_file_missing(self):
         result = await _get_impl(get_function_definition)(
-            GetFunctionParams(
-                file_path="/nonexistent/file.py", function_name="foo"
-            )
+            GetFunctionParams(file_path="/nonexistent/file.py", function_name="foo")
         )
         assert "not found" in result.lower()
 
@@ -531,9 +529,7 @@ class TestTools:
     async def test_search_references_none(self, tmp_path: Path):
         (tmp_path / "a.py").write_text("x = 1\n")
         result = await _get_impl(search_references)(
-            SearchReferencesParams(
-                symbol_name="nonexistent", directory=str(tmp_path)
-            )
+            SearchReferencesParams(symbol_name="nonexistent", directory=str(tmp_path))
         )
         assert "no references" in result.lower()
 
@@ -550,9 +546,7 @@ class TestTools:
             encoding="utf-8",
         )
         result = await _get_impl(find_test_coverage)(
-            FindTestCoverageParams(
-                function_name="helper", test_directory=str(tests_dir)
-            )
+            FindTestCoverageParams(function_name="helper", test_directory=str(tests_dir))
         )
         assert "test_helper" in result
 
@@ -562,9 +556,7 @@ class TestTools:
         tests_dir.mkdir()
         (tests_dir / "test_other.py").write_text("def test_something(): pass\n")
         result = await _get_impl(find_test_coverage)(
-            FindTestCoverageParams(
-                function_name="missing_func", test_directory=str(tests_dir)
-            )
+            FindTestCoverageParams(function_name="missing_func", test_directory=str(tests_dir))
         )
         assert "no tests" in result.lower()
 
@@ -622,9 +614,7 @@ class TestTools:
     async def test_get_git_history_no_repo(self, tmp_path: Path):
         src = tmp_path / "file.py"
         src.write_text("x = 1\n", encoding="utf-8")
-        result = await _get_impl(get_git_history)(
-            GetGitHistoryParams(file_path=str(src))
-        )
+        result = await _get_impl(get_git_history)(GetGitHistoryParams(file_path=str(src)))
         assert "no git repository" in result.lower() or "not found" in result.lower()
 
     def test_get_all_tools_count(self):
@@ -920,6 +910,7 @@ class TestPlannerOrchestrator:
         client.create_session = AsyncMock(return_value=session)
 
         from codecustodian.planner.planner import Planner
+
         planner = Planner(config=config, copilot_client=client)
         return planner, client, session
 
@@ -947,8 +938,12 @@ class TestPlannerOrchestrator:
         plan_json = {
             "summary": "Complex refactoring",
             "changes": [
-                {"file_path": f"f{i}.py", "change_type": "replace",
-                 "old_content": "a", "new_content": "b"}
+                {
+                    "file_path": f"f{i}.py",
+                    "change_type": "replace",
+                    "old_content": "a",
+                    "new_content": "b",
+                }
                 for i in range(6)
             ],
             "confidence_score": 3,
@@ -984,20 +979,21 @@ class TestPlannerOrchestrator:
         client.create_session = AsyncMock(return_value=session)
         client.send_streaming = AsyncMock(return_value="")
 
-        good_json = json.dumps({
-            "summary": "Fix after retry",
-            "changes": [],
-            "confidence_score": 7,
-            "risk_level": "low",
-            "ai_reasoning": "Retry succeeded",
-        })
-
-        # First call returns garbage, second returns valid JSON
-        client.send_and_wait = AsyncMock(
-            side_effect=["not valid json {{{", good_json]
+        good_json = json.dumps(
+            {
+                "summary": "Fix after retry",
+                "changes": [],
+                "confidence_score": 7,
+                "risk_level": "low",
+                "ai_reasoning": "Retry succeeded",
+            }
         )
 
+        # First call returns garbage, second returns valid JSON
+        client.send_and_wait = AsyncMock(side_effect=["not valid json {{{", good_json])
+
         from codecustodian.planner.planner import Planner
+
         planner = Planner(config=config, copilot_client=client)
         finding = _make_finding()
         ctx = _make_context()
@@ -1022,6 +1018,7 @@ class TestPlannerOrchestrator:
         client.send_streaming = AsyncMock(side_effect=Exception("boom"))
 
         from codecustodian.planner.planner import Planner
+
         planner = Planner(config=config, copilot_client=client)
         finding = _make_finding()
         ctx = _make_context()
@@ -1034,10 +1031,17 @@ class TestPlannerOrchestrator:
     @pytest.mark.asyncio
     async def test_alternatives_generated_for_complex(self):
         """Test that alternatives are generated for complex findings."""
-        alt_json = json.dumps([
-            {"name": "Alt1", "description": "Alt approach", "pros": ["pro"],
-             "cons": ["con"], "confidence_score": 6},
-        ])
+        alt_json = json.dumps(
+            [
+                {
+                    "name": "Alt1",
+                    "description": "Alt approach",
+                    "pros": ["pro"],
+                    "cons": ["con"],
+                    "confidence_score": 6,
+                },
+            ]
+        )
         plan_json = {
             "summary": "Complex refactoring",
             "changes": [],
@@ -1094,6 +1098,7 @@ class TestPlannerOrchestrator:
         client.send_and_wait = AsyncMock(return_value="I can't help with that")
 
         from codecustodian.planner.planner import Planner
+
         planner = Planner(config=config, copilot_client=client)
         finding = _make_finding()
         # Create context with severe deductions: no tests (-3), low coverage (-1),

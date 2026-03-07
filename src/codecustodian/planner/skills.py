@@ -46,7 +46,11 @@ class SkillDefinition:
 
 FINDING_TYPE_SKILL_MAP: dict[str, list[str]] = {
     FindingType.SECURITY.value: ["security-remediation", "code-quality"],
-    FindingType.DEPRECATED_API.value: ["api-migration", "general-refactoring", "framework-migrations"],
+    FindingType.DEPRECATED_API.value: [
+        "api-migration",
+        "general-refactoring",
+        "framework-migrations",
+    ],
     FindingType.CODE_SMELL.value: ["code-quality", "general-refactoring"],
     FindingType.TYPE_COVERAGE.value: ["python-typing"],
     FindingType.TODO_COMMENT.value: ["todo-resolution"],
@@ -156,7 +160,8 @@ class SkillRegistry:
         return sorted(self._skills)
 
     def get_skills_for_finding(
-        self, finding_type: FindingType | str,
+        self,
+        finding_type: FindingType | str,
     ) -> list[SkillDefinition]:
         """Return skills relevant to a finding type."""
         type_value = finding_type.value if hasattr(finding_type, "value") else str(finding_type)

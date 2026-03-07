@@ -304,3 +304,48 @@ graph TB
 end
 ```
 
+## Recording Setup
+
+**Tool:** **OBS Studio** (free) or **Windows built-in** (Win+G Game Bar for quick capture, or PowerPoint screen recording for simpler editing).
+
+**Layout — Split-screen composite:**
+- **Left half:** VS Code with MCP Chat panel visible (shows tool invocations)
+- **Right half:** Terminal running demo-run.ps1
+
+Or simpler: record full-screen and switch between VS Code and terminal during the demo.
+
+## Recommended Flow (matches your speaking script)
+
+| Time | What's on screen | What you say/show |
+|------|-----------------|-------------------|
+| 0:00–0:25 | README hero + slide deck title slide | Problem statement, "40% maintenance time" hook |
+| 0:25–0:55 | Terminal: `codecustodian run demo/sample-enterprise-app` | Live scan → 61 findings, savings output |
+| 0:55–1:25 | VS Code MCP Chat: invoke `scan_codebase`, `get_findings` | Show Copilot Chat integration, tool responses |
+| 1:25–1:55 | Slide 3 (Architecture) + Azure Portal health endpoint | 7 Azure services, live health check |
+| 1:55–2:25 | Terminal: `codecustodian report --format sarif` | Enterprise features: SARIF, ROI, budget |
+| 2:25–2:50 | Customer testimonial slide or testimonial.md | $4,960 savings, 62h saved, Azure SDK team |
+| 2:50–3:00 | Slide deck title slide | Closing: "949 tests, 17 MCP tools, ships tonight" |
+
+## Tips
+
+1. **Pre-run the demo once** so outputs are cached and snappy — demo-run.ps1 takes ~10s
+2. **Increase terminal font size** to 16pt+ (judges watch on small screens)
+3. **Record at 1080p**, not 4K — smaller file, faster upload
+4. **No live coding** — show the tool working, not you writing code
+5. **Mute notifications** before recording (Focus Assist → Alarms only)
+6. **Keep a backup plan:** if the live demo stutters, have a pre-recorded fallback clip
+
+## Quickest Path
+
+```powershell
+# 1. Open OBS / Game Bar (Win+G)
+# 2. Set capture to full screen or window
+# 3. Open split: VS Code left, terminal right
+# 4. Hit record, follow the speaking script in DemoPrep.md
+# 5. Run:
+demo-run.ps1
+# 6. Switch to VS Code MCP Chat for tool demos
+# 7. Stop recording, trim dead air, export MP4
+```
+
+The speaking script in DemoPrep.md ("Final Speaking Script" section) has exact time codes and talking points — read it on a second monitor or phone while recording.

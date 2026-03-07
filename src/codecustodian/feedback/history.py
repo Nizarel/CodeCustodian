@@ -66,9 +66,7 @@ class HistoricalPatternRecognizer:
         db_path: Path to the TinyDB JSON file.
     """
 
-    def __init__(
-        self, db_path: str = ".codecustodian-cache/history.json"
-    ) -> None:
+    def __init__(self, db_path: str = ".codecustodian-cache/history.json") -> None:
         from tinydb import TinyDB
 
         path = Path(db_path)
@@ -180,14 +178,16 @@ class HistoricalPatternRecognizer:
 
         results: list[SimilarPattern] = []
         for record, match_score in top:
-            results.append(SimilarPattern(
-                team=record.get("team", ""),
-                repo=record.get("repo", ""),
-                success_rate=record.get("success_rate", 0.0),
-                common_modifications=record.get("modifications", []),
-                recommendation=record.get("learned_recommendation", ""),
-                match_score=round(match_score, 2),
-            ))
+            results.append(
+                SimilarPattern(
+                    team=record.get("team", ""),
+                    repo=record.get("repo", ""),
+                    success_rate=record.get("success_rate", 0.0),
+                    common_modifications=record.get("modifications", []),
+                    recommendation=record.get("learned_recommendation", ""),
+                    match_score=round(match_score, 2),
+                )
+            )
 
         return results
 
@@ -205,6 +205,7 @@ class HistoricalPatternRecognizer:
         """
         if similar is None:
             import asyncio
+
             try:
                 asyncio.get_running_loop()
                 # If we're in an async context, create a task
@@ -220,8 +221,9 @@ class HistoricalPatternRecognizer:
             "Historical Context (similar past refactorings and their outcomes):",
         ]
         for i, pat in enumerate(similar[:3], 1):
-            lines.append(f"  {i}. Team '{pat.team or 'unknown'}' — "
-                         f"success rate: {pat.success_rate:.0%}")
+            lines.append(
+                f"  {i}. Team '{pat.team or 'unknown'}' — success rate: {pat.success_rate:.0%}"
+            )
             if pat.recommendation:
                 lines.append(f"     Recommendation: {pat.recommendation}")
             if pat.common_modifications:

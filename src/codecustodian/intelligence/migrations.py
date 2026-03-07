@@ -78,9 +78,7 @@ class MigrationEngine:
         if playbook:
             stages = self._stages_from_playbook(playbook)
         else:
-            stages = await self._ask_ai_for_stages(
-                framework, from_ver, to_ver, findings, session
-            )
+            stages = await self._ask_ai_for_stages(framework, from_ver, to_ver, findings, session)
 
         if not stages:
             logger.warning("No migration stages generated for %s", framework)
@@ -131,9 +129,7 @@ class MigrationEngine:
             if any(dep in failed_stages for dep in stage.depends_on):
                 stage.status = "rolled_back"
                 failed_stages.add(stage.name)
-                logger.warning(
-                    "Skipping stage '%s' — dependency failed", stage.name
-                )
+                logger.warning("Skipping stage '%s' — dependency failed", stage.name)
                 continue
 
             stage.status = "running"
@@ -173,14 +169,11 @@ class MigrationEngine:
             framework=framework,
             guide_url=playbook_cfg.guide_url,
             patterns=[
-                {"pattern": p.pattern, "replacement": p.replacement}
-                for p in playbook_cfg.patterns
+                {"pattern": p.pattern, "replacement": p.replacement} for p in playbook_cfg.patterns
             ],
         )
 
-    def _stages_from_playbook(
-        self, playbook: MigrationPlaybook
-    ) -> list[MigrationStage]:
+    def _stages_from_playbook(self, playbook: MigrationPlaybook) -> list[MigrationStage]:
         """Convert a playbook's patterns into sequential stages."""
         stages: list[MigrationStage] = []
         for i, pat in enumerate(playbook.patterns):
@@ -278,9 +271,7 @@ class MigrationEngine:
 
     # ── graph utilities ───────────────────────────────────────────────
 
-    def _topological_sort(
-        self, stages: list[MigrationStage]
-    ) -> list[MigrationStage]:
+    def _topological_sort(self, stages: list[MigrationStage]) -> list[MigrationStage]:
         """Sort stages in dependency order using networkx."""
         g = nx.DiGraph()
         stage_map = {s.name: s for s in stages}
@@ -309,7 +300,15 @@ class MigrationEngine:
             desc = f.description.lower()
             if "deprecated" in desc or "migration" in desc:
                 # Try to extract framework name from description
-                for kw in ("flask", "django", "fastapi", "sqlalchemy", "pydantic", "celery", "pytest"):
+                for kw in (
+                    "flask",
+                    "django",
+                    "fastapi",
+                    "sqlalchemy",
+                    "pydantic",
+                    "celery",
+                    "pytest",
+                ):
                     if kw in desc:
                         return kw, "unknown", "latest"
         return "", "", ""

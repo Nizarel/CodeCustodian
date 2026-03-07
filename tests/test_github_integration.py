@@ -40,6 +40,7 @@ from codecustodian.models import (
 
 # ── Fixtures ───────────────────────────────────────────────────────────────
 
+
 def _make_finding(**overrides) -> Finding:
     defaults = {
         "id": "f-001",
@@ -188,7 +189,10 @@ class TestPullRequestCreator:
         verification = _make_verification()
 
         result = creator.create_pr(
-            finding, plan, execution, verification,
+            finding,
+            plan,
+            execution,
+            verification,
             branch="tech-debt/fix-123",
             base="main",
         )
@@ -205,8 +209,12 @@ class TestPullRequestCreator:
         plan = _make_plan(confidence_score=9)
 
         result = creator.create_pr(
-            _make_finding(), plan, _make_execution(), _make_verification(),
-            branch="b", draft_threshold=7,
+            _make_finding(),
+            plan,
+            _make_execution(),
+            _make_verification(),
+            branch="b",
+            draft_threshold=7,
         )
 
         assert result.draft is False
@@ -219,8 +227,12 @@ class TestPullRequestCreator:
         plan = _make_plan(confidence_score=5)
 
         result = creator.create_pr(
-            _make_finding(), plan, _make_execution(), _make_verification(),
-            branch="b", draft_threshold=7,
+            _make_finding(),
+            plan,
+            _make_execution(),
+            _make_verification(),
+            branch="b",
+            draft_threshold=7,
         )
 
         assert result.draft is True
@@ -233,7 +245,10 @@ class TestPullRequestCreator:
         mock_pr = repo.create_pull.return_value
 
         creator.create_pr(
-            _make_finding(), _make_plan(), _make_execution(), _make_verification(),
+            _make_finding(),
+            _make_plan(),
+            _make_execution(),
+            _make_verification(),
             branch="b",
             reviewers=["alice", "bob"],
             team_reviewers=["core-team"],
@@ -253,8 +268,10 @@ class TestPullRequestCreator:
 
         with pytest.raises(GitHubAPIError) as exc_info:
             creator.create_pr(
-                _make_finding(), _make_plan(),
-                _make_execution(), _make_verification(),
+                _make_finding(),
+                _make_plan(),
+                _make_execution(),
+                _make_verification(),
                 branch="b",
             )
 
@@ -296,7 +313,10 @@ class TestPullRequestCreator:
         )
 
         body = creator._build_body(
-            _make_finding(), plan, _make_execution(), _make_verification(),
+            _make_finding(),
+            plan,
+            _make_execution(),
+            _make_verification(),
         )
 
         assert "Option A" in body
@@ -314,7 +334,10 @@ class TestPullRequestCreator:
         )
 
         body = creator._build_body(
-            _make_finding(), _make_plan(), _make_execution(), verification,
+            _make_finding(),
+            _make_plan(),
+            _make_execution(),
+            verification,
         )
 
         assert "❌" in body
@@ -330,7 +353,10 @@ class TestPullRequestCreator:
         )
 
         body = creator._build_body(
-            _make_finding(), _make_plan(), _make_execution(), verification,
+            _make_finding(),
+            _make_plan(),
+            _make_execution(),
+            verification,
         )
 
         assert "❌" in body
@@ -345,7 +371,10 @@ class TestPullRequestCreator:
         )
 
         body = creator._build_body(
-            _make_finding(), plan, _make_execution(), _make_verification(),
+            _make_finding(),
+            plan,
+            _make_execution(),
+            _make_verification(),
         )
 
         assert "Risk level: **high**" in body
@@ -358,7 +387,8 @@ class TestPullRequestCreator:
         )
 
         labels = PullRequestCreator._select_labels(
-            _make_finding(), _make_plan(),
+            _make_finding(),
+            _make_plan(),
         )
 
         assert "tech-debt" in labels
@@ -408,14 +438,16 @@ class TestPullRequestCreator:
 
         # High confidence
         labels = PullRequestCreator._select_labels(
-            _make_finding(), _make_plan(confidence_score=9),
+            _make_finding(),
+            _make_plan(confidence_score=9),
         )
         assert "high-confidence" in labels
         assert "low-confidence" not in labels
 
         # Low confidence
         labels = PullRequestCreator._select_labels(
-            _make_finding(), _make_plan(confidence_score=3),
+            _make_finding(),
+            _make_plan(confidence_score=3),
         )
         assert "low-confidence" in labels
         assert "high-confidence" not in labels
@@ -469,7 +501,9 @@ class TestPRInteractionHandler:
 
             tmpdir = feedback_dir or tempfile.mkdtemp()
             handler = PRInteractionHandler(
-                "fake-token", "owner/repo", feedback_dir=tmpdir,
+                "fake-token",
+                "owner/repo",
+                feedback_dir=tmpdir,
             )
             handler.repo = repo
             return handler, repo
@@ -574,9 +608,7 @@ class TestPRInteractionHandler:
         handler, repo = self._make_handler()
         self._mock_pr_with_body(repo)
 
-        result = handler.handle_comment(
-            42, "@codecustodian modify Use pathlib instead"
-        )
+        result = handler.handle_comment(42, "@codecustodian modify Use pathlib instead")
         assert "📝" in result
         assert "Use pathlib instead" in result
 
@@ -782,7 +814,11 @@ class TestCommentManager:
         repo.get_commit.return_value = MagicMock()
 
         cid = mgr.post_review_comment(
-            42, "Issue here", "src/app.py", 10, "abc123",
+            42,
+            "Issue here",
+            "src/app.py",
+            10,
+            "abc123",
         )
         assert cid == 200
 
@@ -819,15 +855,20 @@ class TestCommentManager:
             lint_passed=False,
             lint_violations=[
                 LintViolation(
-                    file="app.py", line=10, code="E501",
+                    file="app.py",
+                    line=10,
+                    code="E501",
                     message="line too long",
                 ),
             ],
         )
 
         mgr.post_audit_summary(
-            42, _make_finding(), _make_plan(),
-            _make_execution(), verification,
+            42,
+            _make_finding(),
+            _make_plan(),
+            _make_execution(),
+            verification,
         )
 
         call_args = mock_pr.create_issue_comment.call_args[0][0]
@@ -846,15 +887,20 @@ class TestCommentManager:
             security_passed=False,
             security_issues=[
                 SecurityIssue(
-                    file="app.py", line=5, severity="HIGH",
+                    file="app.py",
+                    line=5,
+                    severity="HIGH",
                     description="hardcoded secret",
                 ),
             ],
         )
 
         mgr.post_audit_summary(
-            42, _make_finding(), _make_plan(),
-            _make_execution(), verification,
+            42,
+            _make_finding(),
+            _make_plan(),
+            _make_execution(),
+            verification,
         )
 
         call_args = mock_pr.create_issue_comment.call_args[0][0]
@@ -967,8 +1013,10 @@ class TestPipelineCreatePR:
         pipeline = _make_pipeline(config, github_token=None)
 
         result = await pipeline._create_pr(
-            _make_finding(), _make_plan(),
-            _make_execution(), _make_verification(),
+            _make_finding(),
+            _make_plan(),
+            _make_execution(),
+            _make_verification(),
         )
 
         assert result is None
@@ -1012,8 +1060,10 @@ class TestPipelineCreatePR:
             MockGH.return_value.get_repo.return_value = mock_repo
 
             result = await pipeline._create_pr(
-                _make_finding(), _make_plan(),
-                _make_execution(), _make_verification(),
+                _make_finding(),
+                _make_plan(),
+                _make_execution(),
+                _make_verification(),
             )
 
             assert result is not None
@@ -1032,8 +1082,10 @@ class TestPipelineCreatePR:
             side_effect=Exception("git error"),
         ):
             result = await pipeline._create_pr(
-                _make_finding(), _make_plan(),
-                _make_execution(), _make_verification(),
+                _make_finding(),
+                _make_plan(),
+                _make_execution(),
+                _make_verification(),
             )
 
             assert result is None

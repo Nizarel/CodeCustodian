@@ -92,8 +92,10 @@ class DeduplicationEngine:
         return bool(self._table.search(q.fingerprint == fingerprint))
 
     def _mark_seen(self, fingerprint: str, finding_id: str) -> None:
-        self._table.insert({
-            "fingerprint": fingerprint,
-            "finding_id": finding_id,
-            "first_seen": datetime.now(UTC).isoformat(),
-        })
+        self._table.insert(
+            {
+                "fingerprint": fingerprint,
+                "finding_id": finding_id,
+                "first_seen": datetime.now(UTC).isoformat(),
+            }
+        )

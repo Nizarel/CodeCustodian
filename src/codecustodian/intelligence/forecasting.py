@@ -121,10 +121,7 @@ class PredictiveDebtForecaster:
 
         # Build time series: x = days since first snapshot, y = total findings
         epoch = snapshots[0].date
-        x_vals = [
-            (s.date - epoch).total_seconds() / 86400.0
-            for s in snapshots
-        ]
+        x_vals = [(s.date - epoch).total_seconds() / 86400.0 for s in snapshots]
         y_vals = [float(s.total_findings) for s in snapshots]
 
         slope, intercept = self._linear_regression(x_vals, y_vals)
@@ -137,12 +134,9 @@ class PredictiveDebtForecaster:
         predicted = max(0, round(predicted_raw))
 
         # Confidence interval (±1 std error of estimate)
-        residuals = [
-            y - (slope * x + intercept)
-            for x, y in zip(x_vals, y_vals, strict=True)
-        ]
+        residuals = [y - (slope * x + intercept) for x, y in zip(x_vals, y_vals, strict=True)]
         n = len(residuals)
-        std_err = math.sqrt(sum(r ** 2 for r in residuals) / max(n - 2, 1))
+        std_err = math.sqrt(sum(r**2 for r in residuals) / max(n - 2, 1))
         margin = round(1.96 * std_err)  # ~95% CI
         ci_low = max(0, predicted - margin)
         ci_high = predicted + margin
@@ -171,7 +165,10 @@ class PredictiveDebtForecaster:
 
         logger.info(
             "Forecast: %s trend, %d predicted findings in %d days (slope=%.3f/day)",
-            trend, predicted, horizon_days, slope,
+            trend,
+            predicted,
+            horizon_days,
+            slope,
         )
         return forecast
 
@@ -179,7 +176,8 @@ class PredictiveDebtForecaster:
 
     @staticmethod
     def _linear_regression(
-        x: list[float], y: list[float],
+        x: list[float],
+        y: list[float],
     ) -> tuple[float, float]:
         """Ordinary least squares: y = slope * x + intercept.
 
@@ -192,9 +190,9 @@ class PredictiveDebtForecaster:
         sum_x = sum(x)
         sum_y = sum(y)
         sum_xy = sum(xi * yi for xi, yi in zip(x, y, strict=True))
-        sum_x2 = sum(xi ** 2 for xi in x)
+        sum_x2 = sum(xi**2 for xi in x)
 
-        denom = n * sum_x2 - sum_x ** 2
+        denom = n * sum_x2 - sum_x**2
         if abs(denom) < 1e-10:
             return 0.0, sum_y / n
 

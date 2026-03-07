@@ -70,7 +70,9 @@ def findings_to_sarif(findings: list[Finding], repo_root: str | None = None) -> 
 
         uri = _relative_uri(finding.file, repo_root)
         start_line = finding.line if finding.line > 0 else 1
-        end_line = finding.end_line if finding.end_line and finding.end_line >= start_line else start_line
+        end_line = (
+            finding.end_line if finding.end_line and finding.end_line >= start_line else start_line
+        )
         start_col = finding.column if finding.column > 0 else 1
         end_col = start_col + 1
 

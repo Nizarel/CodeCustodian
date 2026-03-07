@@ -25,10 +25,7 @@ class TrendAnalyzer:
 
         # File hotspots — most findings per file
         file_counts = Counter(f.file for f in findings)
-        hotspots = [
-            {"file": file, "count": count}
-            for file, count in file_counts.most_common(10)
-        ]
+        hotspots = [{"file": file, "count": count} for file, count in file_counts.most_common(10)]
 
         # Type distribution
         type_dist = Counter(f.type.value for f in findings)
@@ -37,13 +34,8 @@ class TrendAnalyzer:
         sev_dist = Counter(f.severity.value for f in findings)
 
         # Directory-level analysis
-        dir_counts = Counter(
-            str(Path(f.file).parent) for f in findings
-        )
-        hotspot_dirs = [
-            {"directory": d, "count": c}
-            for d, c in dir_counts.most_common(5)
-        ]
+        dir_counts = Counter(str(Path(f.file).parent) for f in findings)
+        hotspot_dirs = [{"directory": d, "count": c} for d, c in dir_counts.most_common(5)]
 
         return {
             "total_findings": len(findings),

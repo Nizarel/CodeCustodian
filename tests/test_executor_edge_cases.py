@@ -108,7 +108,9 @@ class TestSafetyChecksEdgeCases:
         )
         plan = _make_plan(change)
 
-        monkeypatch.setattr(SafetyCheckRunner, "_is_module_available", lambda *_args, **_kwargs: False)
+        monkeypatch.setattr(
+            SafetyCheckRunner, "_is_module_available", lambda *_args, **_kwargs: False
+        )
         result = _run(runner.check_import_availability(plan))
         assert result.passed is False
         assert "Missing imports" in result.message

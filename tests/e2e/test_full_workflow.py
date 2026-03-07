@@ -48,7 +48,7 @@ def _load_json_from_output(output: str):
             payload, end = decoder.raw_decode(text[index:])
         except json.JSONDecodeError:
             continue
-        if text[index + end:].strip() == "":
+        if text[index + end :].strip() == "":
             return payload
     raise AssertionError(f"No JSON payload found in output:\n{output[:800]}")
 
@@ -267,24 +267,42 @@ class TestDemoAppScanners:
         # deprecated_apis only
         result_dep = cli_runner.invoke(
             app,
-            ["scan", "--repo-path", DEMO_REPO, "--scanner", "deprecated_apis",
-             "--output-format", "json"],
+            [
+                "scan",
+                "--repo-path",
+                DEMO_REPO,
+                "--scanner",
+                "deprecated_apis",
+                "--output-format",
+                "json",
+            ],
         )
         assert result_dep.exit_code == 0, f"CLI error:\n{result_dep.output}"
         findings_dep = _load_json_from_output(result_dep.stdout)
         types_dep = {f["type"] for f in findings_dep}
-        assert types_dep <= {"deprecated_api"}, f"Unexpected types for deprecated_apis run: {types_dep}"
+        assert types_dep <= {"deprecated_api"}, (
+            f"Unexpected types for deprecated_apis run: {types_dep}"
+        )
 
         # todo_comments only
         result_todo = cli_runner.invoke(
             app,
-            ["scan", "--repo-path", DEMO_REPO, "--scanner", "todo_comments",
-             "--output-format", "json"],
+            [
+                "scan",
+                "--repo-path",
+                DEMO_REPO,
+                "--scanner",
+                "todo_comments",
+                "--output-format",
+                "json",
+            ],
         )
         assert result_todo.exit_code == 0, f"CLI error:\n{result_todo.output}"
         findings_todo = _load_json_from_output(result_todo.stdout)
         types_todo = {f["type"] for f in findings_todo}
-        assert types_todo <= {"todo_comment"}, f"Unexpected types for todo_comments run: {types_todo}"
+        assert types_todo <= {"todo_comment"}, (
+            f"Unexpected types for todo_comments run: {types_todo}"
+        )
 
 
 # ══════════════════════════════════════════════════════════════════════════
@@ -315,8 +333,14 @@ class TestPipelineDryRun:
         result = self._invoke_dry_run(cli_runner)
         assert result.exit_code == 0, f"CLI error:\n{result.output}"
         payload = _load_json_from_output(result.stdout)
-        required_keys = {"findings", "plans", "proposals", "cost_savings_estimate",
-                         "total_duration_seconds", "errors"}
+        required_keys = {
+            "findings",
+            "plans",
+            "proposals",
+            "cost_savings_estimate",
+            "total_duration_seconds",
+            "errors",
+        }
         missing = required_keys - set(payload.keys())
         assert not missing, f"Pipeline result missing keys: {missing}"
         assert isinstance(payload["findings"], list)
@@ -367,9 +391,7 @@ class TestPipelineDryRun:
         for plan in plans:
             score = plan.get("confidence_score", plan.get("confidence", None))
             if score is not None:
-                assert 1 <= score <= 10, (
-                    f"confidence_score out of range [1,10]: {score}"
-                )
+                assert 1 <= score <= 10, f"confidence_score out of range [1,10]: {score}"
 
     @pytest.mark.e2e
     def test_dry_run_proposals_list_present(self, cli_runner) -> None:
@@ -525,14 +547,25 @@ class TestEnterpriseFeaturesE2E:
 
         reporter = SLAReporter(db_path=str(tmp_path / "sla.json"))
         try:
-            reporter.record_run(SLARecord(
-                run_id="run-001", success=True, duration_seconds=12.5,
-                findings_count=5, prs_created=2
-            ))
-            reporter.record_run(SLARecord(
-                run_id="run-002", success=False, duration_seconds=5.0,
-                findings_count=2, prs_created=0, failure_reason="timeout"
-            ))
+            reporter.record_run(
+                SLARecord(
+                    run_id="run-001",
+                    success=True,
+                    duration_seconds=12.5,
+                    findings_count=5,
+                    prs_created=2,
+                )
+            )
+            reporter.record_run(
+                SLARecord(
+                    run_id="run-002",
+                    success=False,
+                    duration_seconds=5.0,
+                    findings_count=2,
+                    prs_created=0,
+                    failure_reason="timeout",
+                )
+            )
             report = reporter.generate_report()
             assert report.total_runs == 2
             assert report.successful_runs == 1
@@ -564,8 +597,9 @@ class TestEnterpriseFeaturesE2E:
         from codecustodian.enterprise.audit import AuditEntry, AuditLogger
 
         logger_inst = AuditLogger(log_dir=str(tmp_path / "audit"))
-        logger_inst.log("refactoring_applied", target="src/app.py",
-                        finding_id="f001", confidence_score=8.0)
+        logger_inst.log(
+            "refactoring_applied", target="src/app.py", finding_id="f001", confidence_score=8.0
+        )
 
         # Read back and validate hash
         log_file = next(iter((tmp_path / "audit").glob("audit-*.jsonl")))
@@ -583,9 +617,7 @@ class TestEnterpriseFeaturesE2E:
         from codecustodian.enterprise.rbac import Permission, Role, check_permission
 
         for perm in Permission:
-            assert check_permission(Role.ADMIN, perm), (
-                f"ADMIN should have permission {perm.value}"
-            )
+            assert check_permission(Role.ADMIN, perm), f"ADMIN should have permission {perm.value}"
 
     @pytest.mark.e2e
     def test_rbac_viewer_limited_permissions(self) -> None:
@@ -668,14 +700,10 @@ class TestSafetyChecksE2E:
         """Safety check blocks plans containing eval() calls."""
         from codecustodian.executor.safety_checks import SafetyCheckRunner
 
-        plan = self._make_plan_with_content(
-            'result = eval("user_input")\nprint(result)\n'
-        )
+        plan = self._make_plan_with_content('result = eval("user_input")\nprint(result)\n')
         runner = SafetyCheckRunner(repo_path=str(tmp_path))
         safety_result = asyncio.run(runner.run_all_checks(plan))
-        assert not safety_result.passed, (
-            "SafetyCheckRunner should have blocked eval() in new code"
-        )
+        assert not safety_result.passed, "SafetyCheckRunner should have blocked eval() in new code"
         check_names = [c.name for c in safety_result.checks if c.failed]
         assert any("danger" in n or "function" in n for n in check_names), (
             f"Expected 'dangerous_functions' check to fail; failed checks: {check_names}"
@@ -697,28 +725,20 @@ class TestSafetyChecksE2E:
         from codecustodian.executor.safety_checks import SafetyCheckRunner
 
         secret_key = "sk-" + "A" * 40  # matches sk-<32+> pattern
-        plan = self._make_plan_with_content(
-            f'OPENAI_KEY = "{secret_key}"\n'
-        )
+        plan = self._make_plan_with_content(f'OPENAI_KEY = "{secret_key}"\n')
         runner = SafetyCheckRunner(repo_path=str(tmp_path))
         safety_result = asyncio.run(runner.run_all_checks(plan))
-        assert not safety_result.passed, (
-            "SafetyCheckRunner should block OpenAI API key in new code"
-        )
+        assert not safety_result.passed, "SafetyCheckRunner should block OpenAI API key in new code"
 
     @pytest.mark.e2e
     def test_safety_blocks_aws_access_key(self, tmp_path) -> None:
         """Safety check blocks plans containing AWS access key ID (AKIA...)."""
         from codecustodian.executor.safety_checks import SafetyCheckRunner
 
-        plan = self._make_plan_with_content(
-            'AWS_KEY = "AKIA' + "B" * 16 + '"\n'
-        )
+        plan = self._make_plan_with_content('AWS_KEY = "AKIA' + "B" * 16 + '"\n')
         runner = SafetyCheckRunner(repo_path=str(tmp_path))
         safety_result = asyncio.run(runner.run_all_checks(plan))
-        assert not safety_result.passed, (
-            "SafetyCheckRunner should block AWS access key in new code"
-        )
+        assert not safety_result.passed, "SafetyCheckRunner should block AWS access key in new code"
 
     @pytest.mark.e2e
     def test_safety_allows_clean_code(self, tmp_path) -> None:
@@ -758,14 +778,19 @@ class TestFeedbackIntelligenceE2E:
         from codecustodian.feedback.store import FeedbackEntry, FeedbackStore
 
         store = FeedbackStore(storage_dir=str(tmp_path / "feedback"))
-        store.record(FeedbackEntry(
-            finding_id="f-001", finding_type="security",
-            action="approved", confidence_was=8
-        ))
-        store.record(FeedbackEntry(
-            finding_id="f-002", finding_type="deprecated_api",
-            action="rejected", confidence_was=5
-        ))
+        store.record(
+            FeedbackEntry(
+                finding_id="f-001", finding_type="security", action="approved", confidence_was=8
+            )
+        )
+        store.record(
+            FeedbackEntry(
+                finding_id="f-002",
+                finding_type="deprecated_api",
+                action="rejected",
+                confidence_was=5,
+            )
+        )
         stats = store.get_accuracy_stats()
         assert stats["total"] == 2
         assert stats["approved"] == 1
@@ -777,9 +802,7 @@ class TestFeedbackIntelligenceE2E:
         """PreferenceStore records team preferences and retrieves them."""
         from codecustodian.feedback.preferences import PreferenceStore
 
-        store = PreferenceStore(
-            db_path=str(tmp_path / "preferences.json")
-        )
+        store = PreferenceStore(db_path=str(tmp_path / "preferences.json"))
         try:
             store.record_preference("team-alpha", "prefer async/await over callbacks")
             store.record_preference("team-alpha", "use dataclasses over dicts")
@@ -801,20 +824,20 @@ class TestFeedbackIntelligenceE2E:
         )
         from codecustodian.models import Finding, FindingType, SeverityLevel
 
-        recognizer = HistoricalPatternRecognizer(
-            db_path=str(tmp_path / "history.json")
-        )
+        recognizer = HistoricalPatternRecognizer(db_path=str(tmp_path / "history.json"))
         try:
-            recognizer.record_refactoring(HistoricalRefactoring(
-                finding_type="deprecated_api",
-                library="pandas",
-                pattern="df.append",
-                outcome="merged",
-                success=True,
-                success_rate=1.0,
-                learned_recommendation="Replace df.append with pd.concat",
-                confidence_was=8,
-            ))
+            recognizer.record_refactoring(
+                HistoricalRefactoring(
+                    finding_type="deprecated_api",
+                    library="pandas",
+                    pattern="df.append",
+                    outcome="merged",
+                    success=True,
+                    success_rate=1.0,
+                    learned_recommendation="Replace df.append with pd.concat",
+                    confidence_was=8,
+                )
+            )
             finding = Finding(
                 type=FindingType.DEPRECATED_API,
                 severity=SeverityLevel.HIGH,
@@ -851,12 +874,23 @@ class TestMCPServerLocal:
         tools = asyncio.run(_run())
         tool_names = {t.name for t in tools}
         expected = {
-            "scan_repository", "list_scanners", "plan_refactoring",
-            "apply_refactoring", "verify_changes", "create_pull_request",
-            "calculate_roi", "get_business_impact", "get_blast_radius",
-            "get_debt_forecast", "check_pypi_versions", "get_reachability_analysis",
-            "synthesize_tests", "plan_migration", "get_migration_status",
-            "send_teams_notification", "scan_remote_repository",
+            "scan_repository",
+            "list_scanners",
+            "plan_refactoring",
+            "apply_refactoring",
+            "verify_changes",
+            "create_pull_request",
+            "calculate_roi",
+            "get_business_impact",
+            "get_blast_radius",
+            "get_debt_forecast",
+            "check_pypi_versions",
+            "get_reachability_analysis",
+            "synthesize_tests",
+            "plan_migration",
+            "get_migration_status",
+            "send_teams_notification",
+            "scan_remote_repository",
         }
         assert expected == tool_names, f"Missing tools: {expected - tool_names}"
 
@@ -877,9 +911,15 @@ class TestMCPServerLocal:
         if isinstance(data, dict) and "result" in data:
             data = data["result"]
         names = {s["name"] for s in data} if isinstance(data, list) else set()
-        expected = {"deprecated_apis", "security_patterns", "code_smells",
-                    "todo_comments", "type_coverage", "dependency_upgrades",
-                    "architectural_drift"}
+        expected = {
+            "deprecated_apis",
+            "security_patterns",
+            "code_smells",
+            "todo_comments",
+            "type_coverage",
+            "dependency_upgrades",
+            "architectural_drift",
+        }
         assert expected == names, f"Missing scanners: {expected - names}"
 
     @pytest.mark.e2e
@@ -927,7 +967,9 @@ class TestMCPServerLocal:
                 return r.structured_content
 
         data = asyncio.run(_run())
-        assert isinstance(data, dict), f"Expected dict result from get_business_impact; got {type(data)}"
+        assert isinstance(data, dict), (
+            f"Expected dict result from get_business_impact; got {type(data)}"
+        )
 
     @pytest.mark.e2e
     def test_mcp_resource_version_readable(self) -> None:
@@ -942,9 +984,7 @@ class TestMCPServerLocal:
 
         result = asyncio.run(_run())
         text = str(result)
-        assert "." in text, (
-            f"Expected semver version string, got: {text!r}"
-        )
+        assert "." in text, f"Expected semver version string, got: {text!r}"
 
     @pytest.mark.e2e
     def test_mcp_resource_config_readable(self) -> None:
@@ -1042,9 +1082,13 @@ class TestMCPServerLocal:
         prompts = asyncio.run(_run())
         prompt_names = {p.name for p in prompts}
         expected = {
-            "refactor_finding", "scan_summary", "roi_report",
-            "onboard_repo", "forecast_report",
-            "migration_assessment", "test_coverage_gap",
+            "refactor_finding",
+            "scan_summary",
+            "roi_report",
+            "onboard_repo",
+            "forecast_report",
+            "migration_assessment",
+            "test_coverage_gap",
         }
         assert expected == prompt_names, f"Missing prompts: {expected - prompt_names}"
 

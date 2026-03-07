@@ -62,10 +62,7 @@ class ReachabilityAnalyzer:
         """Walk the repo, build the import graph, and detect entry points."""
         py_files = sorted(self.repo_path.rglob("*.py"))
         for py_file in py_files:
-            if any(
-                part.startswith(".") or part == "__pycache__"
-                for part in py_file.parts
-            ):
+            if any(part.startswith(".") or part == "__pycache__" for part in py_file.parts):
                 continue
 
             rel = str(py_file.relative_to(self.repo_path)).replace("\\", "/")
@@ -112,7 +109,8 @@ class ReachabilityAnalyzer:
                     kind = self._check_route_decorator(dec)
                     if kind:
                         return EntryPoint(
-                            module=module, kind=kind,
+                            module=module,
+                            kind=kind,
                             detail=f"{node.name}()",
                         )
 
@@ -126,7 +124,8 @@ class ReachabilityAnalyzer:
                         base_name = base.attr
                     if base_name in _DJANGO_VIEW_BASES:
                         return EntryPoint(
-                            module=module, kind="django",
+                            module=module,
+                            kind="django",
                             detail=f"class {node.name}",
                         )
 
@@ -135,7 +134,8 @@ class ReachabilityAnalyzer:
                 args = [a.arg for a in node.args.args]
                 if "event" in args and "context" in args:
                     return EntryPoint(
-                        module=module, kind="lambda",
+                        module=module,
+                        kind="lambda",
                         detail="handler(event, context)",
                     )
 
@@ -148,7 +148,8 @@ class ReachabilityAnalyzer:
                 and node.test.left.id == "__name__"
             ):
                 return EntryPoint(
-                    module=module, kind="main",
+                    module=module,
+                    kind="main",
                     detail='if __name__ == "__main__"',
                 )
 

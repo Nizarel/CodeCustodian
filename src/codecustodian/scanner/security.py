@@ -528,12 +528,8 @@ class SecurityScanner(BaseScanner):
                                         "category": category,
                                         "cwe": pat_def["cwe"],
                                         "language": src_file.suffix.lstrip("."),
-                                        "exploit_scenario": _EXPLOIT_SCENARIOS.get(
-                                            category, ""
-                                        ),
-                                        "compliance": _COMPLIANCE_MAPPING.get(
-                                            category, []
-                                        ),
+                                        "exploit_scenario": _EXPLOIT_SCENARIOS.get(category, ""),
+                                        "compliance": _COMPLIANCE_MAPPING.get(category, []),
                                     },
                                 )
                             )

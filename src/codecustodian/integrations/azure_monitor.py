@@ -36,9 +36,8 @@ class ObservabilityProvider:
     """
 
     def __init__(self, connection_string: str | None = None) -> None:
-        self.connection_string = (
-            connection_string
-            or os.getenv("APPLICATIONINSIGHTS_CONNECTION_STRING")
+        self.connection_string = connection_string or os.getenv(
+            "APPLICATIONINSIGHTS_CONNECTION_STRING"
         )
         self._configured = False
 
@@ -164,10 +163,7 @@ class AzureMonitorEmitter:
         connection_string: str | None = None,
         instrumentation_key: str | None = None,
     ) -> None:
-        cs = (
-            connection_string
-            or os.getenv("APPLICATIONINSIGHTS_CONNECTION_STRING")
-        )
+        cs = connection_string or os.getenv("APPLICATIONINSIGHTS_CONNECTION_STRING")
         # instrumentation_key is legacy — ignored if connection_string present
         self._provider = ObservabilityProvider(connection_string=cs)
 

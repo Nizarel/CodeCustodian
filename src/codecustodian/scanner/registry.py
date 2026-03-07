@@ -81,12 +81,14 @@ class ScannerRegistry:
         """
         catalog: list[dict[str, str]] = []
         for _name, cls in sorted(self._scanners.items()):
-            catalog.append({
-                "name": cls.name,
-                "description": cls.description,
-                "detects": cls.name,
-                "enabled": str(getattr(cls, "enabled", True)),
-            })
+            catalog.append(
+                {
+                    "name": cls.name,
+                    "description": cls.description,
+                    "detects": cls.name,
+                    "enabled": str(getattr(cls, "enabled", True)),
+                }
+            )
         return catalog
 
     def __len__(self) -> int:

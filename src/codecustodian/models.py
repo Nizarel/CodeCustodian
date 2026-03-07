@@ -470,9 +470,7 @@ class DebtForecast(BaseModel):
     confidence_interval: tuple[int, int] = Field(
         default=(0, 0), description="(lower_bound, upper_bound) for predicted findings"
     )
-    trend: str = Field(
-        default="stable", description="improving | stable | worsening"
-    )
+    trend: str = Field(default="stable", description="improving | stable | worsening")
     hotspot_directories: list[str] = Field(default_factory=list)
     recommended_actions: list[str] = Field(default_factory=list)
     snapshots_used: int = Field(default=0, ge=0, description="Number of snapshots used")
@@ -498,11 +496,10 @@ class ReachabilityResult(BaseModel):
         default_factory=list, description="Paths from entry points to the finding's module"
     )
     is_reachable: bool = False
-    reachability_tag: str = Field(
-        default="internal_only", description="reachable | internal_only"
-    )
+    reachability_tag: str = Field(default="internal_only", description="reachable | internal_only")
     framework: str = Field(
-        default="unknown", description="Detected framework: flask | fastapi | django | lambda | unknown"
+        default="unknown",
+        description="Detected framework: flask | fastapi | django | lambda | unknown",
     )
 
     @field_validator("reachability_tag")
@@ -552,7 +549,9 @@ class MigrationStage(BaseModel):
     patterns: list[dict[str, str]] = Field(
         default_factory=list, description="Find/replace pattern pairs"
     )
-    status: str = Field(default="pending", description="pending | running | passed | failed | rolled_back")
+    status: str = Field(
+        default="pending", description="pending | running | passed | failed | rolled_back"
+    )
 
     @field_validator("status")
     @classmethod
