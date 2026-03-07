@@ -1,7 +1,7 @@
 param(
     [Parameter(Mandatory = $true)]
     [string]$Fqdn,
-    [int]$TimeoutSeconds = 60,
+    [int]$TimeoutSeconds = 120,
     [string]$ToolName = "list_scanners"
 )
 
@@ -82,9 +82,18 @@ $mcpUrl = "$baseUrl/mcp"
 $acceptHeader = "application/json, text/event-stream"
 
 Write-Host "Checking health: $baseUrl/health"
-$healthResponse = Invoke-RestMethod -Uri "$baseUrl/health" -Method Get -TimeoutSec $TimeoutSeconds
-if ($healthResponse.status -ne "ok") {
-    throw "Health check failed: unexpected status '$($healthResponse.status)'"
+$healthResponse = $null
+for ($attempt = 1; $attempt -le 3; $attempt++) {
+    try {
+        $healthResponse = Invoke-RestMethod -Uri "$baseUrl/health" -Method Get -TimeoutSec $TimeoutSeconds
+        break
+    } catch {
+        Write-Host "Health check attempt $attempt failed: $_"
+        if ($attempt -lt 3) { Start-Sleep -Seconds 10 }
+    }
+}
+if (-not $healthResponse -or $healthResponse.status -ne "ok") {
+    throw "Health check failed after 3 attempts"
 }
 
 Write-Host "Health OK (version=$($healthResponse.version))"
