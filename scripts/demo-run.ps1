@@ -17,7 +17,7 @@ param(
     [switch]$SkipPause
 )
 
-$ErrorActionPreference = "Stop"
+$ErrorActionPreference = "Continue"
 $DemoRepo = "demo/sample-enterprise-app"
 
 function Write-Step {
@@ -101,10 +101,10 @@ $costPerHour = 85  # Average senior dev hourly rate
 $moneySaved = [math]::Round($hoursSaved * $costPerHour)
 
 Write-Host "  Manual remediation estimate:" -ForegroundColor Yellow
-Write-Host "    Critical ($criticalCount findings x 4h)  = $($criticalCount * 4)h" -ForegroundColor Red
-Write-Host "    High     ($highCount findings x 2h)  = $($highCount * 2)h" -ForegroundColor Magenta
-Write-Host "    Medium   ($mediumCount findings x 1h)  = $($mediumCount * 1)h" -ForegroundColor Yellow
-Write-Host "    Low      ($lowCount findings x 0.5h) = $($lowCount * 0.5)h" -ForegroundColor Gray
+Write-Host "    Critical `($criticalCount findings x 4h`)  = $($criticalCount * 4)h" -ForegroundColor Red
+Write-Host "    High     `($highCount findings x 2h`)  = $($highCount * 2)h" -ForegroundColor Magenta
+Write-Host "    Medium   `($mediumCount findings x 1h`)  = $($mediumCount * 1)h" -ForegroundColor Yellow
+Write-Host "    Low      `($lowCount findings x 0.5h`) = $($lowCount * 0.5)h" -ForegroundColor Gray
 Write-Host "    ─────────────────────────────────────" -ForegroundColor DarkGray
 Write-Host "    Total manual effort:        $($manualHours)h" -ForegroundColor White
 Write-Host ""
@@ -142,8 +142,8 @@ Write-Host ""
 # Demo the MCP tool invocation (simulated if no webhook configured)
 $webhookUrl = $env:TEAMS_WEBHOOK_URL
 if ($webhookUrl) {
-    Write-Host "  ✅ Webhook configured — sending live notification" -ForegroundColor Green
-    python -c "
+    Write-Host "  Webhook configured - sending live notification" -ForegroundColor Green
+    $pyScript = @"
 import asyncio, json
 from codecustodian.integrations.teams_chatops import TeamsConnector, build_scan_complete_card
 from codecustodian.config.schema import ChatOpsConfig
@@ -156,15 +156,17 @@ async def send():
     await connector.close()
     print(f'  Delivered: {ok}')
 asyncio.run(send())
-" 2>$null
+"@
+    python -c $pyScript 2>$null
 } else {
-    Write-Host "  ℹ️  No TEAMS_WEBHOOK_URL set — showing Adaptive Card preview" -ForegroundColor Cyan
-    python -c "
+    Write-Host "  No TEAMS_WEBHOOK_URL set - showing Adaptive Card preview" -ForegroundColor Cyan
+    $pyScript = @"
 import json
 from codecustodian.integrations.teams_chatops import build_scan_complete_card
 card = build_scan_complete_card(total_findings=$total, critical=$criticalCount, high=$highCount, repo='$DemoRepo')
 print(json.dumps(card, indent=2))
-" 2>$null
+"@
+    python -c $pyScript 2>$null
 }
 
 Write-Host ""
