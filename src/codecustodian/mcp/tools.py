@@ -998,9 +998,8 @@ def register_tools(mcp: FastMCP) -> None:
             for scanner_instance in enabled:
                 findings.extend(scanner_instance.scan(str(repo_path)))
 
-            scan_cache.clear()
-            for f in findings:
-                scan_cache[f.id] = f
+            await scan_cache.clear()
+            await scan_cache.store_findings(findings)
 
             if ctx:
                 await ctx.info(
