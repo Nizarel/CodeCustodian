@@ -1,11 +1,16 @@
 {
-  "mcpServers": {
+  "servers": {
     "codecustodian": {
+      "type": "http",
+      "url": "https://codecustodian-dev-app.delightfuldesert-11a0292b.eastus2.azurecontainerapps.io/mcp"
+    },
+    "codecustodian-local": {
+      "type": "stdio",
       "command": "codecustodian-mcp",
       "args": [],
       "env": {
-        "GITHUB_TOKEN": "${GITHUB_TOKEN}",
-        "COPILOT_TOKEN": "${COPILOT_TOKEN}"
+        "GITHUB_TOKEN": "${input:github-token}",
+        "COPILOT_TOKEN": "${input:copilot-token}"
       }
     },
     "work-iq": {
@@ -13,5 +18,19 @@
       "args": ["-y", "@microsoft/workiq", "mcp"],
       "env": {}
     }
-  }
+  },
+  "inputs": [
+    {
+      "type": "promptString",
+      "id": "github-token",
+      "description": "GitHub Personal Access Token (repo + copilot scopes)",
+      "password": true
+    },
+    {
+      "type": "promptString",
+      "id": "copilot-token",
+      "description": "GitHub Copilot Token",
+      "password": true
+    }
+  ]
 }
