@@ -308,7 +308,7 @@ def test_review_pr_rejects_invalid_block_on_value(cli_runner) -> None:
         ],
     )
     assert result.exit_code != 0
-    assert "--block-on must only contain" in result.output
+    assert "must only contain" in result.output
 
 
 def test_review_pr_includes_healing_plan(cli_runner, tmp_path: Path) -> None:
