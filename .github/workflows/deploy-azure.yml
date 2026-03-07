@@ -117,6 +117,8 @@ jobs:
             --tags project=codecustodian environment=${{ inputs.environment || 'prod' }}
 
       - name: Deploy Bicep
+        id: bicep
+        continue-on-error: true
         uses: azure/arm-deploy@v2
         with:
           subscriptionId: ${{ env.SUBSCRIPTION_ID }}
@@ -127,15 +129,38 @@ jobs:
             imageTag=${{ inputs.image_tag || 'latest' }}
           deploymentName: codecustodian-${{ github.run_number }}
 
+      - name: Update Container App image (fallback)
+        if: steps.bicep.outcome == 'failure'
+        run: |
+          APP_NAME="${{ env.RESOURCE_GROUP == 'codecustodian-prod-rg' && 'codecustodian-prod-app' || 'codecustodian-dev-app' }}"
+          ACR_SERVER=$(az acr list -g ${{ env.RESOURCE_GROUP }} --query '[0].loginServer' -o tsv)
+          IMAGE="${ACR_SERVER}/codecustodian:${{ inputs.image_tag || 'latest' }}"
+          SUFFIX="v$(echo '${{ inputs.image_tag || github.sha }}' | cut -c1-8)-${{ github.run_number }}"
+          az containerapp update \
+            --name "$APP_NAME" \
+            --resource-group ${{ env.RESOURCE_GROUP }} \
+            --image "$IMAGE" \
+            --revision-suffix "$SUFFIX"
+          echo "Container app updated directly with image: $IMAGE"
+
       - name: Resolve deployed Container App FQDN
         id: app
         run: |
-          DEPLOYMENT_NAME="codecustodian-${{ github.run_number }}"
-          FQDN=$(az deployment group show \
-            --resource-group ${{ env.RESOURCE_GROUP }} \
-            --name "$DEPLOYMENT_NAME" \
-            --query "properties.outputs.containerAppFqdn.value" \
-            -o tsv)
+          if [ "${{ steps.bicep.outcome }}" = "success" ]; then
+            DEPLOYMENT_NAME="codecustodian-${{ github.run_number }}"
+            FQDN=$(az deployment group show \
+              --resource-group ${{ env.RESOURCE_GROUP }} \
+              --name "$DEPLOYMENT_NAME" \
+              --query "properties.outputs.containerAppFqdn.value" \
+              -o tsv)
+          else
+            APP_NAME="${{ env.RESOURCE_GROUP == 'codecustodian-prod-rg' && 'codecustodian-prod-app' || 'codecustodian-dev-app' }}"
+            FQDN=$(az containerapp show \
+              --name "$APP_NAME" \
+              --resource-group ${{ env.RESOURCE_GROUP }} \
+              --query "properties.configuration.ingress.fqdn" \
+              -o tsv)
+          fi
 
           if [ -z "$FQDN" ]; then
             echo "Failed to resolve container app FQDN from deployment outputs"

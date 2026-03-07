@@ -8,7 +8,7 @@ type coverage gaps, architectural drift, and dependency staleness, then uses the
 GitHub Copilot SDK to plan safe refactorings, applies them atomically, verifies
 with tests + linting, and creates pull requests — keeping humans in control.
 
-**Version:** 0.15.1 · **Tests:** 949 · **Coverage:** 82%+
+**Version:** 0.15.2 · **Tests:** 949 · **Coverage:** 82%+
 
 ## Project Structure
 
