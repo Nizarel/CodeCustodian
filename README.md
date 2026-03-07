@@ -4,7 +4,7 @@
 
 ![CodeCustodian Logo](https://via.placeholder.com/200x200/20B2AA/FFFFFF?text=CC)
 
-**The autonomous guardian of your codebase**
+**Technical debt management on autopilot**
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![CI](https://github.com/Nizarel/CodeCustodian/actions/workflows/ci.yml/badge.svg)](https://github.com/Nizarel/CodeCustodian/actions/workflows/ci.yml)
