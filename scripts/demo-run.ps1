@@ -20,6 +20,11 @@ param(
 $ErrorActionPreference = "Continue"
 $DemoRepo = "demo/sample-enterprise-app"
 
+# Ensure UTF-8 so Rich box-drawing characters render correctly
+[Console]::OutputEncoding = [System.Text.Encoding]::UTF8
+$OutputEncoding = [System.Text.Encoding]::UTF8
+$env:PYTHONIOENCODING = "utf-8"
+
 function Write-Step {
     param([string]$Title)
     Write-Host ""
