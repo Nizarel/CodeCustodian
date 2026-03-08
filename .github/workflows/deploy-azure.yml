@@ -127,6 +127,7 @@ jobs:
           parameters: >
             environment=${{ inputs.environment || 'prod' }}
             imageTag=${{ inputs.image_tag || 'latest' }}
+            githubToken=${{ secrets.GITHUB_TOKEN_FOR_CLONE }}
           deploymentName: codecustodian-${{ github.run_number }}
 
       - name: Update Container App image (fallback)
@@ -140,7 +141,8 @@ jobs:
             --name "$APP_NAME" \
             --resource-group ${{ env.RESOURCE_GROUP }} \
             --image "$IMAGE" \
-            --revision-suffix "$SUFFIX"
+            --revision-suffix "$SUFFIX" \
+            --set-env-vars "GITHUB_TOKEN=secretref:github-token"
           echo "Container app updated directly with image: $IMAGE"
 
       - name: Resolve deployed Container App FQDN

@@ -21,7 +21,9 @@ param imageTag string = 'latest'
 @secure()
 param teamsWebhookUrl string = ''
 
-
+@description('GitHub Personal Access Token for authenticated repository cloning')
+@secure()
+param githubToken string = ''
 
 // ── Derived names ─────────────────────────────────────────────────────────
 
@@ -110,6 +112,7 @@ module keyvault 'modules/keyvault.bicep' = {
     principalId: identity.outputs.principalId
     tenantId: tenant().tenantId
     teamsWebhookUrl: teamsWebhookUrl
+    githubToken: githubToken
   }
 }
 
@@ -132,6 +135,7 @@ module containerApp 'modules/container-app.bicep' = {
     kvUri: keyvault.outputs.vaultUri
     teamsWebhookUrl: teamsWebhookUrl
     useKeyVaultSecret: !empty(teamsWebhookUrl)
+    useGithubTokenSecret: !empty(githubToken)
   }
 }
 

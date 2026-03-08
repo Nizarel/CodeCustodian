@@ -7,6 +7,9 @@ param tenantId string
 @secure()
 param teamsWebhookUrl string = ''
 
+@secure()
+param githubToken string = ''
+
 resource kv 'Microsoft.KeyVault/vaults@2023-07-01' = {
   name: kvName
   location: location
@@ -41,6 +44,15 @@ resource teamsWebhookSecret 'Microsoft.KeyVault/vaults/secrets@2023-07-01' = if 
   name: 'TEAMS-WEBHOOK-URL'
   properties: {
     value: teamsWebhookUrl
+    contentType: 'text/plain'
+  }
+}
+
+resource githubTokenSecret 'Microsoft.KeyVault/vaults/secrets@2023-07-01' = if (!empty(githubToken)) {
+  parent: kv
+  name: 'github-token'
+  properties: {
+    value: githubToken
     contentType: 'text/plain'
   }
 }

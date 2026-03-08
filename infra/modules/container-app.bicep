@@ -16,8 +16,10 @@ param appInsightsConnectionString string = ''
 param kvUri string = ''
 param teamsWebhookUrl string = ''
 param useKeyVaultSecret bool = false
+param useGithubTokenSecret bool = false
 
 var teamsWebhookSecretUrl = '${kvUri}secrets/TEAMS-WEBHOOK-URL'
+var githubTokenSecretUrl = '${kvUri}secrets/github-token'
 var teamsWebhookEnv = useKeyVaultSecret
   ? [
       {
@@ -78,15 +80,26 @@ resource containerApp 'Microsoft.App/containerApps@2024-03-01' = {
         transport: 'http'
         allowInsecure: false
       }
-      secrets: useKeyVaultSecret
-        ? [
-            {
-              name: 'teams-webhook-url'
-              keyVaultUrl: teamsWebhookSecretUrl
-              identity: managedIdentityId
-            }
-          ]
-        : []
+      secrets: concat(
+        useKeyVaultSecret
+          ? [
+              {
+                name: 'teams-webhook-url'
+                keyVaultUrl: teamsWebhookSecretUrl
+                identity: managedIdentityId
+              }
+            ]
+          : [],
+        useGithubTokenSecret
+          ? [
+              {
+                name: 'github-token'
+                keyVaultUrl: githubTokenSecretUrl
+                identity: managedIdentityId
+              }
+            ]
+          : []
+      )
       registries: [
         {
           server: acrLoginServer
@@ -124,7 +137,15 @@ resource containerApp 'Microsoft.App/containerApps@2024-03-01' = {
                 name: 'CHATOPS_ENABLED'
                 value: 'true'
               }
-            ]
+            ],
+            useGithubTokenSecret
+              ? [
+                  {
+                    name: 'GITHUB_TOKEN'
+                    secretRef: 'github-token'
+                  }
+                ]
+              : []
           )
         }
       ]

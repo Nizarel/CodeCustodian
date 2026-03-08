@@ -98,6 +98,47 @@ class TestCloneRepo:
         with pytest.raises(ExecutorError, match="Git clone failed"):
             clone_repo("https://github.com/owner/repo")
 
+    @patch("codecustodian.executor.repo_cloner.Repo")
+    def test_clone_with_token_injects_auth_for_github(self, mock_repo_cls: MagicMock) -> None:
+        url = "https://github.com/owner/repo"
+        path = clone_repo(url, token="ghp_test123")
+        try:
+            args, _ = mock_repo_cls.clone_from.call_args
+            assert args[0] == "https://x-access-token:ghp_test123@github.com/owner/repo"
+        finally:
+            cleanup_clone(path)
+
+    @patch("codecustodian.executor.repo_cloner.Repo")
+    def test_clone_with_token_ignores_non_github_hosts(self, mock_repo_cls: MagicMock) -> None:
+        url = "https://gitlab.com/owner/repo"
+        path = clone_repo(url, token="glpat_test456")
+        try:
+            args, _ = mock_repo_cls.clone_from.call_args
+            # Token must NOT be injected for non-github.com hosts
+            assert args[0] == url
+        finally:
+            cleanup_clone(path)
+
+    @patch("codecustodian.executor.repo_cloner.Repo")
+    def test_clone_without_token_uses_original_url(self, mock_repo_cls: MagicMock) -> None:
+        url = "https://github.com/owner/repo"
+        path = clone_repo(url, token=None)
+        try:
+            args, _ = mock_repo_cls.clone_from.call_args
+            assert args[0] == url
+        finally:
+            cleanup_clone(path)
+
+    @patch("codecustodian.executor.repo_cloner.Repo")
+    def test_clone_error_message_does_not_leak_token(self, mock_repo_cls: MagicMock) -> None:
+        from git import GitCommandError
+
+        mock_repo_cls.clone_from.side_effect = GitCommandError("clone", "fail")
+        with pytest.raises(ExecutorError, match="github.com/owner/repo") as exc_info:
+            clone_repo("https://github.com/owner/repo", token="ghp_secret")
+        # The token must never appear in the error message
+        assert "ghp_secret" not in str(exc_info.value)
+
 
 # ── cleanup_clone ─────────────────────────────────────────────────────────
 

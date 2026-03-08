@@ -58,18 +58,30 @@ def validate_clone_url(url: str) -> str:
     return url
 
 
-def clone_repo(url: str, *, branch: str | None = None, depth: int = 1) -> Path:
-    """Shallow-clone a public Git repo into a temporary directory.
+def clone_repo(url: str, *, branch: str | None = None, depth: int = 1, token: str | None = None) -> Path:
+    """Shallow-clone a Git repo into a temporary directory.
 
     Args:
         url: HTTPS clone URL (validated against allow-list).
         branch: Optional branch to clone; defaults to the remote HEAD.
         depth: Clone depth (default ``1`` for speed).
+        token: Optional access token for private repos.
+               Only injected for ``github.com`` URLs.
 
     Returns:
         Path to the cloned working tree.
     """
     url = validate_clone_url(url)
+
+    # Inject token into HTTPS URL for authenticated cloning (github.com only)
+    clone_url = url
+    if token:
+        parsed = urlparse(url)
+        if parsed.hostname == "github.com":
+            clone_url = f"https://x-access-token:{token}@github.com{parsed.path}"
+            logger.info("Using authenticated clone for %s", url)
+        else:
+            logger.warning("Token provided but host %s is not github.com — ignoring token", parsed.hostname)
 
     tmp = Path(tempfile.mkdtemp(prefix="codecustodian_"))
     logger.info("Cloning %s (depth=%d) into %s", url, depth, tmp)
@@ -79,9 +91,10 @@ def clone_repo(url: str, *, branch: str | None = None, depth: int = 1) -> Path:
         kwargs["branch"] = branch
 
     try:
-        Repo.clone_from(url, str(tmp), **kwargs)
+        Repo.clone_from(clone_url, str(tmp), **kwargs)
     except GitCommandError as exc:
         shutil.rmtree(tmp, ignore_errors=True)
+        # Use original URL in error message to avoid leaking token
         raise ExecutorError(f"Git clone failed for {url}: {exc}") from exc
 
     logger.info("Clone complete: %s", tmp)
@@ -96,9 +109,11 @@ def cleanup_clone(path: Path) -> None:
 
 
 @asynccontextmanager
-async def cloned_repo(url: str, *, branch: str | None = None) -> AsyncIterator[Path]:
+async def cloned_repo(
+    url: str, *, branch: str | None = None, token: str | None = None,
+) -> AsyncIterator[Path]:
     """Async context manager: clone → yield path → cleanup."""
-    path = clone_repo(url, branch=branch)
+    path = clone_repo(url, branch=branch, token=token)
     try:
         yield path
     finally:

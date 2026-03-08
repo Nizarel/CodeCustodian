@@ -963,22 +963,29 @@ def register_tools(mcp: FastMCP) -> None:
         config_path: str = ".codecustodian.yml",
         ctx: Context = None,  # type: ignore[assignment]
     ) -> dict:
-        """Clone a public Git repository and scan it for technical debt.
+        """Clone a Git repository and scan it for technical debt.
 
         The repo is shallow-cloned into a temporary directory, scanned,
-        and the clone is automatically cleaned up afterwards.
+        and the clone is automatically cleaned up afterwards.  Private
+        repositories are supported when a ``GITHUB_TOKEN`` environment
+        variable (or Key Vault secret) is configured.
 
         Args:
-            url: HTTPS clone URL of a public Git repository.
+            url: HTTPS clone URL of a Git repository.
             scanners: Comma-separated scanner names, or ``'all'``.
             config_path: Path to configuration YAML (inside the cloned repo).
         """
+        import os
+
         from codecustodian.executor.repo_cloner import cloned_repo
+
+        # Retrieve token for authenticated cloning
+        token = os.environ.get("GITHUB_TOKEN", "").strip() or None
 
         if ctx:
             await ctx.info(f"Cloning {url}…")
 
-        async with cloned_repo(url) as repo_path:
+        async with cloned_repo(url, token=token) as repo_path:
             if ctx:
                 await ctx.info("Clone complete — scanning…")
 
