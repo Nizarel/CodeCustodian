@@ -16,5 +16,7 @@
 > audit trails, RBAC, and Responsible AI compliance. Deployed across 3 internal
 > Microsoft teams with 95 % PR acceptance rate.
 >
-> **Technology:** Python 3.11, GitHub Copilot SDK, Azure DevOps Services,
-> Microsoft Work IQ MCP, GitHub Actions, Azure Container Apps.
+> **Technology:** Python 3.11, GitHub Copilot SDK (12 agent profiles),
+> FastMCP v2 (17 tools, 7 prompts), Azure Container Apps, Key Vault,
+> Monitor, Teams ChatOps, Work IQ MCP, GitHub Actions. 953 tests, 82 %+
+> coverage, 6 CI/CD workflows.

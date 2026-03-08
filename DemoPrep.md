@@ -6,13 +6,13 @@
 
 | # | Deliverable | Status | Location |
 |---|-------------|--------|----------|
-| 1 | **Project summary (150 words max)** | TODO | Below |
+| 1 | **Project summary (150 words max)** | DONE | `Docs/PROJECT_SUMMARY.md` |
 | 2 | **Video (3 min max)** | TODO | Record after build |
 | 3 | **Working code in GitHub repo** | DONE | `src/codecustodian/` |
 | 4 | **README with architecture + setup** | DONE | `README.md`, `Docs/` |
 | 5 | **Presentation deck (1-2 slides)** | DONE | `presentations/CodeCustodian-Deck.html` |
 | 6 | **`/src` or `/app` (working code)** | DONE | `src/` |
-| 7 | **`/docs` (README, prereqs, setup, deployment, arch diagram, RAI)** | DONE | `Docs/README.md`, `ARCHITECTURE.md`, `DEPLOYMENT.md`, `RESPONSIBLE_AI.md` |
+| 7 | **`/docs` (README, prereqs, setup, deployment, arch diagram, RAI)** | DONE | `Docs/README.md`, `FEATURE_ARCHITECTURE.md`, `DEPLOYMENT.md`, `RESPONSIBLE_AI.md` |
 | 8 | **`AGENTS.md`** | DONE | `AGENTS.md` |
 | 9 | **`mcp.json`** | DONE | `mcp.json` |
 | 10 | **Demo deck in `/presentations/`** | DONE | `presentations/CodeCustodian-Deck.html` |
@@ -174,7 +174,7 @@ Enterprise features include budget management, SLA reporting, HTML ROI reports, 
 approval workflows, predictive debt forecasting, AI test synthesis, agentic migrations,
 and a feedback loop that learns from PR outcomes.
 
-**949 tests, 82%+ coverage, 6 CI/CD workflows, 0 lint errors, Responsible AI policy.**
+**953 tests, 82%+ coverage, 6 CI/CD workflows, 0 lint errors, Responsible AI policy.**
 
 ---
 
@@ -192,7 +192,7 @@ and a feedback loop that learns from PR outcomes.
 | 1:55-2:15 | **MCP in VS Code** | Open Copilot Chat → use `get_debt_forecast` tool to show trend prediction → use `send_teams_notification` with Work IQ enrichment. "17 tools, 7 prompts, 12 agents." |
 | 2:15-2:30 | **Enterprise** | HTML ROI report, budget dashboard, SLA metrics, audit log. "Enterprise-ready from day one." |
 | 2:30-2:45 | **Azure Integration** | Architecture diagram: Key Vault + Container Apps + Monitor + DevOps + Teams ChatOps + Work IQ + GitHub Actions + Copilot SDK |
-| 2:45-3:00 | **Close** | "CodeCustodian: your autonomous guardian against technical debt. 949 tests. Zero lint errors. Production-ready." |
+| 2:45-3:00 | **Close** | "CodeCustodian: your autonomous guardian against technical debt. 953 tests. Zero lint errors. Production-ready." |
 
 ## Final Speaking Script (3 Minutes)
 
@@ -226,7 +226,7 @@ and a feedback loop that learns from PR outcomes.
 
 ### 2:35-3:00 — Close
 
-"CodeCustodian combines GitHub Copilot SDK, FastMCP, Azure deployment, and Teams ChatOps into one production-ready technical debt platform. Today it is validated by 949 passing tests, zero lint errors, and a live Azure deployment. That is CodeCustodian: your autonomous guardian against technical debt." 
+"CodeCustodian combines GitHub Copilot SDK, FastMCP, Azure deployment, and Teams ChatOps into one production-ready technical debt platform. Today it is validated by 953 passing tests, zero lint errors, and a live Azure deployment. That is CodeCustodian: your autonomous guardian against technical debt." 
 
 ---
 
