@@ -127,7 +127,7 @@ jobs:
           parameters: >
             environment=${{ inputs.environment || 'prod' }}
             imageTag=${{ inputs.image_tag || 'latest' }}
-            githubToken=${{ secrets.GITHUB_TOKEN_FOR_CLONE }}
+            githubToken=${{ secrets.GH_TOKEN_FOR_CLONE }}
           deploymentName: codecustodian-${{ github.run_number }}
 
       - name: Update Container App image (fallback)
