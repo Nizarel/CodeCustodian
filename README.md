@@ -309,23 +309,52 @@ This validates `/health`, MCP `initialize`, `tools/list`, and `tools/call` (`lis
 
 ### Architecture Overview
 
+<div align="center">
+
+![CodeCustodian AI Development & Deployment Workflow](Docs/CustodianArchitecture.png)
+
+</div>
+
+<details>
+<summary>Mermaid source (click to expand)</summary>
+
+```mermaid
+graph TB
+    subgraph "Developer Experience"
+        CLI["CLI (15 commands)"]
+        MCP["MCP Server · FastMCP v2\n17 tools · 7 prompts"]
+        VSCode["VS Code Copilot Chat"]
+    end
+
+    subgraph "Pipeline"
+        SCAN["Scanner\n7 built-in scanners"]
+        PLAN["Planner\nGitHub Copilot SDK\n12 agent profiles"]
+        EXEC["Executor\nAtomic + Rollback"]
+        VERIFY["Verifier\npytest + ruff + bandit"]
+        PR["PR Creator\nGitHub API"]
+    end
+
+    subgraph "Azure & Microsoft"
+        KV["Key Vault · Secrets"]
+        ACA["Container Apps · Deployment"]
+        MON["Azure Monitor · OpenTelemetry"]
+        ADO["Azure DevOps · Work Items"]
+        TEAMS["Teams ChatOps · Adaptive Cards"]
+        GHA["GitHub Actions · 6 workflows"]
+        COPILOT["Copilot SDK · AI Reasoning"]
+    end
+
+    CLI --> SCAN
+    VSCode --> MCP --> SCAN
+    SCAN --> PLAN --> EXEC --> VERIFY --> PR
+    PLAN --> COPILOT
+    EXEC --> KV
+    PR --> GHA
+    ACA --> MON
+    PR --> TEAMS
 ```
-┌─────────────────────────────────────────────────────────────┐
-│                    GitHub Actions Runner                     │
-│  ┌───────────────────────────────────────────────────────┐  │
-│  │  CodeCustodian CLI (Python)                           │  │
-│  │                                                        │  │
-│  │  ┌──────────┐  ┌──────────┐  ┌──────────┐  ┌──────┐ │  │
-│  │  │ Scanner  │→│ Planner  │→│ Executor │→│Verify│ │  │
-│  │  │ Module   │  │(Copilot) │  │ Module   │  │Module│ │  │
-│  │  └──────────┘  └──────────┘  └──────────┘  └──────┘ │  │
-│  └───────────────────────────────────────────────────────┘  │
-│                           ↓                                  │
-│  ┌───────────────────────────────────────────────────────┐  │
-│  │  GitHub API: Create Pull Requests                     │  │
-│  └───────────────────────────────────────────────────────┘  │
-└─────────────────────────────────────────────────────────────┘
-```
+
+</details>
 
 **Key Design Principles:**
 
